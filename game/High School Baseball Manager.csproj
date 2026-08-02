@@ -1,0 +1,14 @@
+<Project Sdk="Godot.NET.Sdk/4.7.1">
+  <ItemGroup>
+    <ProjectReference Include="..\src\HSBM.Domain\HSBM.Domain.csproj" />
+    <ProjectReference Include="..\src\HSBM.Application\HSBM.Application.csproj" />
+    <ProjectReference Include="..\src\HSBM.Simulation\HSBM.Simulation.csproj" />
+    <ProjectReference Include="..\src\HSBM.Persistence\HSBM.Persistence.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>HighSchoolBaseballManager</RootNamespace>
+  </PropertyGroup>
+</Project>

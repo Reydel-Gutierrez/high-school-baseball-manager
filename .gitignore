@@ -1,0 +1,67 @@
+# Godot generated files
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Godot Mono / .NET generated files
+.mono/
+data_*/
+mono_crash.*.json
+
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+.history/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Operating system
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and crash dumps
+*.log
+*.dmp
+crash-logs/
+
+# Local databases and saves
+*.db
+*.db-shm
+*.db-wal
+*.db.backup
+*.db.temp
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# NuGet packages
+*.nupkg
+packages/
+
+# Exported builds
+builds/
+exports/
+dist/
+
+# Temporary files
+*.tmp
+*.temp
+~$*
