@@ -1,0 +1,301 @@
+[gd_scene format=3 uid="uid://c7amdobo75127"]
+
+[ext_resource type="Script" uid="uid://bb3yr2m3ji66w" path="res://scripts/ui/DropdownMenuButton.cs" id="1_hyk8p"]
+[ext_resource type="Theme" uid="uid://c6xmtjgsi6p7p" path="res://assets/themes/MainTheme.tres" id="1_iuonh"]
+[ext_resource type="Script" uid="uid://bv7uhhd4tcecy" path="res://scripts/ui/TopBarNavigation.cs" id="4_topnav"]
+[ext_resource type="FontFile" uid="uid://r2rpg7ujc58c" path="res://assets/fonts/BarlowCondensed-Bold.ttf" id="5_bold"]
+[ext_resource type="FontFile" uid="uid://cc55pfosbh84m" path="res://assets/fonts/BarlowCondensed-Medium.ttf" id="6_medium"]
+[ext_resource type="FontFile" uid="uid://cs3frpdrkr42u" path="res://assets/fonts/BarlowCondensed-SemiBold.ttf" id="7_semibold"]
+[ext_resource type="Texture2D" uid="uid://cwbwsof3yr52w" path="res://assets/ui/gear_icon.svg" id="8_gear"]
+[ext_resource type="Script" uid="uid://bcp6vldm8s3lt" path="res://scripts/ui/AppNavigator.cs" id="28_appnav"]
+[ext_resource type="PackedScene" uid="uid://c8rosterpage1" path="res://scenes/pages/roster.tscn" id="29_roster"]
+[ext_resource type="Script" uid="uid://dhjo1xiidaxe3" path="res://scripts/ui/TeamLevelToggle.cs" id="30_teamtoggle"]
+[ext_resource type="PackedScene" uid="uid://c8homepage001" path="res://scenes/pages/home.tscn" id="31_home"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
+bg_color = Color(0.07058824, 0.078431375, 0.09411765, 1)
+border_width_bottom = 1
+border_color = Color(0.16078432, 0.18431373, 0.21960784, 1)
+corner_detail = 1
+
+[sub_resource type="FontVariation" id="FontVariation_brand_small"]
+base_font = ExtResource("6_medium")
+spacing_glyph = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_home_normal"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.95686275, 0.6431373, 0.10980392, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_home_hover"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.98039216, 0.72156864, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_home_focus"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.98039216, 0.72156864, 0.2, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9882353, 0.84313726, 0.4509804, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_content"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.047058824, 0.05490196, 0.07058824, 1)
+border_color = Color(0.18039216, 0.19215687, 0.21960784, 1)
+corner_detail = 1
+
+[node name="Main" type="MarginContainer" unique_id=1823978870]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_iuonh")
+script = ExtResource("28_appnav")
+metadata/_edit_use_anchors_ = true
+
+[node name="AppLayout" type="VBoxContainer" parent="." unique_id=1127750311]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TopBar" type="PanelContainer" parent="AppLayout" unique_id=851095958]
+custom_minimum_size = Vector2(0, 54)
+custom_maximum_size = Vector2(-1, 60)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_topbar")
+script = ExtResource("4_topnav")
+
+[node name="TopBarMargin" type="MarginContainer" parent="AppLayout/TopBar" unique_id=1850731796]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+
+[node name="HBoxContainer" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin" unique_id=687947371]
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="BrandMark" type="VBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=1001]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = -2
+alignment = 1
+
+[node name="HighSchoolLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1002]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95686275, 0.9647059, 0.972549, 1)
+theme_override_constants/line_spacing = 0
+theme_override_fonts/font = SubResource("FontVariation_brand_small")
+theme_override_font_sizes/font_size = 10
+text = "HIGH SCHOOL"
+vertical_alignment = 2
+
+[node name="TitleRow" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1003]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="BaseballLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1004]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 22
+text = "BASEBALL"
+vertical_alignment = 1
+
+[node name="YearLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1005]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95686275, 0.6431373, 0.10980392, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 22
+text = "26"
+vertical_alignment = 1
+
+[node name="NavigationRow" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=419839481]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="HomeButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623089]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.07058824, 0.07450981, 0.08627451, 1)
+theme_override_colors/font_focus_color = Color(0.07058824, 0.07450981, 0.08627451, 1)
+theme_override_colors/font_pressed_color = Color(0.07058824, 0.07450981, 0.08627451, 1)
+theme_override_colors/font_hover_color = Color(0.07058824, 0.07450981, 0.08627451, 1)
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_home_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_home_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_home_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_home_focus")
+text = "HOME"
+
+[node name="OrganizationMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=992549266]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "ORGANIZATION ▼"
+flat = false
+switch_on_hover = true
+item_count = 4
+popup/item_0/text = "ROSTER"
+popup/item_0/id = 100
+popup/item_1/text = "TRADES"
+popup/item_1/id = 101
+popup/item_2/text = "TRANSACTIONS"
+popup/item_2/id = 102
+popup/item_3/text = "GOALS & SATISFACTION"
+popup/item_3/id = 103
+script = ExtResource("1_hyk8p")
+
+[node name="ClubhouseMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=907681812]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "CLUBHOUSE ▼"
+flat = false
+switch_on_hover = true
+item_count = 3
+popup/item_0/text = "LINEUPS"
+popup/item_0/id = 200
+popup/item_1/text = "PITCHING ROTATION"
+popup/item_1/id = 201
+popup/item_2/text = "INJURIES"
+popup/item_2/id = 202
+script = ExtResource("1_hyk8p")
+
+[node name="DistrictHubMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=147765320]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "DISTRICT HUB ▼"
+flat = false
+switch_on_hover = true
+item_count = 5
+popup/item_0/text = "STANDINGS"
+popup/item_0/id = 300
+popup/item_1/text = "LEADERS"
+popup/item_1/id = 301
+popup/item_2/text = "AWARDS"
+popup/item_2/id = 302
+popup/item_3/text = "STATISTICS"
+popup/item_3/id = 303
+popup/item_4/text = "NEWS"
+popup/item_4/id = 304
+script = ExtResource("1_hyk8p")
+
+[node name="FinancesMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1363254465]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "FINANCES ▼"
+flat = false
+switch_on_hover = true
+item_count = 3
+popup/item_0/text = "BUDGET"
+popup/item_0/id = 400
+popup/item_1/text = "SPONSORS"
+popup/item_1/id = 401
+popup/item_2/text = "CONTRACTS"
+popup/item_2/id = 402
+script = ExtResource("1_hyk8p")
+
+[node name="ScoutingMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1964727536]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "SCOUTING ▼"
+flat = false
+switch_on_hover = true
+item_count = 3
+popup/item_0/text = "PLAYER SEARCH"
+popup/item_0/id = 500
+popup/item_1/text = "TRADE HUB"
+popup/item_1/id = 501
+popup/item_2/text = "MY TARGETS"
+popup/item_2/id = 502
+script = ExtResource("1_hyk8p")
+
+[node name="CareerButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1692429108]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_fonts/font = ExtResource("7_semibold")
+theme_override_font_sizes/font_size = 13
+text = "MY CAREER"
+
+[node name="RightCluster" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=2001]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="TeamLevelToggle" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=2002]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 0
+script = ExtResource("30_teamtoggle")
+
+[node name="SettingsButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=960798489]
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Settings"
+theme_override_colors/icon_normal_color = Color(0.8, 0.81960785, 0.8509804, 1)
+theme_override_colors/icon_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/icon_pressed_color = Color(0.8, 0.81960785, 0.8509804, 1)
+theme_override_colors/icon_hover_color = Color(1, 1, 1, 1)
+icon = ExtResource("8_gear")
+icon_alignment = 1
+expand_icon = true
+
+[node name="ContentArea" type="PanelContainer" parent="AppLayout" unique_id=1499715221]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_content")
+
+[node name="ContentRoot" parent="AppLayout/ContentArea" unique_id=1315075994 instance=ExtResource("31_home")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RosterView" parent="AppLayout/ContentArea" unique_id=241912356 instance=ExtResource("29_roster")]
+visible = false
+layout_mode = 2
