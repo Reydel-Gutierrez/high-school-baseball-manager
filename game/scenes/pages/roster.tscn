@@ -1,0 +1,382 @@
+[gd_scene format=3 uid="uid://c8rosterpage1"]
+
+[ext_resource type="Theme" uid="uid://c6xmtjgsi6p7p" path="res://assets/themes/MainTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/RosterPage.cs" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://det0q337onbwi" path="res://assets/teams/01_Cascade_Regional_High_School/stadium.png" id="3_stadium"]
+[ext_resource type="Texture2D" uid="uid://bdyi28ivxbt3p" path="res://assets/teams/01_Cascade_Regional_High_School/Cascadelogo.png" id="4_logo"]
+[ext_resource type="FontFile" uid="uid://r2rpg7ujc58c" path="res://assets/fonts/BarlowCondensed-Bold.ttf" id="5_bold"]
+[ext_resource type="FontFile" uid="uid://cs3frpdrkr42u" path="res://assets/fonts/BarlowCondensed-SemiBold.ttf" id="6_semibold"]
+[ext_resource type="FontFile" uid="uid://cc55pfosbh84m" path="res://assets/fonts/BarlowCondensed-Medium.ttf" id="7_medium"]
+
+[sub_resource type="FontVariation" id="FontVariation_kicker"]
+base_font = ExtResource("7_medium")
+spacing_glyph = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_table"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.07058824, 0.078431375, 0.09411765, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24313726, 0.2627451, 0.3019608, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header"]
+content_margin_left = 10.0
+content_margin_top = 7.0
+content_margin_right = 10.0
+content_margin_bottom = 7.0
+bg_color = Color(0.047058824, 0.05490196, 0.07058824, 0.96)
+border_width_bottom = 1
+border_color = Color(0.24313726, 0.2627451, 0.3019608, 1)
+
+[node name="RosterPage" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="BackgroundImage" type="TextureRect" parent="."]
+modulate = Color(0.28, 0.28, 0.3, 0.42)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_stadium")
+expand_mode = 1
+stretch_mode = 6
+mouse_filter = 2
+
+[node name="PageMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="PageLayout" type="VBoxContainer" parent="PageMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderBar" type="HBoxContainer" parent="PageMargin/PageLayout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Logo" type="TextureRect" parent="PageMargin/PageLayout/HeaderBar"]
+custom_minimum_size = Vector2(52, 52)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("4_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="HeaderText" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = -2
+
+[node name="Kicker" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
+theme_override_fonts/font = SubResource("FontVariation_kicker")
+theme_override_font_sizes/font_size = 10
+text = "ORGANIZATION  ·  2026 SEASON"
+
+[node name="Title" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 26
+text = "VARSITY ROSTER"
+
+[node name="Subtitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.76, 0.82, 1)
+theme_override_fonts/font = ExtResource("7_medium")
+theme_override_font_sizes/font_size = 12
+text = "CASCADE REGIONAL HIGH SCHOOL"
+
+[node name="CountBlock" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+alignment = 2
+
+[node name="SummaryTitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
+theme_override_fonts/font = SubResource("FontVariation_kicker")
+theme_override_font_sizes/font_size = 10
+text = "ROSTER SUMMARY"
+horizontal_alignment = 2
+
+[node name="MetricsRow" type="HBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 2
+
+[node name="PlayersCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+layout_mode = 2
+theme_override_constants/separation = -4
+alignment = 1
+
+[node name="CountValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 28
+text = "15/40"
+horizontal_alignment = 2
+
+[node name="CountLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 11
+text = "PLAYERS"
+horizontal_alignment = 2
+
+[node name="JvCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+layout_mode = 2
+theme_override_constants/separation = -4
+alignment = 1
+
+[node name="JvValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 28
+text = "4/20"
+horizontal_alignment = 2
+
+[node name="JvLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 11
+text = "JV"
+horizontal_alignment = 2
+
+[node name="VarsityCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+layout_mode = 2
+theme_override_constants/separation = -4
+alignment = 1
+
+[node name="VarsityValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 28
+text = "11/20"
+horizontal_alignment = 2
+
+[node name="VarsityLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 11
+text = "VARSITY"
+horizontal_alignment = 2
+
+[node name="InjuredCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+layout_mode = 2
+theme_override_constants/separation = -4
+alignment = 1
+
+[node name="InjuredValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.239216, 0.862745, 0.45098, 1)
+theme_override_fonts/font = ExtResource("5_bold")
+theme_override_font_sizes/font_size = 28
+text = "1"
+horizontal_alignment = 2
+
+[node name="InjuredLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 11
+text = "INJURED"
+horizontal_alignment = 2
+
+[node name="FilterRow" type="HBoxContainer" parent="PageMargin/PageLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FilterAll" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ALL"
+
+[node name="FilterPitchers" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "PITCHERS"
+
+[node name="FilterCatchers" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "CATCHERS"
+
+[node name="FilterInfield" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "INFIELD"
+
+[node name="FilterOutfield" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "OUTFIELD"
+
+[node name="BodyRow" type="HBoxContainer" parent="PageMargin/PageLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TableCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.5
+theme_override_styles/panel = SubResource("StyleBoxFlat_table")
+
+[node name="TableLayout" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="ColumnHeader" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_header")
+
+[node name="HeaderColumns" type="HBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HJersey" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "#"
+horizontal_alignment = 1
+
+[node name="HPhoto" type="Control" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+
+[node name="HName" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "PLAYER"
+
+[node name="HPos" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(84, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "POS"
+horizontal_alignment = 1
+
+[node name="HYear" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "YR"
+horizontal_alignment = 1
+
+[node name="HBT" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "B/T"
+horizontal_alignment = 1
+
+[node name="HOvr" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "OVR"
+horizontal_alignment = 1
+
+[node name="HHealth" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+custom_minimum_size = Vector2(84, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
+theme_override_fonts/font = ExtResource("6_semibold")
+theme_override_font_sizes/font_size = 10
+text = "HEALTH"
+horizontal_alignment = 2
+
+[node name="Accent" type="ColorRect" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+color = Color(0.956863, 0.643137, 0.109804, 1)
+
+[node name="PlayerList" type="ScrollContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="RowsHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/PlayerList"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/separation = 0
+
+[node name="PlayerCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow"]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_table")
+
+[node name="PlayerDetailHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/PlayerCard"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
