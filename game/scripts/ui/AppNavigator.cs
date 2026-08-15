@@ -10,6 +10,7 @@ public partial class AppNavigator : MarginContainer
 {
 	public const string HomeViewKey = "home";
 	public const string RosterViewKey = "roster";
+	public const string CareerViewKey = "career";
 	public const string PlaceholderViewKey = "placeholder";
 
 	public const int OrganizationRosterId = 100;
@@ -20,6 +21,7 @@ public partial class AppNavigator : MarginContainer
 	private TopBarNavigation _topBar = null!;
 	private Control _homeView = null!;
 	private Control _rosterView = null!;
+	private Control _careerView = null!;
 	private Control _placeholderView = null!;
 	private Label _placeholderTitle = null!;
 	private Label _placeholderBody = null!;
@@ -32,12 +34,14 @@ public partial class AppNavigator : MarginContainer
 		_topBar = GetNode<TopBarNavigation>("AppLayout/TopBar");
 		_homeView = GetNode<Control>("AppLayout/ContentArea/ContentRoot");
 		_rosterView = GetNode<Control>("AppLayout/ContentArea/RosterView");
+		_careerView = GetNode<Control>("AppLayout/ContentArea/CareerView");
 
 		_placeholderView = BuildPlaceholderView();
 		GetNode("AppLayout/ContentArea").AddChild(_placeholderView);
 
 		_views[HomeViewKey] = _homeView;
 		_views[RosterViewKey] = _rosterView;
+		_views[CareerViewKey] = _careerView;
 		_views[PlaceholderViewKey] = _placeholderView;
 
 		ConnectChrome();
@@ -52,6 +56,16 @@ public partial class AppNavigator : MarginContainer
 	public void ShowRoster()
 	{
 		ShowView(RosterViewKey, TopBarNavigation.OrganizationKey);
+	}
+
+	public void ShowCareer()
+	{
+		ShowView(CareerViewKey, TopBarNavigation.CareerKey);
+	}
+
+	public void ShowGoals()
+	{
+		ShowPlaceholder("GOALS & SATISFACTION", "Program goals are coming soon.");
 	}
 
 	public void ShowPlaceholder(string title, string body)
@@ -73,6 +87,9 @@ public partial class AppNavigator : MarginContainer
 
 		MenuButton organizationMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/OrganizationMenu");
 		organizationMenu.GetPopup().IdPressed += OnOrganizationItemPressed;
+
+		Button careerButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CareerButton");
+		careerButton.Pressed += ShowCareer;
 	}
 
 	private void OnOrganizationItemPressed(long id)

@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" uid="uid://c8rosterpage1" path="res://scenes/pages/roster.tscn" id="29_roster"]
 [ext_resource type="Script" uid="uid://dhjo1xiidaxe3" path="res://scripts/ui/TeamLevelToggle.cs" id="30_teamtoggle"]
 [ext_resource type="PackedScene" uid="uid://c8homepage001" path="res://scenes/pages/home.tscn" id="31_home"]
+[ext_resource type="PackedScene" uid="uid://c8careerpage1" path="res://scenes/pages/career.tscn" id="44_career"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
 bg_color = Color(0.07058824, 0.078431375, 0.09411765, 1)
@@ -299,3 +300,9 @@ size_flags_vertical = 3
 [node name="RosterView" parent="AppLayout/ContentArea" unique_id=241912356 instance=ExtResource("29_roster")]
 visible = false
 layout_mode = 2
+
+[node name="CareerView" parent="AppLayout/ContentArea" unique_id=1577318276 instance=ExtResource("44_career")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
