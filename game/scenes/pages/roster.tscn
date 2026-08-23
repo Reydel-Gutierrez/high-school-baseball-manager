@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://c8rosterpage1"]
 
 [ext_resource type="Theme" uid="uid://c6xmtjgsi6p7p" path="res://assets/themes/MainTheme.tres" id="1_theme"]
-[ext_resource type="Script" path="res://scripts/ui/RosterPage.cs" id="2_script"]
-[ext_resource type="Texture2D" uid="uid://det0q337onbwi" path="res://assets/teams/01_Cascade_Regional_High_School/stadium.png" id="3_stadium"]
-[ext_resource type="Texture2D" uid="uid://bdyi28ivxbt3p" path="res://assets/teams/01_Cascade_Regional_High_School/Cascadelogo.png" id="4_logo"]
+[ext_resource type="Script" uid="uid://c4jnl8en5o2yo" path="res://scripts/ui/RosterPage.cs" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://cssbt6nbfxg68" path="res://assets/teams/01_Cascade_Regional_High_School/stadium.png" id="3_stadium"]
+[ext_resource type="Texture2D" uid="uid://vrnp13a7f562" path="res://assets/teams/01_Cascade_Regional_High_School/CRlogo.png" id="4_logo"]
 [ext_resource type="FontFile" uid="uid://r2rpg7ujc58c" path="res://assets/fonts/BarlowCondensed-Bold.ttf" id="5_bold"]
 [ext_resource type="FontFile" uid="uid://cs3frpdrkr42u" path="res://assets/fonts/BarlowCondensed-SemiBold.ttf" id="6_semibold"]
 [ext_resource type="FontFile" uid="uid://cc55pfosbh84m" path="res://assets/fonts/BarlowCondensed-Medium.ttf" id="7_medium"]
@@ -38,18 +38,18 @@ bg_color = Color(0.047058824, 0.05490196, 0.07058824, 0.96)
 border_width_bottom = 1
 border_color = Color(0.24313726, 0.2627451, 0.3019608, 1)
 
-[node name="RosterPage" type="Control"]
+[node name="RosterPage" type="Control" unique_id=2023124554]
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-clip_contents = true
 theme = ExtResource("1_theme")
 script = ExtResource("2_script")
 
-[node name="BackgroundImage" type="TextureRect" parent="."]
+[node name="BackgroundImage" type="TextureRect" parent="." unique_id=1891868988]
 modulate = Color(0.28, 0.28, 0.3, 0.42)
 layout_mode = 1
 anchors_preset = 15
@@ -57,12 +57,12 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 texture = ExtResource("3_stadium")
 expand_mode = 1
 stretch_mode = 6
-mouse_filter = 2
 
-[node name="PageMargin" type="MarginContainer" parent="."]
+[node name="PageMargin" type="MarginContainer" parent="." unique_id=1277810623]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -74,36 +74,43 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="PageLayout" type="VBoxContainer" parent="PageMargin"]
+[node name="PageLayout" type="VBoxContainer" parent="PageMargin" unique_id=386771472]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HeaderBar" type="HBoxContainer" parent="PageMargin/PageLayout"]
+[node name="HeaderBar" type="HBoxContainer" parent="PageMargin/PageLayout" unique_id=789417951]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 14
 
-[node name="Logo" type="TextureRect" parent="PageMargin/PageLayout/HeaderBar"]
-custom_minimum_size = Vector2(52, 52)
+[node name="Logo" type="TextureRect" parent="PageMargin/PageLayout/HeaderBar" unique_id=978897461]
+custom_minimum_size = Vector2(84, 84)
 layout_mode = 2
 size_flags_vertical = 4
 texture = ExtResource("4_logo")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="HeaderText" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar"]
+[node name="HeaderRule" type="ColorRect" parent="PageMargin/PageLayout/HeaderBar" unique_id=911752741]
+custom_minimum_size = Vector2(1, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.28, 0.3, 0.35, 1)
+
+[node name="HeaderText" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar" unique_id=974862004]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = -2
 
-[node name="Kicker" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+[node name="Kicker" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText" unique_id=1215938324]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
 theme_override_fonts/font = SubResource("FontVariation_kicker")
 theme_override_font_sizes/font_size = 10
 text = "ORGANIZATION  ·  2026 SEASON"
 
-[node name="Title" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+[node name="Title" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText" unique_id=2059823842]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
@@ -111,20 +118,20 @@ theme_override_fonts/font = ExtResource("5_bold")
 theme_override_font_sizes/font_size = 26
 text = "VARSITY ROSTER"
 
-[node name="Subtitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText"]
+[node name="Subtitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/HeaderText" unique_id=1385345541]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.76, 0.82, 1)
 theme_override_fonts/font = ExtResource("7_medium")
 theme_override_font_sizes/font_size = 12
 text = "CASCADE REGIONAL HIGH SCHOOL"
 
-[node name="CountBlock" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar"]
+[node name="CountBlock" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar" unique_id=788760457]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_constants/separation = 4
 alignment = 2
 
-[node name="SummaryTitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock"]
+[node name="SummaryTitle" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock" unique_id=1785663266]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
 theme_override_fonts/font = SubResource("FontVariation_kicker")
@@ -132,17 +139,17 @@ theme_override_font_sizes/font_size = 10
 text = "ROSTER SUMMARY"
 horizontal_alignment = 2
 
-[node name="MetricsRow" type="HBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock"]
+[node name="MetricsRow" type="HBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock" unique_id=1722309574]
 layout_mode = 2
 theme_override_constants/separation = 16
 alignment = 2
 
-[node name="PlayersCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+[node name="PlayersCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow" unique_id=1313820596]
 layout_mode = 2
 theme_override_constants/separation = -4
 alignment = 1
 
-[node name="CountValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol"]
+[node name="CountValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol" unique_id=1257300327]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
@@ -151,7 +158,7 @@ theme_override_font_sizes/font_size = 28
 text = "15/40"
 horizontal_alignment = 2
 
-[node name="CountLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol"]
+[node name="CountLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/PlayersCol" unique_id=1854509377]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
 theme_override_fonts/font = ExtResource("6_semibold")
@@ -159,12 +166,12 @@ theme_override_font_sizes/font_size = 11
 text = "PLAYERS"
 horizontal_alignment = 2
 
-[node name="JvCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+[node name="JvCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow" unique_id=1318342229]
 layout_mode = 2
 theme_override_constants/separation = -4
 alignment = 1
 
-[node name="JvValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol"]
+[node name="JvValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol" unique_id=77567401]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
@@ -173,7 +180,7 @@ theme_override_font_sizes/font_size = 28
 text = "4/20"
 horizontal_alignment = 2
 
-[node name="JvLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol"]
+[node name="JvLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/JvCol" unique_id=1152653877]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
 theme_override_fonts/font = ExtResource("6_semibold")
@@ -181,12 +188,12 @@ theme_override_font_sizes/font_size = 11
 text = "JV"
 horizontal_alignment = 2
 
-[node name="VarsityCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+[node name="VarsityCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow" unique_id=524853423]
 layout_mode = 2
 theme_override_constants/separation = -4
 alignment = 1
 
-[node name="VarsityValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol"]
+[node name="VarsityValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol" unique_id=1898824268]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.964706, 0.972549, 1)
@@ -195,7 +202,7 @@ theme_override_font_sizes/font_size = 28
 text = "11/20"
 horizontal_alignment = 2
 
-[node name="VarsityLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol"]
+[node name="VarsityLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/VarsityCol" unique_id=1908837468]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
 theme_override_fonts/font = ExtResource("6_semibold")
@@ -203,12 +210,12 @@ theme_override_font_sizes/font_size = 11
 text = "VARSITY"
 horizontal_alignment = 2
 
-[node name="InjuredCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow"]
+[node name="InjuredCol" type="VBoxContainer" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow" unique_id=1143406467]
 layout_mode = 2
 theme_override_constants/separation = -4
 alignment = 1
 
-[node name="InjuredValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol"]
+[node name="InjuredValue" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol" unique_id=1531615644]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.239216, 0.862745, 0.45098, 1)
@@ -217,7 +224,7 @@ theme_override_font_sizes/font_size = 28
 text = "1"
 horizontal_alignment = 2
 
-[node name="InjuredLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol"]
+[node name="InjuredLabel" type="Label" parent="PageMargin/PageLayout/HeaderBar/CountBlock/MetricsRow/InjuredCol" unique_id=1332474046]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
 theme_override_fonts/font = ExtResource("6_semibold")
@@ -225,41 +232,41 @@ theme_override_font_sizes/font_size = 11
 text = "INJURED"
 horizontal_alignment = 2
 
-[node name="FilterRow" type="HBoxContainer" parent="PageMargin/PageLayout"]
+[node name="FilterRow" type="HBoxContainer" parent="PageMargin/PageLayout" unique_id=783231371]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="FilterAll" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+[node name="FilterAll" type="Button" parent="PageMargin/PageLayout/FilterRow" unique_id=781363836]
 unique_name_in_owner = true
 layout_mode = 2
 text = "ALL"
 
-[node name="FilterPitchers" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+[node name="FilterPitchers" type="Button" parent="PageMargin/PageLayout/FilterRow" unique_id=1440171989]
 unique_name_in_owner = true
 layout_mode = 2
 text = "PITCHERS"
 
-[node name="FilterCatchers" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+[node name="FilterCatchers" type="Button" parent="PageMargin/PageLayout/FilterRow" unique_id=1895490016]
 unique_name_in_owner = true
 layout_mode = 2
 text = "CATCHERS"
 
-[node name="FilterInfield" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+[node name="FilterInfield" type="Button" parent="PageMargin/PageLayout/FilterRow" unique_id=814994326]
 unique_name_in_owner = true
 layout_mode = 2
 text = "INFIELD"
 
-[node name="FilterOutfield" type="Button" parent="PageMargin/PageLayout/FilterRow"]
+[node name="FilterOutfield" type="Button" parent="PageMargin/PageLayout/FilterRow" unique_id=593321561]
 unique_name_in_owner = true
 layout_mode = 2
 text = "OUTFIELD"
 
-[node name="BodyRow" type="HBoxContainer" parent="PageMargin/PageLayout"]
+[node name="BodyRow" type="HBoxContainer" parent="PageMargin/PageLayout" unique_id=650469396]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="TableCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow"]
+[node name="TableCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow" unique_id=787697214]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -267,19 +274,19 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 1.5
 theme_override_styles/panel = SubResource("StyleBoxFlat_table")
 
-[node name="TableLayout" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard"]
+[node name="TableLayout" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard" unique_id=2018004248]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="ColumnHeader" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+[node name="ColumnHeader" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout" unique_id=675619086]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_header")
 
-[node name="HeaderColumns" type="HBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader"]
+[node name="HeaderColumns" type="HBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader" unique_id=1586853925]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="HJersey" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HJersey" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=1796646208]
 custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
@@ -288,11 +295,11 @@ theme_override_font_sizes/font_size = 10
 text = "#"
 horizontal_alignment = 1
 
-[node name="HPhoto" type="Control" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HPhoto" type="Control" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=1511769675]
 custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
 
-[node name="HName" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HName" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=1622459177]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
@@ -300,7 +307,7 @@ theme_override_fonts/font = ExtResource("6_semibold")
 theme_override_font_sizes/font_size = 10
 text = "PLAYER"
 
-[node name="HPos" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HPos" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=1956845143]
 custom_minimum_size = Vector2(84, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
@@ -309,7 +316,7 @@ theme_override_font_sizes/font_size = 10
 text = "POS"
 horizontal_alignment = 1
 
-[node name="HYear" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HYear" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=1712503111]
 custom_minimum_size = Vector2(28, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
@@ -318,7 +325,7 @@ theme_override_font_sizes/font_size = 10
 text = "YR"
 horizontal_alignment = 1
 
-[node name="HBT" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HBT" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=45886544]
 custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.58, 0.64, 1)
@@ -327,7 +334,7 @@ theme_override_font_sizes/font_size = 10
 text = "B/T"
 horizontal_alignment = 1
 
-[node name="HOvr" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HOvr" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=881863469]
 custom_minimum_size = Vector2(36, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.956863, 0.643137, 0.109804, 1)
@@ -336,7 +343,7 @@ theme_override_font_sizes/font_size = 10
 text = "OVR"
 horizontal_alignment = 1
 
-[node name="HHealth" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns"]
+[node name="HHealth" type="Label" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/ColumnHeader/HeaderColumns" unique_id=176466471]
 custom_minimum_size = Vector2(84, 0)
 layout_mode = 2
 size_flags_horizontal = 8
@@ -346,12 +353,12 @@ theme_override_font_sizes/font_size = 10
 text = "HEALTH"
 horizontal_alignment = 2
 
-[node name="Accent" type="ColorRect" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+[node name="Accent" type="ColorRect" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout" unique_id=792192823]
 custom_minimum_size = Vector2(0, 2)
 layout_mode = 2
 color = Color(0.956863, 0.643137, 0.109804, 1)
 
-[node name="PlayerList" type="ScrollContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout"]
+[node name="PlayerList" type="ScrollContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout" unique_id=1253385240]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -359,22 +366,21 @@ follow_focus = true
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 2
 
-[node name="RowsHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/PlayerList"]
+[node name="RowsHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/TableCard/TableLayout/PlayerList" unique_id=610134667]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 0
 
-[node name="PlayerCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow"]
+[node name="PlayerCard" type="PanelContainer" parent="PageMargin/PageLayout/BodyRow" unique_id=439219360]
 clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_table")
 
-[node name="PlayerDetailHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/PlayerCard"]
+[node name="PlayerDetailHost" type="VBoxContainer" parent="PageMargin/PageLayout/BodyRow/PlayerCard" unique_id=56001867]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

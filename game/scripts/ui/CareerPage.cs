@@ -64,8 +64,8 @@ public partial class CareerPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_iconMail = GD.Load<Texture2D>("res://assets/ui/icon_mail.svg");
-		_iconTrophy = GD.Load<Texture2D>("res://assets/ui/icon_trophy.svg");
+		_iconMail = UiSvg.Load("res://assets/ui/icon_mail.svg");
+		_iconTrophy = UiSvg.Load("res://assets/ui/icon_trophy.svg");
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();

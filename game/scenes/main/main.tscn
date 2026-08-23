@@ -7,11 +7,26 @@
 [ext_resource type="FontFile" uid="uid://cc55pfosbh84m" path="res://assets/fonts/BarlowCondensed-Medium.ttf" id="6_medium"]
 [ext_resource type="FontFile" uid="uid://cs3frpdrkr42u" path="res://assets/fonts/BarlowCondensed-SemiBold.ttf" id="7_semibold"]
 [ext_resource type="Texture2D" uid="uid://cwbwsof3yr52w" path="res://assets/ui/gear_icon.svg" id="8_gear"]
+[ext_resource type="Script" uid="uid://c4caltabbtn01" path="res://scripts/ui/CalendarTabButton.cs" id="9_caltab"]
 [ext_resource type="Script" uid="uid://bcp6vldm8s3lt" path="res://scripts/ui/AppNavigator.cs" id="28_appnav"]
 [ext_resource type="PackedScene" uid="uid://c8rosterpage1" path="res://scenes/pages/roster.tscn" id="29_roster"]
 [ext_resource type="Script" uid="uid://dhjo1xiidaxe3" path="res://scripts/ui/TeamLevelToggle.cs" id="30_teamtoggle"]
 [ext_resource type="PackedScene" uid="uid://c8homepage001" path="res://scenes/pages/home.tscn" id="31_home"]
+[ext_resource type="PackedScene" uid="uid://bc5m0wv5k6nb5" path="res://scenes/pages/trades.tscn" id="32_trades"]
+[ext_resource type="PackedScene" uid="uid://c8txnpage0001" path="res://scenes/pages/transactions.tscn" id="33_txn"]
+[ext_resource type="PackedScene" uid="uid://x2nacspq5ab5" path="res://scenes/pages/goals.tscn" id="34_goals"]
+[ext_resource type="PackedScene" uid="uid://3v02es800oo5" path="res://scenes/pages/lineups.tscn" id="35_lineups"]
+[ext_resource type="PackedScene" uid="uid://ba26xdl4ygpb5" path="res://scenes/pages/rotation.tscn" id="36_rotation"]
+[ext_resource type="PackedScene" uid="uid://bfyhlbgh2ggb5" path="res://scenes/pages/standings.tscn" id="37_standings"]
+[ext_resource type="PackedScene" uid="uid://3rm08dvprab5" path="res://scenes/pages/leaders.tscn" id="38_leaders"]
+[ext_resource type="PackedScene" uid="uid://sbnfvv5k6nb5" path="res://scenes/pages/awards.tscn" id="39_awards"]
+[ext_resource type="PackedScene" uid="uid://bb7nicspq5ab5" path="res://scenes/pages/statistics.tscn" id="40_stats"]
+[ext_resource type="PackedScene" uid="uid://5sbg8dvprab5" path="res://scenes/pages/news.tscn" id="41_news"]
+[ext_resource type="PackedScene" uid="uid://bbrnfuk5k6nb5" path="res://scenes/pages/player_search.tscn" id="42_search"]
+[ext_resource type="PackedScene" uid="uid://bcn43ww800oo5" path="res://scenes/pages/targets.tscn" id="43_targets"]
 [ext_resource type="PackedScene" uid="uid://c8careerpage1" path="res://scenes/pages/career.tscn" id="44_career"]
+[ext_resource type="PackedScene" uid="uid://c8calendar001" path="res://scenes/pages/calendar.tscn" id="45_calendar"]
+[ext_resource type="PackedScene" uid="uid://c8settings001" path="res://scenes/pages/settings.tscn" id="46_settings"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
 bg_color = Color(0.07058824, 0.078431375, 0.09411765, 1)
@@ -149,6 +164,20 @@ size_flags_vertical = 4
 theme_override_constants/separation = 4
 alignment = 1
 
+[node name="CalendarButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2003]
+custom_minimum_size = Vector2(42, 38)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Season calendar"
+script = ExtResource("9_caltab")
+
+[node name="CalendarRule" type="ColorRect" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2004]
+custom_minimum_size = Vector2(1, 18)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.28, 0.3, 0.35, 1)
+
 [node name="HomeButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623089]
 layout_mode = 2
 size_flags_vertical = 4
@@ -191,13 +220,11 @@ theme_override_font_sizes/font_size = 13
 text = "CLUBHOUSE ▼"
 flat = false
 switch_on_hover = true
-item_count = 3
+item_count = 2
 popup/item_0/text = "LINEUPS"
 popup/item_0/id = 200
 popup/item_1/text = "PITCHING ROTATION"
 popup/item_1/id = 201
-popup/item_2/text = "INJURIES"
-popup/item_2/id = 202
 script = ExtResource("1_hyk8p")
 
 [node name="DistrictHubMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=147765320]
@@ -249,7 +276,7 @@ switch_on_hover = true
 item_count = 3
 popup/item_0/text = "PLAYER SEARCH"
 popup/item_0/id = 500
-popup/item_1/text = "TRADE HUB"
+popup/item_1/text = "TRADES"
 popup/item_1/id = 501
 popup/item_2/text = "MY TARGETS"
 popup/item_2/id = 502
@@ -301,7 +328,91 @@ size_flags_vertical = 3
 visible = false
 layout_mode = 2
 
+[node name="TradesView" parent="AppLayout/ContentArea" unique_id=1280261712 instance=ExtResource("32_trades")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TransactionsView" parent="AppLayout/ContentArea" unique_id=1466207155 instance=ExtResource("33_txn")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GoalsView" parent="AppLayout/ContentArea" unique_id=1577318266 instance=ExtResource("34_goals")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LineupsView" parent="AppLayout/ContentArea" unique_id=1577318267 instance=ExtResource("35_lineups")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RotationView" parent="AppLayout/ContentArea" unique_id=1577318268 instance=ExtResource("36_rotation")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="StandingsView" parent="AppLayout/ContentArea" unique_id=1577318269 instance=ExtResource("37_standings")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeadersView" parent="AppLayout/ContentArea" unique_id=1577318270 instance=ExtResource("38_leaders")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AwardsView" parent="AppLayout/ContentArea" unique_id=1577318271 instance=ExtResource("39_awards")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="StatisticsView" parent="AppLayout/ContentArea" unique_id=1577318272 instance=ExtResource("40_stats")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="NewsView" parent="AppLayout/ContentArea" unique_id=1577318273 instance=ExtResource("41_news")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerSearchView" parent="AppLayout/ContentArea" unique_id=1577318274 instance=ExtResource("42_search")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TargetsView" parent="AppLayout/ContentArea" unique_id=1577318275 instance=ExtResource("43_targets")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
 [node name="CareerView" parent="AppLayout/ContentArea" unique_id=1577318276 instance=ExtResource("44_career")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CalendarView" parent="AppLayout/ContentArea" unique_id=1577318277 instance=ExtResource("45_calendar")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SettingsView" parent="AppLayout/ContentArea" unique_id=1577318278 instance=ExtResource("46_settings")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3

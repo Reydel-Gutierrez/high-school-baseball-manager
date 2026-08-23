@@ -19,6 +19,7 @@ public partial class RosterPage : Control
 	private const int RosterCapJv = 20;
 	private const int RosterCapVarsity = 20;
 	private const int CurrentSeasonYear = 2026;
+	private const string HomeOrganizationName = "Cascade Regional High School";
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
@@ -54,6 +55,7 @@ public partial class RosterPage : Control
 	private Control _actionOverlay = null!;
 	private VBoxContainer _actionBody = null!;
 	private Label _seasonTitle = null!;
+	private Label _seasonOrgLabel = null!;
 	private Label _seasonKindLabel = null!;
 	private VBoxContainer _seasonBody = null!;
 	private readonly Dictionary<int, Button> _seasonYearButtons = new();
@@ -627,10 +629,18 @@ public partial class RosterPage : Control
 
 	private void ReleaseSelectedPlayer()
 	{
+		RosterPlayer? player = FindPlayer(_selectedJersey);
+		if (player == null)
+		{
+			return;
+		}
+
+		_session.RecordRelease(player.FirstName, player.LastName, player.Position, player.Year, player.Squad);
+
 		int released = _selectedJersey;
 		List<RosterPlayer> visible = GetVisiblePlayers();
-		int index = visible.FindIndex(player => player.Jersey == released);
-		_players.RemoveAll(player => player.Jersey == released);
+		int index = visible.FindIndex(existing => existing.Jersey == released);
+		_players.RemoveAll(existing => existing.Jersey == released);
 
 		List<RosterPlayer> remaining = GetVisiblePlayers();
 		if (remaining.Count > 0)
@@ -784,6 +794,11 @@ public partial class RosterPage : Control
 		titleRow.AddChild(_seasonKindLabel);
 		section.AddChild(titleRow);
 
+		_seasonOrgLabel = MakeText(string.Empty, _medium, 11, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
+		_seasonOrgLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		_seasonOrgLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		section.AddChild(_seasonOrgLabel);
+
 		_seasonBody = new VBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -838,7 +853,6 @@ public partial class RosterPage : Control
 		}
 
 		_selectedSeasonYear = year;
-		_seasonTitle.Text = $"{year} SEASON";
 		RefreshSeasonYearTabs();
 		FillSeasonStats(player);
 	}
@@ -872,6 +886,7 @@ public partial class RosterPage : Control
 		}
 
 		PlayerSeason? season = FindSeason(player, _selectedSeasonYear);
+		ApplySeasonHeader(season);
 		if (season == null)
 		{
 			_seasonKindLabel.Text = string.Empty;
@@ -920,6 +935,19 @@ public partial class RosterPage : Control
 		}
 
 		_selectedSeasonYear = player.Seasons[player.Seasons.Count - 1].Year;
+	}
+
+	private void ApplySeasonHeader(PlayerSeason? season)
+	{
+		if (season == null)
+		{
+			_seasonTitle.Text = $"{_selectedSeasonYear} SEASON";
+			_seasonOrgLabel.Text = string.Empty;
+			return;
+		}
+
+		_seasonTitle.Text = $"{season.Year} SEASON";
+		_seasonOrgLabel.Text = season.OrganizationName.ToUpperInvariant();
 	}
 
 	private static PlayerSeason? FindSeason(RosterPlayer player, int year)
@@ -1382,7 +1410,8 @@ public partial class RosterPage : Control
 				null),
 			MakePlayer("Mateo", "Cruz", 21, "C", "JR", "R/R", FilterCatchers, 81, 74, 78, 58, 86, 84, "Healthy", null,
 				new SeasonHitting(21, 70, 14, 23, 6, 0, 5, 22, 9, 13, 1, 0.329f, 0.405f, 0.629f),
-				null),
+				null,
+				priorOrganization: "Great Lakes High School"),
 			MakePlayer("Drew", "Hale", 4, "SS/2B", "JR", "R/R", FilterInfield, 80, 79, 68, 84, 82, 88, "Healthy", null,
 				new SeasonHitting(22, 76, 19, 26, 5, 1, 2, 15, 8, 12, 9, 0.342f, 0.405f, 0.513f),
 				null),
@@ -1397,10 +1426,12 @@ public partial class RosterPage : Control
 				null),
 			MakePlayer("Cam", "Whitaker", 2, "2B/SS", "SO", "S/R", FilterInfield, 74, 78, 61, 82, 74, 80, "Healthy", null,
 				new SeasonHitting(20, 61, 15, 19, 3, 1, 1, 9, 10, 9, 11, 0.311f, 0.408f, 0.443f),
-				null),
+				null,
+				priorOrganization: "Great Lakes High School"),
 			MakePlayer("Eli", "Vargas", 24, "LF/RF", "SR", "L/R", FilterOutfield, 73, 80, 77, 68, 71, 66, "Day-to-Day", null,
 				new SeasonHitting(16, 52, 10, 16, 4, 0, 3, 11, 6, 10, 3, 0.308f, 0.379f, 0.558f),
-				null),
+				null,
+				priorOrganization: "Delaware Valley High School"),
 			MakePlayer("Ryan", "Peck", 18, "RF/LF", "JR", "R/R", FilterOutfield, 72, 75, 79, 70, 83, 69, "Healthy", null,
 				new SeasonHitting(20, 64, 12, 18, 3, 1, 3, 14, 7, 14, 4, 0.281f, 0.352f, 0.500f),
 				null),
@@ -1410,11 +1441,13 @@ public partial class RosterPage : Control
 			MakePlayer("Miles", "Grant", 5, "RHP", "SO", "R/R", FilterPitchers, 68, 33, 30, 58, 76, 38, "Healthy", null,
 				null,
 				new SeasonPitching(8, 2, 1, 2, 0, 16.0f, 18, 10, 9, 8, 12, 2, 5.06f, 1.63f),
-				"JV"),
+				"JV",
+				priorOrganization: "Delaware Valley High School"),
 			MakePlayer("Owen", "Drake", 14, "C/1B", "SO", "R/R", FilterCatchers, 67, 64, 70, 50, 74, 72, "Healthy", null,
 				new SeasonHitting(12, 31, 4, 8, 2, 0, 1, 6, 3, 9, 0, 0.258f, 0.324f, 0.419f),
 				null,
-				"JV"),
+				"JV",
+				priorOrganization: "Great Lakes High School"),
 			MakePlayer("Sam", "Keene", 6, "CF/LF", "FR", "L/R", FilterOutfield, 64, 66, 58, 78, 62, 60, "Healthy", null,
 				new SeasonHitting(11, 28, 6, 7, 1, 1, 0, 3, 4, 8, 5, 0.250f, 0.344f, 0.357f),
 				null,
@@ -1434,13 +1467,15 @@ public partial class RosterPage : Control
 				PrototypePitching("JR", 70, false)),
 			MakePlayer("Finn", "Walsh", 16, "C/1B", "SO", "R/R", FilterCatchers, 70, 66, 68, 48, 76, 74, "Healthy", null,
 				PrototypeHitting("SO", 70, 48),
-				null),
+				null,
+				priorOrganization: "Harbor Ridge High School"),
 			MakePlayer("Marcus", "Bell", 33, "1B/3B", "SR", "R/R", FilterInfield, 72, 74, 80, 42, 68, 64, "Healthy", null,
 				PrototypeHitting("SR", 72, 42),
 				null),
 			MakePlayer("Andre", "Holt", 3, "LF/CF/RF", "JR", "L/R", FilterOutfield, 71, 73, 70, 74, 68, 66, "Healthy", null,
 				PrototypeHitting("JR", 71, 74),
-				null),
+				null,
+				priorOrganization: "Harbor Ridge High School"),
 			MakePlayer("Quinn", "Mercer", 10, "SS/2B", "SO", "R/R", FilterInfield, 69, 70, 58, 80, 74, 78, "Healthy", null,
 				PrototypeHitting("SO", 69, 80),
 				null),
@@ -1525,7 +1560,8 @@ public partial class RosterPage : Control
 		SeasonHitting? hitting,
 		SeasonPitching? pitching,
 		string squad = "Varsity",
-		bool isCaptain = false)
+		bool isCaptain = false,
+		string? priorOrganization = null)
 	{
 		return new(
 			firstName,
@@ -1543,7 +1579,7 @@ public partial class RosterPage : Control
 			field,
 			status,
 			portraitPath,
-			BuildSeasons(year, hitting, pitching),
+			BuildSeasons(year, hitting, pitching, priorOrganization),
 			squad,
 			isCaptain);
 	}
@@ -1633,7 +1669,8 @@ public partial class RosterPage : Control
 	private static List<PlayerSeason> BuildSeasons(
 		string classYear,
 		SeasonHitting? currentHitting,
-		SeasonPitching? currentPitching)
+		SeasonPitching? currentPitching,
+		string? priorOrganization)
 	{
 		int count = SeasonCountForClass(classYear);
 		var seasons = new List<PlayerSeason>(count);
@@ -1641,8 +1678,12 @@ public partial class RosterPage : Control
 		{
 			int year = CurrentSeasonYear - (count - 1) + i;
 			float progress = count == 1 ? 1f : i / (float)(count - 1);
+			string organization = year == CurrentSeasonYear || string.IsNullOrEmpty(priorOrganization)
+				? HomeOrganizationName
+				: priorOrganization;
 			seasons.Add(new PlayerSeason(
 				year,
+				organization,
 				currentHitting == null ? null : ScaleHitting(currentHitting, progress),
 				currentPitching == null ? null : ScalePitching(currentPitching, progress)));
 		}
@@ -1751,6 +1792,7 @@ public partial class RosterPage : Control
 
 	private sealed record PlayerSeason(
 		int Year,
+		string OrganizationName,
 		SeasonHitting? Hitting,
 		SeasonPitching? Pitching);
 

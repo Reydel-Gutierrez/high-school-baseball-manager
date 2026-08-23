@@ -5,6 +5,9 @@ using HSBM.Domain;
 /// Prototype league used by District Hub screens until standings, playoffs,
 /// and awards are driven by simulation. Four districts of eight teams, with
 /// Cascade in the Great Lakes District.
+/// TODO(career-backend): Keep this prototype UI data until CareerService
+/// standings/stats/news are wired. Static school identities now also live in
+/// HSBM.Domain.LeagueCatalog; do not delete this file in the engine phase.
 /// </summary>
 public static class DistrictHubData
 {
@@ -31,7 +34,7 @@ public static class DistrictHubData
 		T("cascade", "Cascade Regional", "CASCADE", DistrictGreatLakes, true, 18, 4, "W6", 12, 8, "W2", 142, 68, 0.312f, 28, 2.41f),
 		T("great-lakes", "Great Lakes", "GREAT LAKES", DistrictGreatLakes, false, 16, 6, "W3", 16, 6, "W4", 128, 79, 0.298f, 22, 2.88f),
 		T("harbor-ridge", "Harbor Ridge", "HARBOR RIDGE", DistrictGreatLakes, false, 14, 8, "L1", 14, 8, "W1", 119, 91, 0.286f, 19, 3.12f),
-		T("riverview", "Riverview", "RIVERVIEW", DistrictGreatLakes, false, 12, 10, "W1", 13, 9, "L2", 108, 102, 0.274f, 16, 3.40f),
+		T("delaware-valley", "Delaware Valley", "DELAWARE VALLEY", DistrictGreatLakes, false, 12, 10, "W1", 13, 9, "L2", 108, 102, 0.274f, 16, 3.40f),
 		T("bayview", "Bayview Central", "BAYVIEW", DistrictGreatLakes, false, 11, 11, "L2", 10, 12, "L1", 101, 110, 0.261f, 14, 3.72f),
 		T("northfield", "Northfield Prep", "NORTHFIELD", DistrictGreatLakes, false, 9, 13, "L3", 9, 13, "W1", 92, 118, 0.248f, 11, 4.05f),
 		T("lakeside", "Lakeside Academy", "LAKESIDE", DistrictGreatLakes, false, 7, 15, "L4", 8, 14, "L3", 81, 129, 0.236f, 8, 4.44f),
@@ -77,7 +80,7 @@ public static class DistrictHubData
 			[
 				new("Jonah Kim", "CF", "JR", "great-lakes", "GREAT LAKES", ".381 AVG", "3 HR · 16 RBI · 14 SB", 16),
 				new("Cole Brennan", "SS", "SR", "port-clinton", "PORT CLINTON", ".372 AVG", "5 HR · 21 RBI · 9 SB", 25),
-				new("Aiden Glenn", "SS", "SR", "riverview", "RIVERVIEW", ".368 AVG", "2 HR · 14 RBI · 11 SB", 29),
+				new("Aiden Glenn", "SS", "SR", "delaware-valley", "DELAWARE VALLEY", ".368 AVG", "2 HR · 14 RBI · 11 SB", 29),
 			]),
 		new(
 			"fireball",
@@ -89,7 +92,7 @@ public static class DistrictHubData
 			[
 				new("Miles Harlan", "RHP", "SR", "capital-city", "CAPITAL CITY", "2.08 ERA", "6-1 · 38.1 IP · 41 K", 13),
 				new("Tony Romano", "RHP", "SR", "great-lakes", "GREAT LAKES", "2.18 ERA", "5-1 · 34.2 IP · 31 K", 23),
-				new("Grant Nash", "RHP", "SR", "riverview", "RIVERVIEW", "2.31 ERA", "4-2 · 33.0 IP · 29 K", 36),
+				new("Grant Nash", "RHP", "SR", "delaware-valley", "DELAWARE VALLEY", "2.31 ERA", "4-2 · 33.0 IP · 29 K", 36),
 			]),
 		new(
 			"thunder-bat",
@@ -113,7 +116,7 @@ public static class DistrictHubData
 			[
 				new("Mateo Diaz", "SS", "JR", "great-lakes", "GREAT LAKES", "86 FLD", ".318 AVG · 7 SB", 6),
 				new("Ian Frost", "SS", "SO", "harbor-ridge", "HARBOR RIDGE", "84 FLD", ".301 AVG · 12 SB", 11),
-				new("Luis Porter", "C", "JR", "riverview", "RIVERVIEW", "83 FLD", "31% CS · .286 AVG", 14),
+				new("Luis Porter", "C", "JR", "delaware-valley", "DELAWARE VALLEY", "83 FLD", "31% CS · .286 AVG", 14),
 			]),
 		new(
 			"rising-star",
@@ -125,7 +128,7 @@ public static class DistrictHubData
 			[
 				new("Eli Voss", "2B", "SO", "great-lakes", "GREAT LAKES", ".298 AVG", "9 SB · .391 OBP", 9),
 				new("Ian Frost", "SS", "SO", "harbor-ridge", "HARBOR RIDGE", ".301 AVG", "12 SB · .377 OBP", 11),
-				new("Bryce Cobb", "1B", "SO", "riverview", "RIVERVIEW", ".288 AVG", "4 HR · 15 RBI", 16),
+				new("Bryce Cobb", "1B", "SO", "delaware-valley", "DELAWARE VALLEY", ".288 AVG", "4 HR · 15 RBI", 16),
 			]),
 		new(
 			"sideline-cup",
@@ -182,7 +185,7 @@ public static class DistrictHubData
 		Bat("Jalen Brooks", "CF", "cascade", "CASCADE", 22, 78, 28, 31, 8, 2, 4, 18, 12, 11, 16, 0.397f, 0.468f, 0.692f),
 		Bat("Jonah Kim", "CF", "great-lakes", "GREAT LAKES", 22, 76, 24, 29, 6, 1, 3, 16, 10, 13, 14, 0.381f, 0.447f, 0.605f),
 		Bat("Cole Brennan", "SS", "port-clinton", "PORT CLINTON", 22, 78, 26, 29, 7, 1, 5, 21, 9, 14, 9, 0.372f, 0.430f, 0.614f),
-		Bat("Aiden Glenn", "SS", "riverview", "RIVERVIEW", 22, 76, 21, 28, 6, 2, 2, 14, 8, 12, 11, 0.368f, 0.422f, 0.579f),
+		Bat("Aiden Glenn", "SS", "delaware-valley", "DELAWARE VALLEY", 22, 76, 21, 28, 6, 2, 2, 14, 8, 12, 11, 0.368f, 0.422f, 0.579f),
 		Bat("Drew Hale", "SS", "cascade", "CASCADE", 22, 76, 22, 26, 5, 1, 2, 15, 8, 12, 9, 0.342f, 0.405f, 0.513f),
 		Bat("Mateo Cruz", "C", "cascade", "CASCADE", 21, 70, 19, 23, 4, 0, 5, 22, 9, 13, 1, 0.329f, 0.405f, 0.629f),
 		Bat("Isaiah Cole", "1B", "cascade", "CASCADE", 22, 74, 20, 24, 5, 0, 7, 24, 11, 16, 0, 0.324f, 0.412f, 0.662f),
@@ -193,7 +196,7 @@ public static class DistrictHubData
 		Bat("Ian Frost", "SS", "harbor-ridge", "HARBOR RIDGE", 20, 63, 18, 19, 3, 1, 1, 8, 8, 11, 12, 0.301f, 0.377f, 0.429f),
 		Bat("Eli Voss", "2B", "great-lakes", "GREAT LAKES", 20, 64, 14, 19, 2, 0, 1, 9, 9, 10, 9, 0.297f, 0.391f, 0.375f),
 		Bat("Marcus Bell", "1B", "cascade", "CASCADE", 22, 70, 13, 20, 4, 0, 5, 18, 8, 15, 0, 0.286f, 0.351f, 0.500f),
-		Bat("Theo West", "CF", "riverview", "RIVERVIEW", 21, 68, 15, 19, 4, 1, 4, 14, 7, 14, 6, 0.279f, 0.347f, 0.529f),
+		Bat("Theo West", "CF", "delaware-valley", "DELAWARE VALLEY", 21, 68, 15, 19, 4, 1, 4, 14, 7, 14, 6, 0.279f, 0.347f, 0.529f),
 		Bat("Ryan Peck", "RF", "cascade", "CASCADE", 20, 64, 12, 18, 3, 0, 3, 14, 7, 14, 4, 0.281f, 0.352f, 0.500f),
 	];
 
@@ -202,7 +205,7 @@ public static class DistrictHubData
 		Pit("Luca Marini", "RHP", "cascade", "CASCADE", 5, 0, 0, 8, 8, 36.0f, 22, 9, 8, 8, 28, 1.95f, 0.89f),
 		Pit("Miles Harlan", "RHP", "capital-city", "CAPITAL CITY", 6, 1, 0, 9, 9, 38.1f, 26, 11, 9, 11, 41, 2.08f, 0.97f),
 		Pit("Tony Romano", "RHP", "great-lakes", "GREAT LAKES", 5, 1, 0, 8, 8, 34.2f, 24, 10, 8, 13, 31, 2.18f, 1.08f),
-		Pit("Grant Nash", "RHP", "riverview", "RIVERVIEW", 4, 2, 0, 8, 8, 33.0f, 27, 12, 9, 11, 29, 2.31f, 1.14f),
+		Pit("Grant Nash", "RHP", "delaware-valley", "DELAWARE VALLEY", 4, 2, 0, 8, 8, 33.0f, 27, 12, 9, 11, 29, 2.31f, 1.14f),
 		Pit("Max Steele", "RHP", "harbor-ridge", "HARBOR RIDGE", 4, 2, 0, 8, 8, 32.1f, 28, 13, 9, 10, 27, 2.44f, 1.19f),
 		Pit("Trey Lawson", "LHP", "cascade", "CASCADE", 3, 1, 0, 7, 7, 29.1f, 26, 11, 9, 11, 24, 2.66f, 1.26f),
 		Pit("Jake Pruitt", "RHP", "cascade", "CASCADE", 4, 2, 0, 8, 7, 31.0f, 28, 13, 11, 10, 26, 3.09f, 1.22f),
@@ -226,7 +229,7 @@ public static class DistrictHubData
 		new("APR 19", "PLAYOFFS", "East Regional would be Cascade-Sandusky if it started today",
 			"Top two from Great Lakes draw North Shore. That puts Cascade opposite Sandusky in one semi and Port Clinton opposite Great Lakes in the other. West Regional would be Capital City and Hibbing as the 1-seeds."),
 		new("APR 18", "NOTE", "Harbor Ridge drops a one-run game, slips to third",
-			"Max Steele threw well enough to win and still took the loss. Harbor Ridge is 14-8, four back of Cascade, with Riverview another two games behind."),
+			"Max Steele threw well enough to win and still took the loss. Harbor Ridge is 14-8, four back of Cascade, with Delaware Valley another two games behind."),
 		new("APR 16", "AWARDS", "Sideline Cup watch: Hart, Voss, Quinn, Delgado",
 			"Cascade's Daniel Hart is the frontrunner after the 18-4 start. Elena Voss (Great Lakes), Marcus Quinn (Port Clinton), and Ray Delgado (Capital City) are the three names behind him."),
 		new("APR 14", "DISTRICT", "North Shore stays a two-team race",
