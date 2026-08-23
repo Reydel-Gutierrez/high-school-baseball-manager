@@ -11,7 +11,10 @@ using HSBM.Domain;
 [GlobalClass]
 public partial class GameSession : Node
 {
+	public const int SeasonYear = 2026;
 	public const string CurrentDateLabel = "APR 24";
+
+	public DateOnly CurrentDate { get; private set; } = new(SeasonYear, 4, 24);
 
 	public static GameSession Current { get; private set; } = null!;
 
@@ -80,6 +83,8 @@ public partial class GameSession : Node
 	/// Prototype Cascade program. Replace with persisted organization + team
 	/// records when career/save data is wired up; keep ActiveTeam as the
 	/// single source of truth for UI.
+	/// TODO(career-backend): Load from HSBM.Application CareerService / SQLite
+	/// save instead of this prototype. Do not regenerate rosters on load.
 	/// </summary>
 	private void LoadPrototypeProgram()
 	{
@@ -167,12 +172,16 @@ public partial class GameSession : Node
 	private string ProgramDisplayName =>
 		Organization.Name.Replace(" High School", string.Empty, StringComparison.Ordinal);
 
+	/// <summary>
+	/// TODO(career-backend): Prototype transaction log. Replace with persisted
+	/// PlayerTransaction records from the career save.
+	/// </summary>
 	private void SeedPrototypeTransactions()
 	{
 		const string cascade = "Cascade Regional";
 		const string lakes = "Great Lakes High School";
 		const string harbor = "Harbor Ridge High School";
-		const string riverview = "Riverview High School";
+		const string delaware = "Delaware Valley High School";
 
 		_transactions.AddRange(
 		[
@@ -182,7 +191,7 @@ public partial class GameSession : Node
 			PlayerTransaction.SignedFromOpenPool("Mario Cruz", "C", "JR", "Varsity", cascade, "APR 20"),
 			PlayerTransaction.Release("Mario Cruz", "C", "JR", "Varsity", lakes, "APR 19"),
 			PlayerTransaction.SignedFromOpenPool("Jordan Hale", "SS", "SO", "JV", cascade, "APR 18"),
-			PlayerTransaction.Release("Jordan Hale", "SS", "SO", "JV", riverview, "APR 17"),
+			PlayerTransaction.Release("Jordan Hale", "SS", "SO", "JV", delaware, "APR 17"),
 			PlayerTransaction.Release("Marcus Webb", "LHP", "SO", "JV", cascade, "APR 14"),
 			PlayerTransaction.Trade("Ian Frost", "SS", "SO", "Varsity", cascade, harbor, "APR 9"),
 			PlayerTransaction.Trade("Ben Ortiz", "RHP", "JR", "Varsity", harbor, cascade, "APR 9"),

@@ -7,6 +7,7 @@ using Godot;
 public partial class TopBarNavigation : PanelContainer
 {
 	public const string HomeKey = "home";
+	public const string CalendarKey = "calendar";
 	public const string OrganizationKey = "organization";
 	public const string ClubhouseKey = "clubhouse";
 	public const string DistrictHubKey = "district_hub";
@@ -77,6 +78,7 @@ public partial class TopBarNavigation : PanelContainer
 	{
 		_items.Clear();
 
+		TryRegister(CalendarKey, "TopBarMargin/HBoxContainer/NavigationRow/CalendarButton");
 		TryRegister(HomeKey, "TopBarMargin/HBoxContainer/NavigationRow/HomeButton");
 		TryRegister(OrganizationKey, "TopBarMargin/HBoxContainer/NavigationRow/OrganizationMenu");
 		TryRegister(ClubhouseKey, "TopBarMargin/HBoxContainer/NavigationRow/ClubhouseMenu");
@@ -100,10 +102,25 @@ public partial class TopBarNavigation : PanelContainer
 		if (button is Button plainButton)
 		{
 			plainButton.Flat = false;
+			if (plainButton.Name == "SettingsButton")
+			{
+				plainButton.Icon = UiSvg.Load("res://assets/ui/gear_icon.svg");
+			}
+
+			if (plainButton.Icon != null)
+			{
+				plainButton.ExpandIcon = true;
+				plainButton.AddThemeConstantOverride("icon_max_width", 16);
+			}
 		}
 
 		button.FocusMode = Control.FocusModeEnum.All;
 		_items[key] = button;
+
+		if (key != FinancesKey)
+		{
+			UiSounds.SetClick(button, UiClickSound.Silent);
+		}
 	}
 
 	private void BuildStyles()
@@ -156,6 +173,12 @@ public partial class TopBarNavigation : PanelContainer
 
 	private void ApplyItemState(BaseButton item, bool isActive)
 	{
+		if (item is CalendarTabButton calendarTab)
+		{
+			calendarTab.SetActive(isActive);
+			return;
+		}
+
 		bool isIconButton = item.Name == "SettingsButton";
 
 		if (isActive)

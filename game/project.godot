@@ -17,7 +17,12 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+AudioManager="*res://scripts/audio/AudioManager.cs"
 GameSession="*res://scripts/session/GameSession.cs"
+
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
 
 [display]
 
