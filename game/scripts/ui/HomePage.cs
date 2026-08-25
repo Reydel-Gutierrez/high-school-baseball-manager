@@ -11,6 +11,10 @@ using HSBM.Domain;
 public partial class HomePage : Control
 {
 	private const int CurrentSeasonYear = 2026;
+	private const int TickerVisibleLines = 2;
+	private const float TickerLineHeight = 22f;
+	private const float TickerDwellSeconds = 2.6f;
+	private const float TickerSlideSeconds = 0.55f;
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
@@ -51,6 +55,22 @@ public partial class HomePage : Control
 	private Control _modalLayer = null!;
 	private VBoxContainer _modalBody = null!;
 	private Label _modalTitle = null!;
+	private BoxScoreOverlay _boxScoreOverlay = null!;
+	private JobOfferOverlay _jobOfferOverlay = null!;
+	private SimulationStoppedOverlay _simulationOverlay = null!;
+	private Control _jobOfferBanner = null!;
+	private Control _newsTickerSlot = null!;
+	private Control _newsTicker = null!;
+	private Label _newsTickerKicker = null!;
+	private Control _newsTickerViewport = null!;
+	private Control _newsTickerTrack = null!;
+	private readonly List<TickerItem> _tickerItems = new();
+	private readonly List<Control> _tickerRows = new();
+	private readonly List<Label> _tickerBullets = new();
+	private readonly List<Label> _tickerHeadlines = new();
+	private int _tickerIndex;
+	private float _tickerClock;
+	private bool _tickerSliding;
 	private Control _boxScoreLayer = null!;
 	private VBoxContainer _boxScoreBody = null!;
 	private Label _boxScoreKicker = null!;
@@ -58,6 +78,9 @@ public partial class HomePage : Control
 	private DateOnly _selectedDate;
 	private readonly List<WeekBind> _weekBinds = new();
 	private Button _advanceButton = null!;
+	private string? _inspectedSchoolId;
+	private string? _inspectedPlayerTeamId;
+	private string? _inspectedPlayerName;
 
 	public override void _Ready()
 	{
@@ -83,6 +106,8 @@ public partial class HomePage : Control
 		_selectedDate = _session.CurrentDate;
 		BuildPage();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += ApplyActiveTeam;
+		VisibilityChanged += OnVisibilityChanged;
 		ApplyActiveTeam();
 	}
 
@@ -91,10 +116,67 @@ public partial class HomePage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= ApplyActiveTeam;
+		}
+
+		VisibilityChanged -= OnVisibilityChanged;
+		if (_jobOfferOverlay != null)
+		{
+			_jobOfferOverlay.Dismissed -= OnJobOfferDismissed;
+			_jobOfferOverlay.Resolved -= OnJobOfferResolved;
+		}
+
+		if (_simulationOverlay != null)
+		{
+			_simulationOverlay.GoToRequested -= OpenInterrupt;
+		}
+
+		StopNewsTicker();
+	}
+
+	public override void _Process(double delta)
+	{
+		TickNewsTicker((float)delta);
+	}
+
+	private void OnVisibilityChanged()
+	{
+		if (IsVisibleInTree())
+		{
+			RefreshNewsBanner();
+			CallDeferred(nameof(PresentPendingCelebration));
+		}
+		else
+		{
+			StopNewsTicker();
 		}
 	}
 
 	private void OnActiveTeamChanged(TeamIdentity _) => ApplyActiveTeam();
+
+	public void ShowSchool(string teamId)
+	{
+		_inspectedSchoolId = SchoolProfiles.NormalizeId(teamId);
+		_inspectedPlayerTeamId = null;
+		_inspectedPlayerName = null;
+		BindContest(_session.ActiveTeam.Level == TeamLevel.Varsity);
+	}
+
+	public void ShowPlayer(string teamId, string playerName)
+	{
+		_inspectedSchoolId = null;
+		_inspectedPlayerTeamId = string.IsNullOrWhiteSpace(teamId) ? string.Empty : SchoolProfiles.NormalizeId(teamId);
+		_inspectedPlayerName = playerName;
+		BindContest(_session.ActiveTeam.Level == TeamLevel.Varsity);
+	}
+
+	private void CloseInspectedProfile()
+	{
+		_inspectedSchoolId = null;
+		_inspectedPlayerTeamId = null;
+		_inspectedPlayerName = null;
+		BindContest(_session.ActiveTeam.Level == TeamLevel.Varsity);
+	}
 
 	private void ApplyActiveTeam()
 	{
@@ -103,14 +185,17 @@ public partial class HomePage : Control
 		_subtitle.Text = varsity
 			? $"VARSITY  ·  ESTABLISHED PROGRAM  ·  GREAT LAKES DISTRICT  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
 			: $"JV  ·  ESTABLISHED PROGRAM  ·  GREAT LAKES DISTRICT  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
-		_recordValue.Text = varsity ? "18-4" : "12-8";
+		_recordValue.Text = varsity ? _session.RecordLabel : "12–8";
 		_districtValue.Text = varsity ? "1ST" : "4TH";
 		_districtValue.AddThemeColorOverride("font_color", varsity ? Green : Accent);
-		_boardValue.Text = _session.BoardSatisfaction.ToLabel().ToUpperInvariant();
+		_boardValue.Text = _session.BoardSatisfactionScore.ToString(CultureInfo.InvariantCulture);
 		_boardValue.AddThemeColorOverride("font_color", BoardSatisfactionColor(_session.BoardSatisfaction));
 		RefreshWeekCards();
 		RefreshAdvanceButton();
 		BindContest(varsity);
+		RefreshJobOfferBanner();
+		RefreshNewsBanner();
+		CallDeferred(nameof(PresentPendingCelebration));
 	}
 
 	private void BuildPage()
@@ -123,13 +208,22 @@ public partial class HomePage : Control
 		margin.AddThemeConstantOverride("margin_bottom", 8);
 		AddChild(margin);
 		AddChild(BuildModalLayer());
-		AddChild(BuildBoxScoreLayer());
+		_boxScoreOverlay = new BoxScoreOverlay();
+		AddChild(_boxScoreOverlay);
+		_jobOfferOverlay = new JobOfferOverlay();
+		_jobOfferOverlay.Dismissed += OnJobOfferDismissed;
+		_jobOfferOverlay.Resolved += OnJobOfferResolved;
+		AddChild(_jobOfferOverlay);
+		_simulationOverlay = new SimulationStoppedOverlay();
+		_simulationOverlay.GoToRequested += OpenInterrupt;
+		AddChild(_simulationOverlay);
 
 		var layout = new VBoxContainer();
 		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
 
 		layout.AddChild(BuildHeader());
+		_jobOfferBanner = new Control { Visible = false };
 
 		var body = new HBoxContainer
 		{
@@ -165,7 +259,7 @@ public partial class HomePage : Control
 
 		var identity = new VBoxContainer
 		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsHorizontal = SizeFlags.Fill,
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
@@ -176,6 +270,18 @@ public partial class HomePage : Control
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
+
+		_newsTickerSlot = new HBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		_newsTickerSlot.AddThemeConstantOverride("separation", 14);
+		_newsTickerSlot.AddChild(TeamLogos.MakeHeaderRule(Hairline));
+		_newsTicker = BuildNewsTicker();
+		_newsTickerSlot.AddChild(_newsTicker);
+		_newsTickerSlot.AddChild(TeamLogos.MakeHeaderRule(Hairline));
+		header.AddChild(_newsTickerSlot);
 
 		var metrics = new VBoxContainer
 		{
@@ -190,7 +296,7 @@ public partial class HomePage : Control
 
 		_recordValue = AddMetric(row, "18-4", "RECORD", TextPrimary);
 		_districtValue = AddMetric(row, "1ST", "DISTRICT", Green);
-		_boardValue = AddMetric(row, "AVERAGE", "BOARD", Accent);
+		_boardValue = AddMetric(row, "62", "BOARD", Accent);
 		metrics.AddChild(row);
 		header.AddChild(metrics);
 
@@ -257,7 +363,9 @@ public partial class HomePage : Control
 			SizeFlagsStretchRatio = 1f,
 			Alignment = BoxContainer.AlignmentMode.End,
 		};
+		actions.AddThemeConstantOverride("separation", 6);
 		actions.AddChild(MakeMonthlyCalendarButton());
+		actions.AddChild(MakeSeasonScheduleButton());
 		header.AddChild(actions);
 		layout.AddChild(header);
 		layout.AddChild(MakeAccentLine());
@@ -301,7 +409,7 @@ public partial class HomePage : Control
 	private Control BuildDayColumn(DateOnly date)
 	{
 		IReadOnlyList<SeasonEvent> events = SeasonCalendar.On(GameSession.SeasonYear, date);
-		IReadOnlyList<CalendarContest> games = ClubhouseCalendar.On(date);
+		IReadOnlyList<CalendarContest> games = _session.ContestsOn(date);
 		CalendarContest? game = PrimaryGame(games);
 		bool today = date == _session.CurrentDate;
 
@@ -343,6 +451,14 @@ public partial class HomePage : Control
 		card.MouseEntered += () => ApplyWeekDayStyle(card, captured, hovered: true);
 		card.MouseExited += () => ApplyWeekDayStyle(card, captured);
 
+		var shell = new VBoxContainer
+		{
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		shell.AddThemeConstantOverride("separation", 6);
+		card.AddChild(shell);
+
 		var content = new VBoxContainer
 		{
 			Alignment = BoxContainer.AlignmentMode.Center,
@@ -350,7 +466,7 @@ public partial class HomePage : Control
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 		};
 		content.AddThemeConstantOverride("separation", 2);
-		card.AddChild(content);
+		shell.AddChild(content);
 
 		if (game != null)
 		{
@@ -391,7 +507,7 @@ public partial class HomePage : Control
 
 		if (game != null && events.Count > 0)
 		{
-			content.AddChild(BuildImportantChip(date, events));
+			shell.AddChild(BuildImportantChip(date, events));
 		}
 		else if (events.Count > 0 && game == null)
 		{
@@ -438,7 +554,8 @@ public partial class HomePage : Control
 		var chip = new PanelContainer
 		{
 			MouseDefaultCursorShape = CursorShape.PointingHand,
-			SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		chip.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
@@ -449,9 +566,9 @@ public partial class HomePage : Control
 			BorderWidthRight = 1,
 			BorderWidthBottom = 1,
 			ContentMarginLeft = 6,
-			ContentMarginTop = 3,
+			ContentMarginTop = 4,
 			ContentMarginRight = 6,
-			ContentMarginBottom = 3,
+			ContentMarginBottom = 4,
 			CornerRadiusTopLeft = 3,
 			CornerRadiusTopRight = 3,
 			CornerRadiusBottomRight = 3,
@@ -469,12 +586,15 @@ public partial class HomePage : Control
 
 		var row = new HBoxContainer
 		{
+			Alignment = BoxContainer.AlignmentMode.Center,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		row.AddThemeConstantOverride("separation", 4);
 		row.AddChild(MakeIcon(first.Featured ? _iconStar : _iconCalendar, 11, Important));
 		var name = MakeText(first.Name.ToUpperInvariant(), _semibold, 9, Important, HorizontalAlignment.Center);
 		name.AutowrapMode = TextServer.AutowrapMode.Word;
+		name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		row.AddChild(name);
 		chip.AddChild(row);
 		return chip;
@@ -484,10 +604,10 @@ public partial class HomePage : Control
 	{
 		var row = new HBoxContainer();
 		row.AddThemeConstantOverride("separation", 6);
-		_advanceButton = MakeAction("ADVANCE DAY", true, 1.35f);
+		_advanceButton = MakeAction("ADVANCE DAY", true, 1.35f, OnAdvancePressed);
 		row.AddChild(_advanceButton);
-		row.AddChild(MakeAction("SIMULATE DAY", false, 1f));
-		row.AddChild(MakeAction("SIMULATE WEEK", false, 1f));
+		row.AddChild(MakeAction("SIMULATE DAY", false, 1f, () => OnSimulatePressed(1)));
+		row.AddChild(MakeAction("SIMULATE WEEK", false, 1f, () => OnSimulatePressed(7)));
 		RefreshAdvanceButton();
 		return row;
 	}
@@ -499,7 +619,57 @@ public partial class HomePage : Control
 			return;
 		}
 
-		CalendarContest? game = PrimaryGame(ClubhouseCalendar.On(_session.CurrentDate));
+		CalendarContest? game = PrimaryGame(_session.ContestsOn(_session.CurrentDate));
+		if (ChampionshipDesk.PendingOn(_session) != null)
+		{
+			_advanceButton.Text = "CELEBRATE";
+			return;
+		}
+
+		if (AwardsDesk.PendingOn(_session) != null)
+		{
+			_advanceButton.Text = "AWARDS";
+			return;
+		}
+
+		if (SeasonReviewDesk.PendingOn(_session))
+		{
+			_advanceButton.Text = "REVIEW";
+			return;
+		}
+
+		if (HallOfFameDesk.PendingOn(_session))
+		{
+			_advanceButton.Text = "HALL OF FAME";
+			return;
+		}
+
+		if (JobOfferDesk.HasPending(_session))
+		{
+			_advanceButton.Text = "JOB OFFER";
+			return;
+		}
+
+		if (JobMarketDesk.PendingOn(_session))
+		{
+			_advanceButton.Text = "JOB MARKET";
+			return;
+		}
+
+		AdvanceDayInterrupt? stop = SimulationDesk.InterruptOn(_session);
+		if (stop != null)
+		{
+			_advanceButton.Text = stop.Kind switch
+			{
+				AdvanceDayInterruptKind.TryoutDecision => "TRYOUTS",
+				AdvanceDayInterruptKind.SigningDeadline => "SIGNING",
+				AdvanceDayInterruptKind.RosterDeadline => "ROSTER",
+				AdvanceDayInterruptKind.PlayoffGame => "PLAY",
+				_ => "ADVANCE DAY",
+			};
+			return;
+		}
+
 		_advanceButton.Text = game != null && !game.Completed ? "PLAY" : "ADVANCE DAY";
 	}
 
@@ -511,10 +681,16 @@ public partial class HomePage : Control
 			CloseEventModal();
 			GetViewport().SetInputAsHandled();
 		}
-		else if (_boxScoreLayer != null && _boxScoreLayer.Visible && ev.IsActionPressed("ui_cancel"))
+		else if (_boxScoreOverlay != null && _boxScoreOverlay.Visible && ev.IsActionPressed("ui_cancel"))
 		{
 			UiSounds.Play(UiSound.Back);
-			CloseBoxScore();
+			_boxScoreOverlay.Close();
+			GetViewport().SetInputAsHandled();
+		}
+		else if (_simulationOverlay != null && _simulationOverlay.Visible && ev.IsActionPressed("ui_cancel"))
+		{
+			UiSounds.Play(UiSound.Back);
+			_simulationOverlay.Close();
 			GetViewport().SetInputAsHandled();
 		}
 	}
@@ -535,12 +711,18 @@ public partial class HomePage : Control
 		{
 			OpenBoxScore(game);
 		}
+		else if (game != null)
+		{
+			OpenGamePreview(game);
+		}
 	}
 
 	private void SelectWeekDay(DateOnly date)
 	{
 		_selectedDate = date;
+		_inspectedSchoolId = null;
 		RefreshWeekCards();
+		BindContest(_session.ActiveTeam.Level == TeamLevel.Varsity);
 	}
 
 	private void RefreshWeekCards()
@@ -688,95 +870,6 @@ public partial class HomePage : Control
 		return _modalLayer;
 	}
 
-	private Control BuildBoxScoreLayer()
-	{
-		_boxScoreLayer = new Control
-		{
-			Visible = false,
-			MouseFilter = MouseFilterEnum.Stop,
-		};
-		_boxScoreLayer.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-
-		var dim = new ColorRect
-		{
-			Color = new Color(0.02f, 0.03f, 0.04f, 0.78f),
-			MouseFilter = MouseFilterEnum.Stop,
-		};
-		dim.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		dim.GuiInput += ev =>
-		{
-			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
-			{
-				CloseBoxScore();
-			}
-		};
-		_boxScoreLayer.AddChild(dim);
-
-		var center = new CenterContainer
-		{
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		_boxScoreLayer.AddChild(center);
-
-		var panel = new PanelContainer
-		{
-			CustomMinimumSize = new Vector2(780, 0),
-			MouseFilter = MouseFilterEnum.Stop,
-		};
-		panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.98f),
-			BorderColor = CardBorder,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 16,
-			ContentMarginTop = 14,
-			ContentMarginRight = 16,
-			ContentMarginBottom = 16,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
-		});
-		center.AddChild(panel);
-
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 10);
-		panel.AddChild(layout);
-
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 8);
-		var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		titles.AddThemeConstantOverride("separation", -2);
-		_boxScoreKicker = MakeText("BOX SCORE", _medium, 10, Accent, HorizontalAlignment.Left);
-		_boxScoreTitle = MakeText("FINAL", _bold, 20, TextPrimary, HorizontalAlignment.Left);
-		titles.AddChild(_boxScoreKicker);
-		titles.AddChild(_boxScoreTitle);
-		header.AddChild(titles);
-		header.AddChild(MakeAction("CLOSE", false, 0f, CloseBoxScore));
-		layout.AddChild(header);
-		layout.AddChild(MakeAccentLine());
-
-		var scroll = new ScrollContainer
-		{
-			CustomMinimumSize = new Vector2(0, 460),
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-		};
-		layout.AddChild(scroll);
-
-		_boxScoreBody = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		_boxScoreBody.AddThemeConstantOverride("separation", 12);
-		scroll.AddChild(_boxScoreBody);
-		return _boxScoreLayer;
-	}
-
 	private void OpenEventModal(DateOnly date, IReadOnlyList<SeasonEvent> events)
 	{
 		foreach (Node child in _modalBody.GetChildren())
@@ -791,14 +884,13 @@ public partial class HomePage : Control
 			_modalBody.AddChild(BuildModalEventCard(item));
 		}
 
-		IReadOnlyList<CalendarContest> games = ClubhouseCalendar.On(date);
+		IReadOnlyList<CalendarContest> games = _session.ContestsOn(date);
 		if (games.Count > 0)
 		{
 			_modalBody.AddChild(MakeText("GAMES", _semibold, 11, TextMuted, HorizontalAlignment.Left));
 			foreach (CalendarContest game in games)
 			{
-				HubTeam opponent = DistrictHubData.GetTeam(game.OpponentId);
-				string line = $"{game.Level.ToLabel().ToUpperInvariant()}  {(game.Home ? "VS" : "@")}  {opponent.ShortName}  ·  {game.Time}  ·  {game.ResultLabel}";
+				string line = $"{game.Level.ToLabel().ToUpperInvariant()}  {(game.Home ? "VS" : "@")}  {DistrictHubData.GetTeam(game.OpponentId).ShortName}  ·  {game.Time}  ·  {game.ResultLabel}";
 				_modalBody.AddChild(MakeText(line, _medium, 12, TextPrimary, HorizontalAlignment.Left));
 			}
 		}
@@ -817,36 +909,13 @@ public partial class HomePage : Control
 
 	private void CloseBoxScore()
 	{
-		if (_boxScoreLayer != null)
-		{
-			_boxScoreLayer.Visible = false;
-		}
+		_boxScoreOverlay?.Close();
 	}
 
 	private void OpenBoxScore(CalendarContest game)
 	{
 		CloseEventModal();
-		foreach (Node child in _boxScoreBody.GetChildren())
-		{
-			_boxScoreBody.RemoveChild(child);
-			child.QueueFree();
-		}
-
-		BoxScore sheet = ClubhouseBoxScore.For(game);
-		string matchup = $"{sheet.Away.ShortName}  @  {sheet.Home.ShortName}";
-		_boxScoreKicker.Text = $"BOX SCORE  ·  {game.Level.ToLabel().ToUpperInvariant()}  ·  {game.Date.ToString("MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
-		_boxScoreTitle.Text = matchup;
-
-		_boxScoreBody.AddChild(BuildBoxScoreHeader(sheet));
-		_boxScoreBody.AddChild(BuildSection("GAME DATA", BuildGameData(sheet)));
-		_boxScoreBody.AddChild(BuildSection("LINE SCORE", BuildLineScore(sheet)));
-		_boxScoreBody.AddChild(BuildSection($"{sheet.Away.ShortName} BATTING", BuildBattingTable(sheet.Away)));
-		_boxScoreBody.AddChild(BuildSection($"{sheet.Home.ShortName} BATTING", BuildBattingTable(sheet.Home)));
-		_boxScoreBody.AddChild(BuildSection($"{sheet.Away.ShortName} PITCHING", BuildPitchingTable(sheet.Away)));
-		_boxScoreBody.AddChild(BuildSection($"{sheet.Home.ShortName} PITCHING", BuildPitchingTable(sheet.Home)));
-
-		_boxScoreLayer.Visible = true;
-		_boxScoreLayer.MoveToFront();
+		_boxScoreOverlay.Open(ClubhouseBoxScore.For(game));
 	}
 
 	private Control BuildBoxScoreHeader(BoxScore sheet)
@@ -972,7 +1041,9 @@ public partial class HomePage : Control
 				batter.Rbi.ToString(CultureInfo.InvariantCulture),
 				_medium,
 				TextPrimary,
-				false);
+				false,
+				side.TeamId,
+				batter.Name);
 		}
 
 		return grid;
@@ -989,10 +1060,17 @@ public partial class HomePage : Control
 		string rbi,
 		FontFile font,
 		Color color,
-		bool header)
+		bool header,
+		string teamId = "",
+		string playerName = "")
 	{
 		var player = MakeText(name, font, header ? 11 : 12, color, HorizontalAlignment.Left);
 		player.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		if (!header && playerName.Length > 0)
+		{
+			PlayerLinks.MakeClickable(player, teamId, playerName);
+		}
+
 		grid.AddChild(player);
 		grid.AddChild(MakeFixed(pos, 36, font, color));
 		grid.AddChild(MakeFixed(ab, 28, font, color));
@@ -1022,16 +1100,33 @@ public partial class HomePage : Control
 				pitcher.Walks.ToString(CultureInfo.InvariantCulture),
 				pitcher.Strikeouts.ToString(CultureInfo.InvariantCulture),
 				_medium,
-				TextPrimary);
+				TextPrimary,
+				side.TeamId,
+				pitcher.Name);
 		}
 
 		return grid;
 	}
 
-	private void AddPitchingRow(GridContainer grid, string name, string ip, string hits, string walks, string k, FontFile font, Color color)
+	private void AddPitchingRow(
+		GridContainer grid,
+		string name,
+		string ip,
+		string hits,
+		string walks,
+		string k,
+		FontFile font,
+		Color color,
+		string teamId = "",
+		string playerName = "")
 	{
 		var player = MakeText(name, font, 12, color, HorizontalAlignment.Left);
 		player.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		if (playerName.Length > 0)
+		{
+			PlayerLinks.MakeClickable(player, teamId, playerName);
+		}
+
 		grid.AddChild(player);
 		grid.AddChild(MakeFixed(ip, 40, font, color));
 		grid.AddChild(MakeFixed(hits, 28, font, color));
@@ -1120,10 +1215,13 @@ public partial class HomePage : Control
 		{
 			logo.TextureFilter = TextureFilterEnum.LinearWithMipmaps;
 			logo.MouseFilter = MouseFilterEnum.Ignore;
+			SchoolLinks.MakeClickable(logo, teamId);
 			return logo;
 		}
 
-		return BuildTinyLogo(ClubhouseCalendar.OpponentMark(teamId), fallbackColor, size);
+		Control fallback = BuildTinyLogo(ClubhouseCalendar.OpponentMark(teamId), fallbackColor, size);
+		SchoolLinks.MakeClickable(fallback, teamId);
+		return fallback;
 	}
 
 	private Control BuildModalEventCard(SeasonEvent item)
@@ -1146,7 +1244,517 @@ public partial class HomePage : Control
 		var body = MakeText(item.Summary, _medium, 14, new Color(0.78f, 0.81f, 0.86f), HorizontalAlignment.Left);
 		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		box.AddChild(body);
+		if (item.Id is "open-play" or "signing-week")
+		{
+			box.AddChild(MakeEventLink("OPEN RECRUITING", OpenTryouts));
+		}
+
+		if (item.Id is "incoming-class" or "signing-deadline")
+		{
+			box.AddChild(MakeEventLink("VIEW INCOMING CLASS", OpenIncomingClass));
+		}
+
+		if (item.Id is "graduation" or "senior-farewell")
+		{
+			box.AddChild(MakeEventLink("VIEW GRADUATION", OpenGraduation));
+		}
+
+		ChampionshipTitle? celebration = SeasonCalendar.ChampionshipForEvent(item.Id);
+		if (celebration != null)
+		{
+			box.AddChild(MakeEventLink("VIEW CELEBRATION", () => OpenChampionship(celebration.Value)));
+		}
+
+		AwardScope? banquet = SeasonCalendar.AwardCeremonyForEvent(item.Id);
+		if (banquet != null)
+		{
+			box.AddChild(MakeEventLink("VIEW CEREMONY", () => OpenAwardsCeremony(banquet.Value)));
+		}
+
+		if (item.Id == "board-review")
+		{
+			box.AddChild(MakeEventLink("VIEW SEASON REVIEW", OpenSeasonReview));
+		}
+
+		if (item.Id == "hall-of-fame")
+		{
+			box.AddChild(MakeEventLink("VIEW HALL OF FAME", OpenHallOfFame));
+		}
+
+		if (item.Id == "coaching-carousel")
+		{
+			if (JobOfferDesk.HasPending(_session))
+			{
+				box.AddChild(MakeEventLink("READ JOB OFFER", ShowJobOffer));
+			}
+
+			box.AddChild(MakeEventLink("VIEW JOB MARKET", OpenJobMarket));
+		}
+
 		return card;
+	}
+
+	private Button MakeEventLink(string text, Action pressed)
+	{
+		var button = new Button { Text = text };
+		button.AddThemeFontOverride("font", _semibold);
+		button.AddThemeFontSizeOverride("font_size", 12);
+		button.AddThemeColorOverride("font_color", TextPrimary);
+		button.AddThemeStyleboxOverride("normal", MakeOutlinedButton(CardInner, CardBorder));
+		button.AddThemeStyleboxOverride("hover", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("pressed", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("focus", MakeOutlinedButton(HoverBg, Accent));
+		button.Pressed += pressed;
+		return button;
+	}
+
+	private void OpenTryouts()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowTryouts();
+		}
+	}
+
+	private void OpenIncomingClass()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowIncomingClass();
+		}
+	}
+
+	private void OpenGraduation()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowGraduation();
+		}
+	}
+
+	private void OpenChampionship(ChampionshipTitle title)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowChampionship(title);
+		}
+	}
+
+	private void OpenAwardsCeremony(AwardScope scope)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowAwardsCeremony(scope);
+		}
+	}
+
+	private void OpenSeasonReview()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSeasonReview();
+		}
+	}
+
+	private void OpenHallOfFameInduction()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowHallOfFameInduction();
+		}
+	}
+
+	private void OpenHallOfFame()
+	{
+		if (GetTree().CurrentScene is not AppNavigator navigator)
+		{
+			return;
+		}
+
+		if (HallOfFameDesk.PendingOn(_session))
+		{
+			navigator.ShowHallOfFameInduction();
+			return;
+		}
+
+		navigator.ShowCareerHallOfFame();
+	}
+
+	public void ShowJobOffer()
+	{
+		if (!JobOfferDesk.HasPending(_session) || _jobOfferOverlay == null)
+		{
+			return;
+		}
+
+		RefreshJobOfferBanner();
+		_jobOfferBanner.Visible = false;
+		_jobOfferOverlay.Present();
+	}
+
+	private void OnJobOfferDismissed()
+	{
+		_session.AcknowledgeJobOffer();
+		RefreshJobOfferBanner();
+		RefreshAdvanceButton();
+	}
+
+	private void OnJobOfferResolved()
+	{
+		RefreshJobOfferBanner();
+		RefreshAdvanceButton();
+	}
+
+	private void RefreshJobOfferBanner()
+	{
+		if (_jobOfferBanner == null)
+		{
+			return;
+		}
+
+		_jobOfferBanner.Visible = JobOfferDesk.BannerOn(_session)
+			&& (_jobOfferOverlay == null || !_jobOfferOverlay.Visible);
+	}
+
+	private void RefreshNewsBanner()
+	{
+		if (_newsTicker == null || _newsTickerSlot == null)
+		{
+			return;
+		}
+
+		StopNewsTicker();
+		_tickerItems.Clear();
+
+		foreach (InboxMessage item in MessagesDesk.For(_session))
+		{
+			InboxMessage captured = item;
+			_tickerItems.Add(new TickerItem(
+				item.Headline,
+				item.Unread,
+				TickerAccent(item.Channel),
+				() => OpenTickerMessage(captured)));
+		}
+
+		foreach (NewsStory story in NewsDesk.For(_session))
+		{
+			_tickerItems.Add(new TickerItem(
+				story.Headline,
+				!story.Read,
+				LakesBlue,
+				OpenNews));
+		}
+
+		_tickerIndex = 0;
+		for (int i = 0; i < _tickerItems.Count; i++)
+		{
+			if (_tickerItems[i].Unread)
+			{
+				_tickerIndex = i;
+				break;
+			}
+		}
+
+		int unread = 0;
+		foreach (TickerItem item in _tickerItems)
+		{
+			if (item.Unread)
+			{
+				unread++;
+			}
+		}
+
+		_newsTickerKicker.Text = unread > 1
+			? $"UPDATES  ·  {unread} NEW"
+			: unread == 1 ? "UPDATES  ·  NEW" : "UPDATES";
+
+		PaintTickerRows();
+		CallDeferred(nameof(LayoutTickerTrack));
+	}
+
+	private Control BuildNewsTicker()
+	{
+		var pad = new MarginContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			TooltipText = "Open this update",
+		};
+		pad.AddThemeConstantOverride("margin_left", 2);
+		pad.AddThemeConstantOverride("margin_right", 2);
+		pad.GuiInput += ev =>
+		{
+			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
+			{
+				OpenTickerCurrent();
+			}
+		};
+
+		var shell = new VBoxContainer
+		{
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		shell.AddThemeConstantOverride("separation", 2);
+		pad.AddChild(shell);
+
+		_newsTickerKicker = MakeText("UPDATES", _medium, 10, Accent, HorizontalAlignment.Left);
+		shell.AddChild(_newsTickerKicker);
+
+		_newsTickerViewport = new Control
+		{
+			ClipContents = true,
+			CustomMinimumSize = new Vector2(180, TickerLineHeight * TickerVisibleLines),
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		shell.AddChild(_newsTickerViewport);
+
+		_newsTickerTrack = new Control
+		{
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		_newsTickerViewport.AddChild(_newsTickerTrack);
+		_newsTickerViewport.Resized += LayoutTickerTrack;
+
+		int slots = TickerVisibleLines + 1;
+		for (int i = 0; i < slots; i++)
+		{
+			var row = new HBoxContainer
+			{
+				CustomMinimumSize = new Vector2(0, TickerLineHeight),
+				MouseFilter = MouseFilterEnum.Ignore,
+			};
+			row.AddThemeConstantOverride("separation", 6);
+			var bullet = MakeText("•", _bold, 14, Accent, HorizontalAlignment.Left);
+			var headline = MakeText("", _semibold, 13, TextPrimary, HorizontalAlignment.Left);
+			headline.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			headline.ClipText = true;
+			headline.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+			row.AddChild(bullet);
+			row.AddChild(headline);
+			_newsTickerTrack.AddChild(row);
+			_tickerRows.Add(row);
+			_tickerBullets.Add(bullet);
+			_tickerHeadlines.Add(headline);
+		}
+
+		return pad;
+	}
+
+	private void PaintTickerRows()
+	{
+		for (int i = 0; i < _tickerRows.Count; i++)
+		{
+			if (_tickerItems.Count == 0)
+			{
+				_tickerBullets[i].Text = i == 0 ? "•" : "";
+				_tickerBullets[i].AddThemeColorOverride("font_color", TextMuted);
+				_tickerHeadlines[i].Text = i == 0 ? "NO UPDATES" : "";
+				_tickerHeadlines[i].AddThemeFontOverride("font", _medium);
+				_tickerHeadlines[i].AddThemeColorOverride("font_color", TextMuted);
+			}
+			else
+			{
+				TickerItem item = _tickerItems[WrapTickerIndex(_tickerIndex + i)];
+				_tickerBullets[i].Text = "•";
+				_tickerBullets[i].AddThemeColorOverride("font_color", item.Unread ? item.Accent : TextMuted);
+				_tickerHeadlines[i].Text = item.Headline.ToUpperInvariant();
+				_tickerHeadlines[i].AddThemeFontOverride("font", item.Unread ? _semibold : _medium);
+				_tickerHeadlines[i].AddThemeColorOverride("font_color", item.Unread ? TextPrimary : new Color(0.72f, 0.76f, 0.82f));
+			}
+
+			_tickerRows[i].Modulate = i >= TickerVisibleLines
+				? new Color(1f, 1f, 1f, 0f)
+				: Colors.White;
+		}
+
+		_newsTickerTrack.Position = Vector2.Zero;
+		LayoutTickerTrack();
+	}
+
+	private void LayoutTickerTrack()
+	{
+		if (_newsTickerViewport == null || _newsTickerTrack == null)
+		{
+			return;
+		}
+
+		float width = _newsTickerViewport.Size.X;
+		if (width <= 0f)
+		{
+			return;
+		}
+
+		_newsTickerTrack.Size = new Vector2(width, TickerLineHeight * (TickerVisibleLines + 1));
+		for (int i = 0; i < _tickerRows.Count; i++)
+		{
+			_tickerRows[i].Position = new Vector2(0f, i * TickerLineHeight);
+			_tickerRows[i].Size = new Vector2(width, TickerLineHeight);
+		}
+	}
+
+	private void TickNewsTicker(float delta)
+	{
+		if (_tickerItems.Count <= 1 || !IsVisibleInTree() || _newsTickerTrack == null)
+		{
+			return;
+		}
+
+		_tickerClock += delta;
+		if (!_tickerSliding)
+		{
+			if (_tickerClock >= TickerDwellSeconds)
+			{
+				_tickerSliding = true;
+				_tickerClock = 0f;
+			}
+
+			return;
+		}
+
+		float t = Mathf.Clamp(_tickerClock / TickerSlideSeconds, 0f, 1f);
+		float eased = t * t * (3f - 2f * t);
+		_newsTickerTrack.Position = new Vector2(0f, -TickerLineHeight * eased);
+		if (_tickerRows.Count > 0)
+		{
+			_tickerRows[0].Modulate = new Color(1f, 1f, 1f, 1f - eased);
+		}
+
+		if (_tickerRows.Count > TickerVisibleLines)
+		{
+			_tickerRows[TickerVisibleLines].Modulate = new Color(1f, 1f, 1f, eased);
+		}
+
+		if (t >= 1f)
+		{
+			_tickerIndex = WrapTickerIndex(_tickerIndex + 1);
+			_tickerSliding = false;
+			_tickerClock = 0f;
+			PaintTickerRows();
+		}
+	}
+
+	private int WrapTickerIndex(int index)
+	{
+		int count = _tickerItems.Count;
+		if (count <= 0)
+		{
+			return 0;
+		}
+
+		int wrapped = index % count;
+		return wrapped < 0 ? wrapped + count : wrapped;
+	}
+
+	private void StopNewsTicker()
+	{
+		_tickerClock = 0f;
+		_tickerSliding = false;
+		if (_newsTickerTrack != null)
+		{
+			_newsTickerTrack.Position = Vector2.Zero;
+		}
+	}
+
+	private void OpenTickerCurrent()
+	{
+		if (_tickerItems.Count == 0)
+		{
+			OpenMessages();
+			return;
+		}
+
+		_tickerItems[WrapTickerIndex(_tickerIndex)].Open();
+	}
+
+	private void OpenTickerMessage(InboxMessage item)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.OpenInboxItem(item);
+		}
+	}
+
+	private static Color TickerAccent(InboxChannel channel) => channel switch
+	{
+		InboxChannel.Urgent => Urgent,
+		InboxChannel.Player => Accent,
+		InboxChannel.Scouting => LakesBlue,
+		InboxChannel.Board => Accent,
+		InboxChannel.Career => Accent,
+		_ => LakesBlue,
+	};
+
+	private void OpenMessages()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowMessages();
+		}
+	}
+
+	private void OpenNews()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowNews();
+		}
+	}
+
+	private void OpenJobMarket()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowCareerJobMarket();
+		}
+	}
+
+	private void PresentPendingCelebration()
+	{
+		if (!IsVisibleInTree()
+			|| (_jobOfferOverlay != null && _jobOfferOverlay.Visible)
+			|| (_simulationOverlay != null && _simulationOverlay.Visible))
+		{
+			return;
+		}
+
+		ChampionshipTitle? pending = ChampionshipDesk.PendingOn(_session);
+		if (pending != null)
+		{
+			OpenChampionship(pending.Value);
+			return;
+		}
+
+		AwardScope? banquet = AwardsDesk.PendingOn(_session);
+		if (banquet != null)
+		{
+			OpenAwardsCeremony(banquet.Value);
+			return;
+		}
+
+		if (SeasonReviewDesk.PendingOn(_session))
+		{
+			OpenSeasonReview();
+			return;
+		}
+
+		if (HallOfFameDesk.PendingOn(_session))
+		{
+			OpenHallOfFameInduction();
+			return;
+		}
+
+		if (JobOfferDesk.PendingOn(_session))
+		{
+			ShowJobOffer();
+			return;
+		}
+
+		if (JobMarketDesk.PendingOn(_session) && !JobOfferDesk.HasPending(_session))
+		{
+			OpenJobMarket();
+		}
 	}
 
 	private Control MakeResultMark(CalendarContest game)
@@ -1270,6 +1878,202 @@ public partial class HomePage : Control
 		}
 	}
 
+	private Button MakeSeasonScheduleButton()
+	{
+		var button = new Button
+		{
+			Text = "SEASON SCHEDULE",
+			Icon = _iconStar,
+			ExpandIcon = true,
+			FocusMode = FocusModeEnum.All,
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			CustomMinimumSize = new Vector2(0, 28),
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+			TooltipText = "Open the season results table",
+		};
+		button.AddThemeFontOverride("font", _semibold);
+		button.AddThemeFontSizeOverride("font_size", 11);
+		button.AddThemeConstantOverride("icon_max_width", 14);
+		button.AddThemeConstantOverride("h_separation", 6);
+		button.AddThemeColorOverride("font_color", TextPrimary);
+		button.AddThemeColorOverride("font_hover_color", Colors.White);
+		button.AddThemeColorOverride("font_pressed_color", TextPrimary);
+		button.AddThemeColorOverride("font_focus_color", Colors.White);
+		button.AddThemeColorOverride("icon_normal_color", TextPrimary);
+		button.AddThemeColorOverride("icon_hover_color", Colors.White);
+		button.AddThemeColorOverride("icon_pressed_color", TextPrimary);
+		button.AddThemeColorOverride("icon_focus_color", Colors.White);
+		button.AddThemeStyleboxOverride("normal", MakeOutlinedButton(CardInner, CardBorder));
+		button.AddThemeStyleboxOverride("hover", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("pressed", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("focus", MakeOutlinedButton(HoverBg, Accent));
+		button.Pressed += OpenSeasonSchedule;
+		return button;
+	}
+
+	private void OpenSeasonSchedule()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSchedule();
+		}
+	}
+
+	private void OnAdvancePressed()
+	{
+		ChampionshipTitle? pending = ChampionshipDesk.PendingOn(_session);
+		if (pending != null)
+		{
+			OpenChampionship(pending.Value);
+			return;
+		}
+
+		AwardScope? banquet = AwardsDesk.PendingOn(_session);
+		if (banquet != null)
+		{
+			OpenAwardsCeremony(banquet.Value);
+			return;
+		}
+
+		if (SeasonReviewDesk.PendingOn(_session))
+		{
+			OpenSeasonReview();
+			return;
+		}
+
+		if (HallOfFameDesk.PendingOn(_session))
+		{
+			OpenHallOfFameInduction();
+			return;
+		}
+
+		if (JobOfferDesk.HasPending(_session))
+		{
+			ShowJobOffer();
+			return;
+		}
+
+		if (JobMarketDesk.PendingOn(_session))
+		{
+			OpenJobMarket();
+			return;
+		}
+
+		AdvanceDayInterrupt? stop = SimulationDesk.InterruptOn(_session);
+		if (stop != null)
+		{
+			OpenInterrupt(stop);
+			return;
+		}
+
+		CalendarContest? game = PrimaryGame(_session.ContestsOn(_session.CurrentDate));
+		if (game != null && !game.Completed)
+		{
+			OpenGamePreview(game);
+			return;
+		}
+
+		OnSimulatePressed(1);
+	}
+
+	private void OnSimulatePressed(int days)
+	{
+		SimulationRun run = _session.SimulateDays(days);
+		_selectedDate = _session.CurrentDate;
+		ApplyActiveTeam();
+		if (run.Interrupt != null)
+		{
+			_simulationOverlay.Present(run.Interrupt);
+			return;
+		}
+
+		if (run.DaysAdvanced > 0)
+		{
+			UiSounds.Play(UiSound.AdvanceDay);
+		}
+	}
+
+	private void OpenInterrupt(AdvanceDayInterrupt interrupt)
+	{
+		switch (interrupt.Kind)
+		{
+			case AdvanceDayInterruptKind.TryoutDecision:
+			case AdvanceDayInterruptKind.SigningDeadline:
+				OpenTryouts();
+				break;
+			case AdvanceDayInterruptKind.RosterDeadline:
+				if (GetTree().CurrentScene is AppNavigator rosterNav)
+				{
+					rosterNav.ShowRoster();
+				}
+
+				break;
+			case AdvanceDayInterruptKind.PlayoffGame:
+				OpenPlayoff();
+				break;
+			case AdvanceDayInterruptKind.JobOffer:
+				ShowJobOffer();
+				break;
+		}
+	}
+
+	private void OpenPlayoff()
+	{
+		CalendarContest? game = PrimaryGame(_session.ContestsOn(_session.CurrentDate));
+		if (game != null && !game.Completed)
+		{
+			OpenGamePreview(game);
+			return;
+		}
+
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowPlayoffs();
+		}
+	}
+
+	private void OpenMatchupPreview()
+	{
+		CalendarContest? game = PreviewContest();
+		if (game != null)
+		{
+			OpenGamePreview(game);
+		}
+	}
+
+	private void OpenGamePreview(CalendarContest game)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowGamePreview(game);
+		}
+	}
+
+	private CalendarContest? PreviewContest()
+	{
+		CalendarContest? selected = PrimaryGame(_session.ContestsOn(_selectedDate));
+		if (selected != null && !selected.Completed)
+		{
+			return selected;
+		}
+
+		CalendarContest? today = PrimaryGame(_session.ContestsOn(_session.CurrentDate));
+		if (today != null && !today.Completed)
+		{
+			return today;
+		}
+
+		foreach (CalendarContest game in ClubhouseCalendar.Contests)
+		{
+			if (game.Level == _session.ActiveTeam.Level && !game.Completed && game.Date >= _session.CurrentDate)
+			{
+				return game;
+			}
+		}
+
+		return today ?? selected;
+	}
+
 	private Button MakeAction(string text, bool primary, float stretch, System.Action? onPressed = null)
 	{
 		var button = new Button
@@ -1318,6 +2122,40 @@ public partial class HomePage : Control
 			child.QueueFree();
 		}
 
+		if (_inspectedPlayerTeamId != null && !string.IsNullOrEmpty(_inspectedPlayerName))
+		{
+			var card = new PlayerProfileCard
+			{
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			card.SetCloseHandler(CloseInspectedProfile);
+			_contestHost.AddChild(card);
+			PlayerProfileSnapshot? snapshot = PlayerProfiles.Find(
+				_inspectedPlayerTeamId,
+				_inspectedPlayerName,
+				varsity ? TeamLevel.Varsity : TeamLevel.JuniorVarsity);
+			if (snapshot != null)
+			{
+				card.Bind(snapshot);
+			}
+
+			return;
+		}
+
+		if (_inspectedSchoolId != null)
+		{
+			var card = new SchoolProfileCard
+			{
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			card.SetCloseHandler(CloseInspectedProfile);
+			_contestHost.AddChild(card);
+			card.Bind(_inspectedSchoolId, varsity ? TeamLevel.Varsity : TeamLevel.JuniorVarsity);
+			return;
+		}
+
 		_contestHost.AddChild(varsity ? BuildVarsityContest() : BuildJvContest());
 	}
 
@@ -1335,8 +2173,8 @@ public partial class HomePage : Control
 			"14-8 (6-4)",
 			_lakesLogo,
 			"GL",
-			new PitcherCard("MARINI", "Luca", "RHP", "5-0", "1.95", "28", _marini, Accent),
-			new PitcherCard("TONY", "Great Lakes", "RHP", "2-2", "3.14", "22", _tony, LakesBlue));
+			new PitcherCard("MARINI", "Luca", "RHP", "5-0", "1.95", "28", _marini, Accent, DistrictHubData.UserTeamId, "Luca Marini"),
+			new PitcherCard("TONY", "Great Lakes", "RHP", "2-2", "3.14", "22", _tony, LakesBlue, "great-lakes", "Tony Romano"));
 	}
 
 	private Control BuildJvContest()
@@ -1353,8 +2191,8 @@ public partial class HomePage : Control
 			"11-9 (4-6)",
 			_lakesLogo,
 			"GL",
-			new PitcherCard("GRANT", "Miles", "RHP", "1-2", "5.06", "12", null, Accent),
-			new PitcherCard("HALE", "Great Lakes", "LHP", "2-1", "3.80", "16", null, LakesBlue));
+			new PitcherCard("GRANT", "Miles", "RHP", "1-2", "5.06", "12", null, Accent, DistrictHubData.UserTeamId, "Miles Grant"),
+			new PitcherCard("HALE", "Great Lakes", "LHP", "2-1", "3.80", "16", null, LakesBlue, "great-lakes", "Gavin Hale"));
 	}
 
 	private Control BuildContestCard(
@@ -1397,11 +2235,11 @@ public partial class HomePage : Control
 			SizeFlagsStretchRatio = 1.7f,
 		};
 		matchup.AddThemeConstantOverride("separation", 10);
-		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, null, Accent));
+		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, null, Accent, DistrictHubData.UserTeamId));
 		var vs = MakeText("VS", _bold, 16, TextMuted, HorizontalAlignment.Center);
 		vs.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 		matchup.AddChild(vs);
-		matchup.AddChild(BuildTeamBlock(awayName, awayRecord, awayLogo, awayInitial, LakesBlue));
+		matchup.AddChild(BuildTeamBlock(awayName, awayRecord, awayLogo, awayInitial, LakesBlue, "great-lakes"));
 		layout.AddChild(matchup);
 
 		layout.AddChild(BuildMetaRow(_iconClock, when));
@@ -1421,11 +2259,11 @@ public partial class HomePage : Control
 		pitchers.AddChild(BuildPitcherChip(awayPitcher));
 		layout.AddChild(pitchers);
 
-		layout.AddChild(MakeAction("VIEW MATCHUP PREVIEW", false, 1f));
+		layout.AddChild(MakeAction("VIEW MATCHUP PREVIEW", false, 1f, OpenMatchupPreview));
 		return card;
 	}
 
-	private Control BuildTeamBlock(string name, string record, Texture2D? logo, string? initial, Color accent)
+	private Control BuildTeamBlock(string name, string record, Texture2D? logo, string? initial, Color accent, string? teamId = null)
 	{
 		var box = new VBoxContainer
 		{
@@ -1447,6 +2285,11 @@ public partial class HomePage : Control
 		nameLabel.AutowrapMode = TextServer.AutowrapMode.Word;
 		box.AddChild(nameLabel);
 		box.AddChild(MakeText(record, _medium, 11, TextMuted, HorizontalAlignment.Center));
+		if (!string.IsNullOrEmpty(teamId))
+		{
+			SchoolLinks.MakeClickable(box, teamId);
+		}
+
 		return box;
 	}
 
@@ -1458,6 +2301,7 @@ public partial class HomePage : Control
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
 		chip.AddThemeStyleboxOverride("panel", MakeInnerCard(8, 8));
+		PlayerLinks.MakeClickable(chip, pitcher.TeamId, pitcher.PlayerName);
 
 		var box = new VBoxContainer
 		{
@@ -1716,6 +2560,8 @@ public partial class HomePage : Control
 		};
 	}
 
+	private sealed record TickerItem(string Headline, bool Unread, Color Accent, Action Open);
+
 	private sealed record WeekBind(PanelContainer Card, DateOnly Date, TeamLevel? Level);
 
 	private sealed record PitcherCard(
@@ -1726,5 +2572,7 @@ public partial class HomePage : Control
 		string Era,
 		string Strikeouts,
 		Texture2D? Portrait,
-		Color Accent);
+		Color Accent,
+		string TeamId,
+		string PlayerName);
 }

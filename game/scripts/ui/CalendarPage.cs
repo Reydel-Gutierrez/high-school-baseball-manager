@@ -35,10 +35,13 @@ public partial class CalendarPage : Control
 	private Label _subtitle = null!;
 	private Label _monthTitle = null!;
 	private Control _gridHost = null!;
+	private ScrollContainer _detailScroll = null!;
 	private VBoxContainer _detailHost = null!;
+	private VBoxContainer _profileHost = null!;
 	private Button _prevButton = null!;
 	private Button _nextButton = null!;
 
+	private BoxScoreOverlay _boxScoreOverlay = null!;
 	private int _viewYear;
 	private int _viewMonth;
 	private DateOnly _selected;
@@ -61,6 +64,8 @@ public partial class CalendarPage : Control
 		_viewMonth = _selected.Month;
 
 		BuildPage();
+		_boxScoreOverlay = new BoxScoreOverlay();
+		AddChild(_boxScoreOverlay);
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
 		ApplyActiveTeam();
 		RebuildMonth();
@@ -78,6 +83,86 @@ public partial class CalendarPage : Control
 	public void FocusCurrentDate()
 	{
 		SelectDate(_session.CurrentDate, jumpMonth: true);
+	}
+
+	public void ShowSchool(string teamId)
+	{
+		ShowProfileCard(schoolId: SchoolProfiles.NormalizeId(teamId), playerTeamId: null, playerName: null);
+	}
+
+	public void ShowPlayer(string teamId, string playerName)
+	{
+		string id = string.IsNullOrWhiteSpace(teamId) ? string.Empty : SchoolProfiles.NormalizeId(teamId);
+		ShowProfileCard(schoolId: null, playerTeamId: id, playerName: playerName);
+	}
+
+	private void ShowProfileCard(string? schoolId, string? playerTeamId, string? playerName)
+	{
+		ClearProfileHost();
+		_detailScroll.Visible = false;
+		_profileHost.Visible = true;
+
+		if (!string.IsNullOrEmpty(playerName))
+		{
+			var card = new PlayerProfileCard
+			{
+				FrameVisible = false,
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			card.SetCloseHandler(CloseProfile);
+			_profileHost.AddChild(card);
+			PlayerProfileSnapshot? snapshot = PlayerProfiles.Find(
+				playerTeamId ?? string.Empty,
+				playerName,
+				_session.ActiveTeam.Level);
+			if (snapshot != null)
+			{
+				card.Bind(snapshot);
+			}
+
+			return;
+		}
+
+		var school = new SchoolProfileCard
+		{
+			FrameVisible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		school.SetCloseHandler(CloseProfile);
+		_profileHost.AddChild(school);
+		school.Bind(schoolId ?? DistrictHubData.UserTeamId, _session.ActiveTeam.Level);
+	}
+
+	private void CloseProfile()
+	{
+		ClearProfileHost();
+		_profileHost.Visible = false;
+		_detailScroll.Visible = true;
+	}
+
+	private void ClearProfileHost()
+	{
+		while (_profileHost.GetChildCount() > 0)
+		{
+			Node child = _profileHost.GetChild(0);
+			_profileHost.RemoveChild(child);
+			child.QueueFree();
+		}
+	}
+
+	private void OnDeskTabPicked(string key)
+	{
+		if (key != SeasonDeskTabs.Schedule)
+		{
+			return;
+		}
+
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSchedule();
+		}
 	}
 
 	private void OnActiveTeamChanged(TeamIdentity _) => ApplyActiveTeam();
@@ -104,6 +189,7 @@ public partial class CalendarPage : Control
 		layout.AddThemeConstantOverride("separation", 6);
 		margin.AddChild(layout);
 		layout.AddChild(BuildHeader());
+		layout.AddChild(SeasonDeskTabs.Build(_semibold, SeasonDeskTabs.Calendar, OnDeskTabPicked));
 
 		var body = new HBoxContainer
 		{
@@ -143,20 +229,39 @@ public partial class CalendarPage : Control
 		detailCard.SizeFlagsVertical = SizeFlags.ExpandFill;
 		body.AddChild(detailCard);
 
-		var detailScroll = new ScrollContainer
+		var stack = new Control
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		detailCard.AddChild(stack);
+
+		_detailScroll = new ScrollContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
 		};
-		detailCard.AddChild(detailScroll);
+		_detailScroll.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		stack.AddChild(_detailScroll);
 
 		_detailHost = new VBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 		};
 		_detailHost.AddThemeConstantOverride("separation", 8);
-		detailScroll.AddChild(_detailHost);
+		_detailScroll.AddChild(_detailHost);
+
+		_profileHost = new VBoxContainer
+		{
+			Visible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		_profileHost.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		_profileHost.AddThemeConstantOverride("separation", 0);
+		stack.AddChild(_profileHost);
 	}
 
 	private Control BuildHeader()
@@ -367,7 +472,7 @@ public partial class CalendarPage : Control
 	{
 		bool inMonth = date.Month == _viewMonth && date.Year == _viewYear;
 		IReadOnlyList<SeasonEvent> events = inMonth ? SeasonCalendar.On(GameSession.SeasonYear, date) : [];
-		IReadOnlyList<CalendarContest> games = inMonth ? ClubhouseCalendar.On(date) : [];
+		IReadOnlyList<CalendarContest> games = inMonth ? _session.ContestsOn(date) : [];
 		bool hasEvent = events.Count > 0;
 		bool featured = false;
 		foreach (SeasonEvent item in events)
@@ -454,9 +559,9 @@ public partial class CalendarPage : Control
 					break;
 				}
 
-				string mark = ClubhouseCalendar.OpponentMark(game.OpponentId);
-				string level = game.Level == TeamLevel.Varsity ? "V" : "JV";
-				Color color = game.Completed ? (game.Won ? Green : Urgent) : (game.Home ? Green : Accent);
+				string mark = game.IsTryout ? "TRY" : ClubhouseCalendar.OpponentMark(game.OpponentId);
+				string level = game.IsTryout ? "CAMP" : game.Level == TeamLevel.Varsity ? "V" : "JV";
+				Color color = game.IsTryout ? Accent : game.Completed ? (game.Won ? Green : Urgent) : (game.Home ? Green : Accent);
 				var line = MakeText($"{level} {mark}", _semibold, 10, color, HorizontalAlignment.Left);
 				stack.AddChild(line);
 				shown++;
@@ -505,7 +610,7 @@ public partial class CalendarPage : Control
 		CalendarContest? fallback = null;
 		foreach (CalendarContest game in games)
 		{
-			if (TeamLogos.Load(game.OpponentId) == null)
+			if (game.IsTryout || TeamLogos.Load(game.OpponentId) == null)
 			{
 				continue;
 			}
@@ -650,6 +755,7 @@ public partial class CalendarPage : Control
 
 	private void BindDetail()
 	{
+		CloseProfile();
 		foreach (Node child in _detailHost.GetChildren())
 		{
 			_detailHost.RemoveChild(child);
@@ -657,7 +763,7 @@ public partial class CalendarPage : Control
 		}
 
 		IReadOnlyList<SeasonEvent> events = SeasonCalendar.On(GameSession.SeasonYear, _selected);
-		IReadOnlyList<CalendarContest> games = ClubhouseCalendar.On(_selected);
+		IReadOnlyList<CalendarContest> games = _session.ContestsOn(_selected);
 		bool today = _selected == _session.CurrentDate;
 
 		_detailHost.AddChild(MakeText(today ? "TODAY" : "SELECTED DATE", _medium, 10, Accent, HorizontalAlignment.Left));
@@ -727,7 +833,148 @@ public partial class CalendarPage : Control
 		var body = MakeText(item.Summary, _medium, 13, new Color(0.78f, 0.81f, 0.86f), HorizontalAlignment.Left);
 		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		box.AddChild(body);
+		if (item.Id is "open-play" or "signing-week")
+		{
+			box.AddChild(MakeEventLink("OPEN RECRUITING", OpenTryouts));
+		}
+
+		if (item.Id is "incoming-class" or "signing-deadline")
+		{
+			box.AddChild(MakeEventLink("VIEW INCOMING CLASS", OpenIncomingClass));
+		}
+
+		if (item.Id is "graduation" or "senior-farewell")
+		{
+			box.AddChild(MakeEventLink("VIEW GRADUATION", OpenGraduation));
+		}
+
+		ChampionshipTitle? celebration = SeasonCalendar.ChampionshipForEvent(item.Id);
+		if (celebration != null)
+		{
+			box.AddChild(MakeEventLink("VIEW CELEBRATION", () => OpenChampionship(celebration.Value)));
+		}
+
+		AwardScope? banquet = SeasonCalendar.AwardCeremonyForEvent(item.Id);
+		if (banquet != null)
+		{
+			box.AddChild(MakeEventLink("VIEW CEREMONY", () => OpenAwardsCeremony(banquet.Value)));
+		}
+
+		if (item.Id == "board-review")
+		{
+			box.AddChild(MakeEventLink("VIEW SEASON REVIEW", OpenSeasonReview));
+		}
+
+		if (item.Id == "hall-of-fame")
+		{
+			box.AddChild(MakeEventLink("VIEW HALL OF FAME", OpenHallOfFame));
+		}
+
+		if (item.Id == "coaching-carousel")
+		{
+			if (JobOfferDesk.HasPending(_session))
+			{
+				box.AddChild(MakeEventLink("READ JOB OFFER", OpenJobOffer));
+			}
+
+			box.AddChild(MakeEventLink("VIEW JOB MARKET", OpenJobMarket));
+		}
+
 		return card;
+	}
+
+	private Button MakeEventLink(string text, Action pressed)
+	{
+		var button = new Button { Text = text };
+		button.AddThemeFontOverride("font", _semibold);
+		button.AddThemeFontSizeOverride("font_size", 12);
+		button.AddThemeColorOverride("font_color", TextPrimary);
+		button.AddThemeStyleboxOverride("normal", MakeOutlinedButton(CardInner, CardBorder));
+		button.AddThemeStyleboxOverride("hover", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("pressed", MakeOutlinedButton(HoverBg, Accent));
+		button.AddThemeStyleboxOverride("focus", MakeOutlinedButton(HoverBg, Accent));
+		button.Pressed += pressed;
+		return button;
+	}
+
+	private void OpenTryouts()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowTryouts();
+		}
+	}
+
+	private void OpenIncomingClass()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowIncomingClass();
+		}
+	}
+
+	private void OpenGraduation()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowGraduation();
+		}
+	}
+
+	private void OpenChampionship(ChampionshipTitle title)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowChampionship(title);
+		}
+	}
+
+	private void OpenAwardsCeremony(AwardScope scope)
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowAwardsCeremony(scope);
+		}
+	}
+
+	private void OpenSeasonReview()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSeasonReview();
+		}
+	}
+
+	private void OpenHallOfFame()
+	{
+		if (GetTree().CurrentScene is not AppNavigator navigator)
+		{
+			return;
+		}
+
+		if (HallOfFameDesk.PendingOn(_session))
+		{
+			navigator.ShowHallOfFameInduction();
+			return;
+		}
+
+		navigator.ShowCareerHallOfFame();
+	}
+
+	private void OpenJobMarket()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowCareerJobMarket();
+		}
+	}
+
+	private void OpenJobOffer()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowJobOffer();
+		}
 	}
 
 	private Control BuildGameCard(CalendarContest game)
@@ -768,6 +1015,7 @@ public partial class CalendarPage : Control
 		meta.AddChild(BuildMeta(_iconClock, game.Time));
 		meta.AddChild(BuildMeta(_iconPin, game.VenueLabel));
 		box.AddChild(meta);
+		SchoolLinks.MakeClickable(card, game.OpponentId);
 		return card;
 	}
 
