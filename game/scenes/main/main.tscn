@@ -8,6 +8,7 @@
 [ext_resource type="FontFile" uid="uid://cs3frpdrkr42u" path="res://assets/fonts/BarlowCondensed-SemiBold.ttf" id="7_semibold"]
 [ext_resource type="Texture2D" uid="uid://cwbwsof3yr52w" path="res://assets/ui/gear_icon.svg" id="8_gear"]
 [ext_resource type="Script" uid="uid://c4caltabbtn01" path="res://scripts/ui/CalendarTabButton.cs" id="9_caltab"]
+[ext_resource type="Script" uid="uid://c4msgtabbtn01" path="res://scripts/ui/MessagesTabButton.cs" id="9_msgtab"]
 [ext_resource type="Script" uid="uid://bcp6vldm8s3lt" path="res://scripts/ui/AppNavigator.cs" id="28_appnav"]
 [ext_resource type="PackedScene" uid="uid://c8rosterpage1" path="res://scenes/pages/roster.tscn" id="29_roster"]
 [ext_resource type="Script" uid="uid://dhjo1xiidaxe3" path="res://scripts/ui/TeamLevelToggle.cs" id="30_teamtoggle"]
@@ -163,6 +164,19 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 4
 alignment = 1
+
+[node name="MessagesButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623091]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Inbox"
+script = ExtResource("9_msgtab")
+
+[node name="MessagesCalendarGap" type="Control" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
 
 [node name="CalendarButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2003]
 custom_minimum_size = Vector2(42, 38)
