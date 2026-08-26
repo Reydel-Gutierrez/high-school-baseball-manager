@@ -7,10 +7,12 @@ using Godot;
 public partial class TopBarNavigation : PanelContainer
 {
 	public const string HomeKey = "home";
+	public const string MessagesKey = "messages";
 	public const string CalendarKey = "calendar";
 	public const string OrganizationKey = "organization";
 	public const string ClubhouseKey = "clubhouse";
-	public const string DistrictHubKey = "district_hub";
+	public const string LeagueKey = "league";
+	public const string DistrictHubKey = LeagueKey;
 	public const string FinancesKey = "finances";
 	public const string ScoutingKey = "scouting";
 	public const string CareerKey = "career";
@@ -72,17 +74,86 @@ public partial class TopBarNavigation : PanelContainer
 		}
 	}
 
+	public void SetLockedToCareer(bool locked) => ApplyCareerShell(hideClubhouseNav: locked, lockToCareer: locked);
+
+	public void ApplyCareerShell(bool hideClubhouseNav, bool lockToCareer)
+	{
+		foreach (KeyValuePair<string, BaseButton> pair in _items)
+		{
+			bool keep = pair.Key is CareerKey or SettingsKey;
+			if (!keep)
+			{
+				pair.Value.Visible = !hideClubhouseNav;
+				pair.Value.Disabled = lockToCareer;
+				pair.Value.MouseDefaultCursorShape = pair.Value.Disabled
+					? CursorShape.Arrow
+					: CursorShape.PointingHand;
+				pair.Value.Modulate = pair.Value.Disabled
+					? new Color(1f, 1f, 1f, 0.38f)
+					: Colors.White;
+			}
+			else
+			{
+				pair.Value.Visible = true;
+				pair.Value.Disabled = false;
+				pair.Value.MouseDefaultCursorShape = CursorShape.PointingHand;
+				pair.Value.Modulate = Colors.White;
+			}
+		}
+
+		Control? calendarRule = GetNodeOrNull<Control>("TopBarMargin/HBoxContainer/NavigationRow/CalendarRule");
+		if (calendarRule != null)
+		{
+			calendarRule.Visible = !hideClubhouseNav;
+		}
+
+		Control? messagesGap = GetNodeOrNull<Control>("TopBarMargin/HBoxContainer/NavigationRow/MessagesCalendarGap");
+		if (messagesGap != null)
+		{
+			messagesGap.Visible = !hideClubhouseNav;
+		}
+
+		Control? teamToggle = GetNodeOrNull<Control>("TopBarMargin/HBoxContainer/RightCluster/TeamLevelToggle");
+		if (teamToggle != null)
+		{
+			teamToggle.Visible = !hideClubhouseNav;
+		}
+	}
+
 	public string GetActiveNavigation() => _activeKey;
+
+	public void SetMessagesUnread(int count)
+	{
+		if (!_items.TryGetValue(MessagesKey, out BaseButton item))
+		{
+			return;
+		}
+
+		if (item is MessagesTabButton tab)
+		{
+			tab.SetUnread(count);
+			return;
+		}
+
+		if (item is Button button)
+		{
+			button.Text = count > 0 ? $"MESSAGES · {count}" : "MESSAGES";
+			button.TooltipText = count > 0
+				? $"{count} item{(count == 1 ? "" : "s")} need attention"
+				: "Inbox — nothing waiting";
+		}
+	}
 
 	private void ResolveNavItems()
 	{
 		_items.Clear();
 
+		TryRegister(MessagesKey, "TopBarMargin/HBoxContainer/NavigationRow/MessagesButton");
 		TryRegister(CalendarKey, "TopBarMargin/HBoxContainer/NavigationRow/CalendarButton");
 		TryRegister(HomeKey, "TopBarMargin/HBoxContainer/NavigationRow/HomeButton");
 		TryRegister(OrganizationKey, "TopBarMargin/HBoxContainer/NavigationRow/OrganizationMenu");
 		TryRegister(ClubhouseKey, "TopBarMargin/HBoxContainer/NavigationRow/ClubhouseMenu");
-		TryRegister(DistrictHubKey, "TopBarMargin/HBoxContainer/NavigationRow/DistrictHubMenu");
+		TryRegister(LeagueKey, "TopBarMargin/HBoxContainer/NavigationRow/DistrictHubMenu");
 		TryRegister(FinancesKey, "TopBarMargin/HBoxContainer/NavigationRow/FinancesMenu");
 		TryRegister(ScoutingKey, "TopBarMargin/HBoxContainer/NavigationRow/ScoutingMenu");
 		TryRegister(CareerKey, "TopBarMargin/HBoxContainer/NavigationRow/CareerButton");
@@ -179,7 +250,8 @@ public partial class TopBarNavigation : PanelContainer
 			return;
 		}
 
-		bool isIconButton = item.Name == "SettingsButton";
+		string itemName = item.Name;
+		bool isIconButton = itemName == "SettingsButton" || itemName == "MessagesButton";
 
 		if (isActive)
 		{
