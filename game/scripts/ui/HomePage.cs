@@ -34,7 +34,6 @@ public partial class HomePage : Control
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
 	private ShaderMaterial _circleMaterial = null!;
-	private Texture2D _cascadeLogo = null!;
 	private Texture2D _iconOff = null!;
 	private Texture2D _iconPractice = null!;
 	private Texture2D _iconStar = null!;
@@ -56,7 +55,7 @@ public partial class HomePage : Control
 	private JobOfferOverlay _jobOfferOverlay = null!;
 	private SimulationStoppedOverlay _simulationOverlay = null!;
 	private SimulationRecapOverlay _recapOverlay = null!;
-	private TextureRect _programMark = null!;
+	private ProgramMark _programMark = null!;
 	private Label _weekRangeLabel = null!;
 	private Label _milestoneLabel = null!;
 	private HBoxContainer _weekDaysHost = null!;
@@ -93,7 +92,6 @@ public partial class HomePage : Control
 		{
 			Shader = GD.Load<Shader>("res://assets/ui/circle_crop.gdshader"),
 		};
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_iconOff = UiSvg.Load("res://assets/ui/icon_off_day.svg");
 		_iconPractice = UiSvg.Load("res://assets/ui/icon_practice.svg");
 		_iconStar = UiSvg.Load("res://assets/ui/icon_schedule_star.svg");
@@ -200,7 +198,7 @@ public partial class HomePage : Control
 		_boardValue.AddThemeColorOverride("font_color", BoardSatisfactionColor(_session.BoardSatisfaction));
 		if (_programMark != null)
 		{
-			_programMark.Texture = TeamLogos.Load(_session.CatalogOrganizationId) ?? _cascadeLogo;
+			_programMark.Refresh();
 		}
 
 		RebuildWeek();
@@ -270,7 +268,7 @@ public partial class HomePage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 
-		_programMark = TeamLogos.MakeHeaderMark(TeamLogos.Load(_session.CatalogOrganizationId) ?? _cascadeLogo);
+		_programMark = UserProgram.MakeHeaderMark();
 		header.AddChild(_programMark);
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
@@ -2280,7 +2278,7 @@ public partial class HomePage : Control
 		bool userHome = game.Home;
 		string userName = userHome ? sheet.HomeName : sheet.AwayName;
 		string userRecord = userHome ? sheet.HomeRecord : sheet.AwayRecord;
-		Texture2D? userLogo = TeamLogos.Load(userId) ?? _cascadeLogo;
+		Texture2D? userLogo = TeamLogos.Load(userId);
 		string oppId = game.OpponentId;
 		string oppName = userHome ? sheet.AwayName : sheet.HomeName;
 		string oppRecord = userHome ? sheet.AwayRecord : sheet.HomeRecord;

@@ -13,9 +13,15 @@ using HSBM.Domain;
 public static class DistrictHubData
 {
 	public const int SeasonYear = 2026;
-	public const string UserTeamId = "cascade";
-	public const string UserDistrictId = "great-lakes";
-	public const string UserCoachName = "Daniel Hart";
+	public const string PrototypeTeamId = "cascade";
+	public const string PrototypeCoachName = "Daniel Hart";
+
+	/// <summary>The user's organization id for the active career (fixture default: Cascade).</summary>
+	public static string UserTeamId => UserProgram.OrganizationId;
+
+	public static string UserDistrictId => UserProgram.DistrictId;
+
+	public static string UserCoachName => GameSession.Current?.CoachName ?? PrototypeCoachName;
 
 	public const string DistrictGreatLakes = "great-lakes";
 	public const string DistrictNorthShore = "north-shore";
@@ -262,6 +268,10 @@ public static class DistrictHubData
 	{
 		List<HubTeam> teams = TeamsInDistrict(districtId, level);
 		var rows = new List<HubStandingRow>(teams.Count);
+		GameWorld? world = GameSession.Current?.World;
+		Dictionary<string, RaceStatus>? race = world == null
+			? null
+			: QualificationRace.FromWorld(world, GameSession.SeasonYear, level);
 		int leaderWins = 0;
 		int leaderLosses = 0;
 		for (int i = 0; i < teams.Count; i++)
@@ -285,10 +295,22 @@ public static class DistrictHubData
 				Pct(wins, losses),
 				gb,
 				team.Streak(level),
-				i < 2));
+				i < 2,
+				RaceFor(race, team.Id, level, i)));
 		}
 
 		return rows;
+	}
+
+	private static RaceStatus RaceFor(Dictionary<string, RaceStatus>? race, string organizationId, TeamLevel level, int index)
+	{
+		if (race != null && race.TryGetValue(LeagueCatalog.TeamIdFor(organizationId, level), out RaceStatus status))
+		{
+			return status;
+		}
+
+		// Prototype fixture (no world): its records are a finished season.
+		return index < LeagueStandings.QualifiersPerDistrict ? RaceStatus.Clinched : RaceStatus.Eliminated;
 	}
 
 	public static List<HubTeam> PlayoffField(string districtId, TeamLevel level)
@@ -351,6 +373,7 @@ public static class DistrictHubData
 
 	private static HubTeam OverlayFromWorld(HubTeam team)
 	{
+		team = team with { IsUserTeam = team.Id == UserTeamId };
 		GameWorld? world = GameSession.Current?.World;
 		if (world == null)
 		{
@@ -771,7 +794,8 @@ public sealed record HubStandingRow(
 	string Pct,
 	string GamesBack,
 	string Streak,
-	bool Qualifies);
+	bool Qualifies,
+	RaceStatus Race = RaceStatus.Alive);
 
 public sealed record HubAward(
 	string Id,

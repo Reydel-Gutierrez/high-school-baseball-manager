@@ -34,7 +34,6 @@ public partial class StandingsPage : Control
 	private FontFile _bold = null!;
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
-	private Texture2D _cascadeLogo = null!;
 
 	private readonly Dictionary<string, Button> _stageButtons = new();
 	private readonly Dictionary<string, Button> _subButtons = new();
@@ -55,7 +54,6 @@ public partial class StandingsPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -157,7 +155,7 @@ public partial class StandingsPage : Control
 	{
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo));
+		header.AddChild(UserProgram.MakeHeaderMark());
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer
@@ -457,7 +455,13 @@ public partial class StandingsPage : Control
 
 		Color streakColor = row.Streak.StartsWith('W') ? Green : Urgent;
 		columns.AddChild(MakeFixed(row.Streak, 48, _bold, 13, streakColor, HorizontalAlignment.Center));
-		columns.AddChild(MakeFixed(row.Qualifies ? "REGIONAL" : "ELIMINATED", 88, _bold, 11, row.Qualifies ? Green : TextMuted, HorizontalAlignment.Right));
+		Color raceColor = row.Race switch
+		{
+			RaceStatus.Clinched => Green,
+			RaceStatus.Eliminated => TextMuted,
+			_ => Accent,
+		};
+		columns.AddChild(MakeFixed(row.Race.ToLabel(), 88, _bold, 11, raceColor, HorizontalAlignment.Right));
 
 		panel.AddChild(columns);
 		return panel;

@@ -19,7 +19,7 @@ public partial class RosterPage : Control
 	private const int RosterCapJv = 20;
 	private const int RosterCapVarsity = 20;
 	private const int CurrentSeasonYear = 2026;
-	private const string HomeOrganizationName = "Cascade Regional High School";
+	private static string HomeOrganizationName => UserProgram.Name;
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
@@ -74,6 +74,7 @@ public partial class RosterPage : Control
 		_circleMaterial = new ShaderMaterial { Shader = shader };
 
 		_session = GetNode<GameSession>("/root/GameSession");
+		SwapHeaderCrest();
 		_rowsHost = GetNode<VBoxContainer>("%RowsHost");
 		_detailHost = GetNode<VBoxContainer>("%PlayerDetailHost");
 		_playerList = GetNode<ScrollContainer>("%PlayerList");
@@ -1903,6 +1904,26 @@ public partial class RosterPage : Control
 			whip);
 	}
 
+	/// <summary>The scene ships a Cascade crest; replace it with the user's live program mark.</summary>
+	private void SwapHeaderCrest()
+	{
+		TextureRect? logo = GetNodeOrNull<TextureRect>("PageMargin/PageLayout/HeaderBar/Logo");
+		if (logo != null)
+		{
+			Node parent = logo.GetParent();
+			ProgramMark mark = UserProgram.MakeHeaderMark();
+			parent.AddChild(mark);
+			parent.MoveChild(mark, logo.GetIndex());
+			logo.QueueFree();
+		}
+
+		Label? subtitle = GetNodeOrNull<Label>("PageMargin/PageLayout/HeaderBar/HeaderText/Subtitle");
+		if (subtitle != null)
+		{
+			UserProgram.BindName(subtitle);
+		}
+	}
+
 	private static List<PlayerSeason> BuildSeasons(
 		string classYear,
 		SeasonHitting? currentHitting,
@@ -2166,7 +2187,7 @@ public partial class RosterPage : Control
 			player.Status,
 			player.PortraitPath,
 			DistrictHubData.UserTeamId,
-			"CASCADE",
+			UserProgram.ShortName.ToUpperInvariant(),
 			player.Squad,
 			seasons,
 			player.IsCaptain,

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 /// </summary>
 public static class CareerDesk
 {
-	public const string CoachName = DistrictHubData.UserCoachName;
+	public static string CoachName => DistrictHubData.UserCoachName;
 	public const string CoachInitials = "DH";
 	public const string Reputation = "Rising";
 	public const string CareerRecord = "53-25";

@@ -26,7 +26,6 @@ public partial class ScoutingPoolPage : Control
 	private FontFile _bold = null!;
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
-	private Texture2D _cascadeLogo = null!;
 
 	private Label _subtitle = null!;
 	private Label _countValue = null!;
@@ -40,7 +39,6 @@ public partial class ScoutingPoolPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -97,7 +95,7 @@ public partial class ScoutingPoolPage : Control
 	{
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo));
+		header.AddChild(UserProgram.MakeHeaderMark());
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer

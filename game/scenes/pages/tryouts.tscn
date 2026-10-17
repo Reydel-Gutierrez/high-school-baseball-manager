@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://c6xmtjgsi6p7p" path="res://assets/themes/MainTheme.tres" id="1_theme"]
 [ext_resource type="Script" uid="uid://c4tryoutpagecs01" path="res://scripts/ui/TryoutsPage.cs" id="2_script"]
-[ext_resource type="Texture2D" uid="uid://det0q337onbwi" path="res://assets/teams/01_Cascade_Regional_High_School/stadium.png" id="3_stadium"]
+[ext_resource type="Texture2D" uid="uid://cssbt6nbfxg68" path="res://assets/teams/01_Cascade_Regional_High_School/stadium.png" id="3_stadium"]
 
 [node name="TryoutsPage" type="Control"]
 layout_mode = 3

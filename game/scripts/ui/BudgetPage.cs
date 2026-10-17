@@ -18,8 +18,7 @@ public partial class BudgetPage : Control
 	private FontFile _bold = null!;
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
-	private Texture2D _fallbackLogo = null!;
-	private TextureRect _mark = null!;
+	private ProgramMark _mark = null!;
 	private Label _subtitle = null!;
 	private Label _availableValue = null!;
 	private Label _availableCopy = null!;
@@ -30,7 +29,6 @@ public partial class BudgetPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_fallbackLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -85,7 +83,7 @@ public partial class BudgetPage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 
-		_mark = TeamLogos.MakeHeaderMark(_fallbackLogo);
+		_mark = UserProgram.MakeHeaderMark();
 		header.AddChild(_mark);
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
@@ -146,7 +144,7 @@ public partial class BudgetPage : Control
 			return;
 		}
 
-		_mark.Texture = TeamLogos.Load(_session.Organization.Id) ?? _fallbackLogo;
+		_mark.Refresh();
 		_subtitle.Text = _session.Organization.Name.ToUpperInvariant();
 
 		ProgramFinanceSnapshot sheet = FinanceDesk.Current(_session);

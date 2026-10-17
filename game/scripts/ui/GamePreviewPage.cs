@@ -29,6 +29,7 @@ public partial class GamePreviewPage : Control
 	private TextureRect _homeMark = null!;
 	private TextureRect _awayMark = null!;
 	private VBoxContainer _body = null!;
+	private VBoxContainer _actionsHost = null!;
 	private CalendarContest? _game;
 	private bool _built;
 
@@ -111,12 +112,24 @@ public partial class GamePreviewPage : Control
 		margin.AddChild(shell);
 		shell.AddChild(BuildChrome());
 
+		// Matchup details scroll; the pregame actions stay pinned below so
+		// PLAY GAME is reachable at any window size.
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+		};
+		shell.AddChild(scroll);
 		_body = new VBoxContainer
 		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
 		_body.AddThemeConstantOverride("separation", 12);
-		shell.AddChild(_body);
+		scroll.AddChild(_body);
+
+		_actionsHost = new VBoxContainer();
+		shell.AddChild(_actionsHost);
 	}
 
 	private void Rebuild()
@@ -130,6 +143,11 @@ public partial class GamePreviewPage : Control
 		ApplyMarks(sheet);
 
 		foreach (Node child in _body.GetChildren())
+		{
+			child.QueueFree();
+		}
+
+		foreach (Node child in _actionsHost.GetChildren())
 		{
 			child.QueueFree();
 		}
@@ -150,7 +168,7 @@ public partial class GamePreviewPage : Control
 		layout.AddChild(BuildMatchup(sheet));
 		layout.AddChild(BuildPitchers(sheet));
 		layout.AddChild(BuildComparison(sheet));
-		layout.AddChild(BuildActions());
+		_actionsHost.AddChild(BuildActions());
 	}
 
 	private Control BuildChrome()

@@ -73,7 +73,7 @@ public static class SimulationDesk
 			items.Add(new SimulationRecapItem(
 				SimulationRecapKind.Game,
 				game.Date,
-				$"{mark} {us}\u2013{them} vs {opponent}",
+				$"{mark} {us}\u2013{them} {(userHome ? "vs" : "@")} {opponent}",
 				$"{level}  ·  {game.Date.ToString("MMM d")}"));
 		}
 

@@ -188,7 +188,7 @@ public partial class SimulationRecapOverlay : Control
 	{
 		Color color = item.Kind switch
 		{
-			SimulationRecapKind.Game => Green,
+			SimulationRecapKind.Game => item.Headline.StartsWith("L ", System.StringComparison.Ordinal) ? Urgent : Green,
 			SimulationRecapKind.Injury => Urgent,
 			SimulationRecapKind.Signing => Accent,
 			SimulationRecapKind.Rollover => Accent,

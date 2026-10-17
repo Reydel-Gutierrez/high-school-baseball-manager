@@ -32,7 +32,6 @@ public partial class RotationPage : Control
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
 	private ShaderMaterial _circleMaterial = null!;
-	private Texture2D _cascadeLogo = null!;
 
 	private Label _subtitle = null!;
 	private Label _hint = null!;
@@ -54,7 +53,6 @@ public partial class RotationPage : Control
 		{
 			Shader = GD.Load<Shader>("res://assets/ui/circle_crop.gdshader"),
 		};
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -127,7 +125,7 @@ public partial class RotationPage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo));
+		header.AddChild(UserProgram.MakeHeaderMark());
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer

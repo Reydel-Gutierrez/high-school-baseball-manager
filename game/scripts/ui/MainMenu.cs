@@ -832,7 +832,8 @@ public partial class MainMenu : Control
 		layout.AddChild(CreditLine("ENGINE", "Godot 4"));
 		layout.AddChild(CreditLine("TYPE", "Barlow Condensed"));
 		layout.AddChild(CreditLine("UI AUDIO", "Kenney"));
-		layout.AddChild(CreditLine("PROTOTYPE CAREER", $"{CareerDesk.CoachName} · Cascade Regional"));
+		layout.AddChild(CreditLine("CREATED BY", "Reydel Gutierrez"));
+		layout.AddChild(CreditLine("MUSIC & SFX", "See assets/audio/AUDIO_README.md"));
 		return layout;
 	}
 

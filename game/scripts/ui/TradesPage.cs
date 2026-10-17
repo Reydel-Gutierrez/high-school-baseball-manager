@@ -34,7 +34,6 @@ public partial class TradesPage : Control
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
 	private ShaderMaterial _circleMaterial = null!;
-	private Texture2D _cascadeLogo = null!;
 
 	private readonly List<TradePlayer> _programPlayers = BuildProgramPlayers();
 	private readonly List<PartnerProgram> _partners = BuildPartners();
@@ -67,7 +66,6 @@ public partial class TradesPage : Control
 		{
 			Shader = GD.Load<Shader>("res://assets/ui/circle_crop.gdshader"),
 		};
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		SeedPrototypeDeals();
@@ -153,7 +151,7 @@ public partial class TradesPage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo));
+		header.AddChild(UserProgram.MakeHeaderMark());
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer

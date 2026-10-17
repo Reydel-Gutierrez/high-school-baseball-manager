@@ -26,7 +26,6 @@ public partial class CalendarPage : Control
 	private FontFile _bold = null!;
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
-	private Texture2D _cascadeLogo = null!;
 	private Texture2D _iconCalendar = null!;
 	private Texture2D _iconStar = null!;
 	private Texture2D _iconPin = null!;
@@ -52,7 +51,6 @@ public partial class CalendarPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
 		_iconCalendar = UiSvg.Load("res://assets/ui/icon_calendar.svg");
 		_iconStar = UiSvg.Load("res://assets/ui/icon_schedule_star.svg");
 		_iconPin = UiSvg.Load("res://assets/ui/icon_pin.svg");
@@ -277,7 +275,7 @@ public partial class CalendarPage : Control
 	{
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo, 52));
+		header.AddChild(UserProgram.MakeHeaderMark(52));
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer

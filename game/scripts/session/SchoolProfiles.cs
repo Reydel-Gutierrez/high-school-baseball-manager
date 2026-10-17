@@ -99,7 +99,7 @@ public static class SchoolProfiles
 			losses,
 			place,
 			team.Streak(level),
-			FormFromStreak(team.Streak(level), seed),
+			RecentForm(team, level, seed),
 			program?.Profile.Reputation ?? reputation,
 			program?.Profile.Facilities ?? facilities,
 			board,
@@ -232,6 +232,43 @@ public static class SchoolProfiles
 		}
 
 		return wins + 3 < losses ? "Pressing" : "Uneasy";
+	}
+
+	/// <summary>Last five results, oldest first, from the live world when present.</summary>
+	private static string RecentForm(HubTeam team, TeamLevel level, int seed)
+	{
+		GameWorld? world = GameSession.Current?.World;
+		if (world == null)
+		{
+			return FormFromStreak(team.Streak(level), seed);
+		}
+
+		string teamId = LeagueCatalog.TeamIdFor(team.Id, level);
+		var played = new List<ScheduledGame>();
+		foreach (ScheduledGame game in world.Games)
+		{
+			if (game.SeasonYear == GameSession.SeasonYear
+				&& game.Status == GameStatus.Completed
+				&& !game.GameType.IsExhibition()
+				&& game.Involves(teamId))
+			{
+				played.Add(game);
+			}
+		}
+
+		if (played.Count == 0)
+		{
+			return "—";
+		}
+
+		played.Sort((a, b) => a.Date.CompareTo(b.Date));
+		var letters = new List<string>(5);
+		for (int i = Math.Max(0, played.Count - 5); i < played.Count; i++)
+		{
+			letters.Add(played[i].WinningTeamId == teamId ? "W" : "L");
+		}
+
+		return string.Join("  ", letters);
 	}
 
 	private static string FormFromStreak(string streak, int seed)

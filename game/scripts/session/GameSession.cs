@@ -151,7 +151,7 @@ public partial class GameSession : Node
 	public event Action? TryoutsChanged;
 	public event Action? RosterBoardChanged;
 
-	public string CoachName { get; private set; } = DistrictHubData.UserCoachName;
+	public string CoachName { get; private set; } = DistrictHubData.PrototypeCoachName;
 
 	public CoachProfile Coach { get; private set; } = PrototypeCoach();
 
@@ -527,7 +527,7 @@ public partial class GameSession : Node
 	public void ResetToPrototypeCareer()
 	{
 		ActiveSaveId = null;
-		CoachName = DistrictHubData.UserCoachName;
+		CoachName = DistrictHubData.PrototypeCoachName;
 		Coach = PrototypeCoach();
 		CoachReputationScore = 48;
 		CareerWins = 35;

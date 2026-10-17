@@ -8,6 +8,12 @@ public partial class DropdownMenuButton : MenuButton
 	[Export]
 	public float MaximumPopupWidth { get; set; } = 280.0f;
 
+	// Hover opens the menu; the click that usually follows would toggle it
+	// shut again. A close this soon after a hover-open, with the pointer still
+	// on the button, is that click — reopen instead.
+	private const ulong HoverClickGraceMs = 450;
+	private ulong _hoverOpenedAt;
+
 	public override void _Ready()
 	{
 		Flat = false;
@@ -23,6 +29,7 @@ public partial class DropdownMenuButton : MenuButton
 		AddThemeColorOverride("font_hover_pressed_color", Colors.White);
 
 		popup.AboutToPopup += ConfigurePopup;
+		popup.PopupHide += OnPopupHidden;
 		ConfigurePopup();
 	}
 
@@ -48,6 +55,32 @@ public partial class DropdownMenuButton : MenuButton
 		PopupMenu popup = GetPopup();
 
 		if (!Disabled && !popup.Visible)
+		{
+			ConfigurePopup();
+			ShowPopup();
+			_hoverOpenedAt = Time.GetTicksMsec();
+		}
+	}
+
+	private void OnPopupHidden()
+	{
+		if (_hoverOpenedAt == 0)
+		{
+			return;
+		}
+
+		ulong elapsed = Time.GetTicksMsec() - _hoverOpenedAt;
+		_hoverOpenedAt = 0;
+		bool pointerOnButton = GetGlobalRect().HasPoint(GetGlobalMousePosition());
+		if (elapsed <= HoverClickGraceMs && pointerOnButton && !Disabled)
+		{
+			CallDeferred(MethodName.ReopenAfterClick);
+		}
+	}
+
+	private void ReopenAfterClick()
+	{
+		if (!GetPopup().Visible)
 		{
 			ConfigurePopup();
 			ShowPopup();
