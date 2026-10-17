@@ -16,6 +16,7 @@ public static class MessagesDesk
 		CollectPendingGates(items, session);
 		CollectGameDay(items, session);
 		CollectRecruiting(items, session);
+		CollectRecentDecisions(items, session);
 		CollectScouting(items, session);
 		CollectBoard(items, session);
 		CollectPlayers(items, session);
@@ -132,6 +133,21 @@ public static class MessagesDesk
 				InboxDestination.HallOfFame,
 				"OPEN INDUCTION",
 				playerName: inductee?.PlayerName);
+		}
+
+		if (SeasonRolloverDesk.PendingOn(session))
+		{
+			Add(
+				items,
+				session,
+				"gate-rollover",
+				InboxChannel.Career,
+				2,
+				"The baseball year is ready to turn",
+				"Graduates, awards, and the final record before January 5.",
+				"Walk through last season's class, honors, and career developments before the new schedule posts.",
+				InboxDestination.SeasonRollover,
+				"OPEN YEAR IN REVIEW");
 		}
 	}
 
@@ -302,6 +318,70 @@ public static class MessagesDesk
 				InboxDestination.IncomingClass,
 				"VIEW INCOMING CLASS");
 		}
+	}
+
+	private static void CollectRecentDecisions(List<InboxMessage> items, GameSession session)
+	{
+		DateOnly cutoff = session.CurrentDate.AddDays(-3);
+		string orgId = session.CatalogOrganizationId;
+		int signings = 0;
+		foreach (PlayerTransaction posted in session.Transactions)
+		{
+			if (posted.Date < cutoff
+				|| (!string.IsNullOrEmpty(posted.OrganizationId)
+					&& !string.Equals(posted.OrganizationId, orgId, StringComparison.Ordinal)))
+			{
+				continue;
+			}
+
+			if (posted.Kind is PlayerTransactionKind.Tryout or PlayerTransactionKind.OpenPool)
+			{
+				signings++;
+				Add(
+					items,
+					session,
+					$"decision-{posted.DedupKey}",
+					InboxChannel.Player,
+					8,
+					posted.Headline,
+					posted.Detail,
+					$"{posted.Headline} {posted.Detail}. The incoming class and roster both move.",
+					InboxDestination.IncomingClass,
+					"VIEW INCOMING CLASS");
+			}
+			else if (posted.Kind == PlayerTransactionKind.Release)
+			{
+				Add(
+					items,
+					session,
+					$"decision-{posted.DedupKey}",
+					InboxChannel.Board,
+					9,
+					posted.Headline,
+					posted.Detail,
+					posted.Headline,
+					InboxDestination.Transactions,
+					"VIEW TRANSACTIONS");
+			}
+		}
+
+		int pending = session.RecruitingMarket.PendingCount(orgId);
+		if (pending > 0 && !SeasonCalendar.SigningWeek(GameSession.SeasonYear).OccursOn(session.CurrentDate))
+		{
+			Add(
+				items,
+				session,
+				"decision-pending-offers",
+				InboxChannel.Urgent,
+				7,
+				$"{pending} offer{(pending == 1 ? "" : "s")} waiting on a player decision",
+				"Commitments can land on any recruiting day.",
+				"Players still holding your paperwork will answer before the deadline. Check the board if you need to withdraw or add a name.",
+				InboxDestination.Tryouts,
+				"OPEN RECRUITING");
+		}
+
+		_ = signings;
 	}
 
 	private static void CollectScouting(List<InboxMessage> items, GameSession session)
@@ -716,6 +796,8 @@ public static class MessagesDesk
 		InboxDestination.Lineups => "OPEN LINEUPS",
 		InboxDestination.Budget => "OPEN BUDGET",
 		InboxDestination.PlayerProfile => "OPEN PROFILE",
+		InboxDestination.Transactions => "VIEW TRANSACTIONS",
+		InboxDestination.SeasonRollover => "OPEN YEAR IN REVIEW",
 		_ => "OPEN",
 	};
 
@@ -821,6 +903,8 @@ public enum InboxDestination
 	Lineups,
 	Budget,
 	PlayerProfile,
+	Transactions,
+	SeasonRollover,
 }
 
 public sealed record InboxMessage(

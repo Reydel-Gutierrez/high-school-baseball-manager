@@ -12,7 +12,9 @@ public partial class TransactionsPage : Control
 	private const string FilterTrades = "trade";
 	private const string FilterOpenPool = "open_pool";
 	private const string FilterTryouts = "tryout";
+	private const string FilterPromotions = "promote";
 	private const string FilterReleases = "release";
+	private const string FilterGraduates = "graduate";
 	private const int CurrentSeasonYear = 2026;
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
@@ -27,6 +29,8 @@ public partial class TransactionsPage : Control
 	private static readonly Color RowEven = new(0.055f, 0.062f, 0.078f, 0.55f);
 	private static readonly Color RowOdd = new(0.070588f, 0.078431f, 0.094118f, 0.35f);
 	private static readonly Color OpenPoolBlue = new(0.45f, 0.72f, 0.88f, 1f);
+	private static readonly Color PromoteGold = new(0.95f, 0.82f, 0.35f, 1f);
+	private static readonly Color LakesBlue = new(0.45f, 0.72f, 0.88f, 1f);
 
 	private GameSession _session = null!;
 	private FontFile _bold = null!;
@@ -148,10 +152,12 @@ public partial class TransactionsPage : Control
 		var row = new HBoxContainer();
 		row.AddThemeConstantOverride("separation", 4);
 		AddFilter(row, FilterAll, "ALL");
-		AddFilter(row, FilterTrades, "TRADES");
-		AddFilter(row, FilterOpenPool, "OPEN POOL");
-		AddFilter(row, FilterTryouts, "TRYOUTS");
+		AddFilter(row, FilterTryouts, "SIGNINGS");
+		AddFilter(row, FilterGraduates, "GRADUATES");
+		AddFilter(row, FilterPromotions, "PROMOTIONS");
 		AddFilter(row, FilterReleases, "RELEASES");
+		AddFilter(row, FilterOpenPool, "OPEN POOL");
+		AddFilter(row, FilterTrades, "TRADES");
 		return row;
 	}
 
@@ -389,6 +395,8 @@ public partial class TransactionsPage : Control
 		FilterTrades => PlayerTransactionKind.Trade,
 		FilterOpenPool => PlayerTransactionKind.OpenPool,
 		FilterTryouts => PlayerTransactionKind.Tryout,
+		FilterPromotions => PlayerTransactionKind.Promotion,
+		FilterGraduates => PlayerTransactionKind.Graduation,
 		_ => PlayerTransactionKind.Release,
 	};
 
@@ -397,7 +405,10 @@ public partial class TransactionsPage : Control
 		PlayerTransactionKind.Trade => "TRADE",
 		PlayerTransactionKind.OpenPool => "OPEN POOL",
 		PlayerTransactionKind.Release => "RELEASE",
-		_ => "TRYOUT",
+		PlayerTransactionKind.Promotion => "PROMOTE",
+		PlayerTransactionKind.Graduation => "GRADUATE",
+		PlayerTransactionKind.Injury => "INJURY",
+		_ => "SIGNING",
 	};
 
 	private static Color TypeColor(PlayerTransactionKind kind) => kind switch
@@ -405,6 +416,8 @@ public partial class TransactionsPage : Control
 		PlayerTransactionKind.Trade => Accent,
 		PlayerTransactionKind.OpenPool => OpenPoolBlue,
 		PlayerTransactionKind.Release => Urgent,
+		PlayerTransactionKind.Promotion => PromoteGold,
+		PlayerTransactionKind.Graduation => LakesBlue,
 		_ => Green,
 	};
 

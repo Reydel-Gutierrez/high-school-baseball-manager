@@ -361,6 +361,17 @@ public partial class SchoolProfileCard : PanelContainer
 			content.AddChild(BuildHistoryRow(season, index % 2 == 0));
 			index++;
 		}
+
+		if (_snapshot.NotableAlumni.Count > 0)
+		{
+			content.AddChild(MakeSection("NOTABLE ALUMNI"));
+			int alumIndex = 0;
+			foreach (SchoolAlum alum in _snapshot.NotableAlumni)
+			{
+				content.AddChild(BuildAlumRow(alum, alumIndex % 2 == 0));
+				alumIndex++;
+			}
+		}
 	}
 
 	private Control BuildHistoryHeader()
@@ -392,6 +403,24 @@ public partial class SchoolProfileCard : PanelContainer
 		var postseason = MakeText(season.Postseason, _medium, 13, PostseasonColor(season.Postseason), HorizontalAlignment.Left);
 		postseason.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		columns.AddChild(postseason);
+		return row;
+	}
+
+	private Control BuildAlumRow(SchoolAlum alum, bool even)
+	{
+		var row = new PanelContainer();
+		row.AddThemeStyleboxOverride("panel", MakeRow(even));
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 6);
+		row.AddChild(columns);
+		columns.AddChild(MakeFixed(alum.GraduatedYear.ToString(), 44, _bold, 13, TextPrimary, HorizontalAlignment.Left));
+		var name = MakeText(alum.Name, _semibold, 13, TextPrimary, HorizontalAlignment.Left);
+		name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		columns.AddChild(name);
+		columns.AddChild(MakeFixed(alum.Position, 36, _semibold, 12, TextMuted, HorizontalAlignment.Center));
+		string dest = string.IsNullOrWhiteSpace(alum.Destination) ? alum.Overall.ToString() : alum.Destination;
+		columns.AddChild(MakeFixed(dest, 90, _medium, 12, TextMuted, HorizontalAlignment.Right));
+		PlayerLinks.MakeClickable(row, _snapshot.TeamId, alum.Name);
 		return row;
 	}
 

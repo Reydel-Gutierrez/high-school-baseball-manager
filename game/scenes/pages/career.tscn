@@ -16,7 +16,7 @@ theme = ExtResource("1_theme")
 script = ExtResource("2_script")
 
 [node name="BackgroundImage" type="TextureRect" parent="."]
-modulate = Color(0.42, 0.3, 0.18, 0.5)
+modulate = Color(0.38, 0.26, 0.14, 0.55)
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

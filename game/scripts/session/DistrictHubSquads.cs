@@ -80,6 +80,12 @@ public static class DistrictHubSquads
 
 	public static List<HubSquadPlayer> Squad(string teamId, TeamLevel level)
 	{
+		GameWorld? world = GameSession.Current?.World;
+		if (world != null)
+		{
+			return FromWorld(world, teamId, level);
+		}
+
 		string key = $"{teamId}:{level}";
 		if (SquadCache.TryGetValue(key, out List<HubSquadPlayer>? cached))
 		{
@@ -352,6 +358,76 @@ public static class DistrictHubSquads
 				PriorOrg(team, year, playerSeed)));
 			slot++;
 		}
+	}
+
+	private static List<HubSquadPlayer> FromWorld(GameWorld world, string organizationId, TeamLevel level)
+	{
+		HubTeam team = DistrictHubData.GetTeam(organizationId);
+		string teamId = LeagueCatalog.TeamIdFor(organizationId, level);
+		int year = GameSession.SeasonYear;
+		var list = new List<HubSquadPlayer>();
+		foreach (Player player in world.Players)
+		{
+			if (player.TeamId != teamId || player.Alumni)
+			{
+				continue;
+			}
+
+			List<HubPlayerSeason> seasons = PlayerProfiles.SeasonsFromWorld(player, world);
+			bool hasCurrent = false;
+			foreach (HubPlayerSeason season in seasons)
+			{
+				if (season.Year == year)
+				{
+					hasCurrent = true;
+					break;
+				}
+			}
+
+			if (!hasCurrent)
+			{
+				if (player.IsPitcher)
+				{
+					seasons.Add(new HubPlayerSeason(
+						year,
+						team.ShortName,
+						null,
+						new HubSeasonPitching(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
+				}
+				else
+				{
+					seasons.Add(new HubPlayerSeason(
+						year,
+						team.ShortName,
+						new HubSeasonHitting(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+						null));
+				}
+			}
+
+			list.Add(new HubSquadPlayer(
+				player.FirstName,
+				player.LastName,
+				player.JerseyNumber,
+				player.DisplayPosition,
+				player.Grade.ToAbbrev(),
+				$"{player.Bats.ToAbbrev()}/{player.Throws.ToAbbrev()}",
+				player.Overall,
+				player.Ratings.Contact,
+				player.Ratings.Power,
+				player.Ratings.Speed,
+				player.Ratings.ArmStrength,
+				player.Ratings.Fielding,
+				player.Injury != null && player.Injury.ActiveOn(GameSession.Current!.CurrentDate)
+					? player.Injury.StatusLabel
+					: "Healthy",
+				null,
+				team.Id,
+				team.ShortName,
+				level.ToSquadKey(),
+				seasons));
+		}
+
+		return list;
 	}
 
 	private static HubSquadPlayer MakePlayer(

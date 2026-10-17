@@ -169,17 +169,20 @@ public static class CareerDesk
 	}
 
 	public static CareerMail ConfirmationFor(CareerJob job) =>
+		ConfirmationFor(job.School, job.Contract);
+
+	public static CareerMail ConfirmationFor(string school, string contract) =>
 		new(
-			$"mail-applied-{job.Id}",
-			job.School + " Athletic Office",
+			$"mail-applied-{school}",
+			school + " Athletic Office",
 			"Application desk",
-			$"We have your name for the {job.School} seat",
+			$"We have your name for the {school} seat",
 			"Application received. They will be in touch after Friday.",
-			$"Coach Hart,\n\nThis confirms we have your application for the {job.School} manager's seat ({job.Contract.ToLowerInvariant()}).\n\nThe board will not ask you to leave Cascade in the middle of a district race. If they want a conversation, it will be after Friday's set — and it will stay confidential until you say otherwise.\n\nThank you for trusting us with the inquiry.\n\n{job.School} Athletic Office",
+			$"Coach,\n\nThis confirms we have your application for the {school} manager's seat{(string.IsNullOrWhiteSpace(contract) ? "" : $" ({contract.ToLowerInvariant()})")}.\n\nThe board will not ask you to leave in the middle of a district race. If they want a conversation, it will stay confidential until you say otherwise.\n\nThank you for trusting us with the inquiry.\n\n{school} Athletic Office",
 			"APR 24",
 			true,
 			CareerMailKind.Confirmation,
-			job.Id);
+			null);
 }
 
 public enum CareerMailKind

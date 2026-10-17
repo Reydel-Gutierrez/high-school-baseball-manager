@@ -1,9 +1,10 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// District Hub standings. District uses one table at a time with district
+/// League standings. District uses one table at a time with district
 /// pills. Regional is one East or West bracket. State is only the title game.
 /// </summary>
 public partial class StandingsPage : Control
@@ -43,6 +44,8 @@ public partial class StandingsPage : Control
 	private Label _countLabel = null!;
 	private HBoxContainer _subFilterRow = null!;
 	private VBoxContainer _bodyHost = null!;
+	private SchoolProfileCard _schoolCard = null!;
+	private string _selectedSchoolId = DistrictHubData.UserTeamId;
 	private string _activeView = ViewDistrict;
 	private string _activeDistrict = DistrictHubData.UserDistrictId;
 	private string _activeRegional = RegionalEast;
@@ -57,6 +60,7 @@ public partial class StandingsPage : Control
 
 		BuildPage();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += Refresh;
 		Refresh();
 	}
 
@@ -65,10 +69,43 @@ public partial class StandingsPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= Refresh;
 		}
 	}
 
 	private void OnActiveTeamChanged(TeamIdentity _) => Refresh();
+
+	public void SelectSchool(string teamId)
+	{
+		_selectedSchoolId = SchoolProfiles.NormalizeId(teamId);
+		HubTeam team = DistrictHubData.GetTeam(_selectedSchoolId);
+		_activeDistrict = team.DistrictId;
+		_activeView = ViewDistrict;
+		Refresh();
+	}
+
+	public void ShowDistrictTable(string districtId)
+	{
+		_activeDistrict = districtId;
+		_activeView = ViewDistrict;
+		Refresh();
+	}
+
+	public void ShowLeagueTable()
+	{
+		_activeView = ViewDistrict;
+		Refresh();
+	}
+
+	public void ShowPlayoffBracket()
+	{
+		HubDistrict district = DistrictHubData.GetDistrict(DistrictHubData.GetTeam(_selectedSchoolId).DistrictId);
+		_activeRegional = string.Equals(district.Region, "West", System.StringComparison.OrdinalIgnoreCase)
+			? RegionalWest
+			: RegionalEast;
+		_activeView = ViewRegional;
+		Refresh();
+	}
 
 	private void BuildPage()
 	{
@@ -91,12 +128,29 @@ public partial class StandingsPage : Control
 		_subFilterRow.AddThemeConstantOverride("separation", 4);
 		layout.AddChild(_subFilterRow);
 
-		_bodyHost = new VBoxContainer
+		var bodyRow = new HBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
-		layout.AddChild(_bodyHost);
+		bodyRow.AddThemeConstantOverride("separation", 8);
+		layout.AddChild(bodyRow);
+
+		_bodyHost = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 1.55f,
+		};
+		bodyRow.AddChild(_bodyHost);
+
+		_schoolCard = new SchoolProfileCard
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 1f,
+		};
+		bodyRow.AddChild(_schoolCard);
 	}
 
 	private Control BuildHeader()
@@ -112,7 +166,7 @@ public partial class StandingsPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"DISTRICT HUB  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
 		identity.AddChild(MakeText("STANDINGS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
@@ -156,6 +210,11 @@ public partial class StandingsPage : Control
 
 	private void Refresh()
 	{
+		if (_bodyHost == null || _session == null)
+		{
+			return;
+		}
+
 		ApplyHeaderCopy();
 		StylePills(_stageButtons, _activeView);
 		RebuildSubFilters();
@@ -259,6 +318,7 @@ public partial class StandingsPage : Control
 		body.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		body.SizeFlagsVertical = SizeFlags.ExpandFill;
 		_bodyHost.AddChild(body);
+		_schoolCard.Bind(_selectedSchoolId, _session.ActiveTeam.Level);
 	}
 
 	private Control BuildDistrictBody()
@@ -368,18 +428,20 @@ public partial class StandingsPage : Control
 	private Control BuildStandingRow(HubStandingRow row, bool even)
 	{
 		bool user = row.Team.IsUserTeam;
+		bool selected = row.Team.Id == _selectedSchoolId;
 		var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = user ? UserRow : even ? RowEven : RowOdd,
-			BorderColor = user ? Accent : new Color(0.18f, 0.20f, 0.24f, 1f),
-			BorderWidthLeft = user ? 2 : 0,
+			BgColor = selected || user ? UserRow : even ? RowEven : RowOdd,
+			BorderColor = selected || user ? Accent : new Color(0.18f, 0.20f, 0.24f, 1f),
+			BorderWidthLeft = selected || user ? 2 : 0,
 			BorderWidthBottom = 1,
 			ContentMarginLeft = 12,
 			ContentMarginTop = 8,
 			ContentMarginRight = 12,
 			ContentMarginBottom = 8,
 		});
+		SchoolLinks.MakeClickable(panel, row.Team.Id);
 
 		var columns = new HBoxContainer();
 		columns.AddThemeConstantOverride("separation", 10);
@@ -418,6 +480,12 @@ public partial class StandingsPage : Control
 
 	private Control BuildRegionalBody()
 	{
+		PostseasonState? live = LiveBracket();
+		if (live != null)
+		{
+			return BuildLiveRegional(live);
+		}
+
 		bool east = _activeRegional == RegionalEast;
 		TeamLevel level = _session.ActiveTeam.Level;
 		List<HubTeam> leftDistrict = DistrictHubData.PlayoffField(
@@ -498,6 +566,12 @@ public partial class StandingsPage : Control
 
 	private Control BuildStateBody()
 	{
+		PostseasonState? live = LiveBracket();
+		if (live != null)
+		{
+			return BuildLiveState(live);
+		}
+
 		var card = new PanelContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -533,6 +607,200 @@ public partial class StandingsPage : Control
 		layout.AddChild(BuildChampionSlot("STATE CHAMPION", "TBD", "One game. Winner takes the state."));
 		return card;
 	}
+
+	private PostseasonState? LiveBracket()
+	{
+		PostseasonState? bracket = _session.World?.Postseason;
+		return bracket != null && bracket.Qualifiers.Count > 0 ? bracket : null;
+	}
+
+	private Control BuildLiveRegional(PostseasonState bracket)
+	{
+		bool east = _activeRegional == RegionalEast;
+		string region = east ? "East" : "West";
+		int year = GameSession.SeasonYear;
+		string title = east ? "EAST REGIONAL" : "WEST REGIONAL";
+		string matchup = east ? "Great Lakes District vs North Shore District" : "Capital Valley District vs Iron Range District";
+
+		var card = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(12));
+
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 10);
+		card.AddChild(layout);
+
+		layout.AddChild(MakeText(title, _bold, 18, TextPrimary, HorizontalAlignment.Left));
+		layout.AddChild(MakeText(matchup.ToUpperInvariant() + "  ·  BEST OF THREE", _medium, 12, TextMuted, HorizontalAlignment.Left));
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
+
+		var bracketRow = new HBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		bracketRow.AddThemeConstantOverride("separation", 16);
+		layout.AddChild(bracketRow);
+
+		var round1 = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 1.2f,
+		};
+		round1.AddThemeConstantOverride("separation", 12);
+		round1.AddChild(MakeText("ROUND 1  ·  SEMIFINALS", _semibold, 11, Accent, HorizontalAlignment.Left));
+		IReadOnlyList<PostseasonSeries> semis = bracket.SeriesIn(PostseasonRound.RegionalSemifinal, region);
+		if (semis.Count == 0)
+		{
+			round1.AddChild(BuildTbdMatchCard($"{FormatDate(SeasonCalendar.RegionalSemis(year).Start)}  ·  GAME 1", "DISTRICT 1", "DISTRICT 2"));
+			round1.AddChild(BuildTbdMatchCard($"{FormatDate(SeasonCalendar.RegionalSemis(year).Start)}  ·  GAME 2", "DISTRICT 1", "DISTRICT 2"));
+		}
+		else
+		{
+			foreach (PostseasonSeries series in semis)
+			{
+				round1.AddChild(BuildSeriesCard(bracket, series, SeasonCalendar.RegionalSemis(year).Start));
+			}
+		}
+
+		bracketRow.AddChild(round1);
+		bracketRow.AddChild(BuildConnectorColumn());
+
+		var finalCol = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			Alignment = BoxContainer.AlignmentMode.Center,
+		};
+		finalCol.AddThemeConstantOverride("separation", 12);
+		finalCol.AddChild(MakeText("REGIONAL FINAL", _semibold, 11, Accent, HorizontalAlignment.Left));
+		IReadOnlyList<PostseasonSeries> finals = bracket.SeriesIn(PostseasonRound.RegionalFinal, region);
+		if (finals.Count > 0)
+		{
+			finalCol.AddChild(BuildSeriesCard(bracket, finals[0], SeasonCalendar.RegionalFinal(year).Start));
+		}
+		else
+		{
+			finalCol.AddChild(BuildTbdMatchCard($"{FormatDate(SeasonCalendar.RegionalFinal(year).Start)}  ·  WINNER GAME 1 vs WINNER GAME 2", "GAME 1 WINNER", "GAME 2 WINNER"));
+		}
+
+		string champId = east ? bracket.EastChampionTeamId : bracket.WestChampionTeamId;
+		string champName = string.IsNullOrEmpty(champId) ? "TBD" : HubFor(champId).ShortName.ToUpperInvariant();
+		finalCol.AddChild(BuildChampionSlot(east ? "EAST CHAMPION" : "WEST CHAMPION", champName, "Advances to the state title"));
+		bracketRow.AddChild(finalCol);
+		return card;
+	}
+
+	private Control BuildLiveState(PostseasonState bracket)
+	{
+		int year = GameSession.SeasonYear;
+		string eastName = string.IsNullOrEmpty(bracket.EastChampionTeamId)
+			? "EAST CHAMPION"
+			: HubFor(bracket.EastChampionTeamId).ShortName.ToUpperInvariant();
+		string westName = string.IsNullOrEmpty(bracket.WestChampionTeamId)
+			? "WEST CHAMPION"
+			: HubFor(bracket.WestChampionTeamId).ShortName.ToUpperInvariant();
+		string stateName = string.IsNullOrEmpty(bracket.StateChampionTeamId)
+			? "TBD"
+			: HubFor(bracket.StateChampionTeamId).ShortName.ToUpperInvariant();
+
+		var card = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(16));
+
+		var layout = new VBoxContainer
+		{
+			Alignment = BoxContainer.AlignmentMode.Center,
+		};
+		layout.AddThemeConstantOverride("separation", 14);
+		card.AddChild(layout);
+
+		layout.AddChild(MakeText("STATE CHAMPIONSHIP", _bold, 22, TextPrimary, HorizontalAlignment.Center));
+		layout.AddChild(MakeText("THE TWO REGIONAL CHAMPIONS MEET FOR THE TITLE", _medium, 13, TextMuted, HorizontalAlignment.Center));
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
+
+		var match = new HBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			Alignment = BoxContainer.AlignmentMode.Center,
+		};
+		match.AddThemeConstantOverride("separation", 16);
+		layout.AddChild(match);
+
+		match.AddChild(BuildChampionEntry("EAST CHAMPION", eastName, "GREAT LAKES vs NORTH SHORE"));
+		match.AddChild(MakeText("VS", _bold, 20, Accent, HorizontalAlignment.Center));
+		match.AddChild(BuildChampionEntry("WEST CHAMPION", westName, "CAPITAL VALLEY vs IRON RANGE"));
+
+		IReadOnlyList<PostseasonSeries> state = bracket.SeriesIn(PostseasonRound.StateChampionship);
+		if (state.Count > 0)
+		{
+			layout.AddChild(BuildSeriesCard(bracket, state[0], SeasonCalendar.StateChampionship(year).Start));
+		}
+		else
+		{
+			layout.AddChild(BuildTbdMatchCard($"{FormatDate(SeasonCalendar.StateChampionship(year).Start)}  ·  STATE TITLE", eastName, westName));
+		}
+
+		layout.AddChild(BuildChampionSlot("STATE CHAMPION", stateName, "Best of three. Winner takes the state."));
+		return card;
+	}
+
+	private Control BuildSeriesCard(PostseasonState bracket, PostseasonSeries series, DateOnly windowStart)
+	{
+		HubTeam home = HubFor(series.HomeTeamId);
+		HubTeam away = HubFor(series.AwayTeamId);
+		PostseasonSeed? homeSeed = bracket.SeedFor(series.HomeTeamId);
+		PostseasonSeed? awaySeed = bracket.SeedFor(series.AwayTeamId);
+		string homeTag = SeedTag(homeSeed, "H");
+		string awayTag = SeedTag(awaySeed, "A");
+		string label = series.IsComplete
+			? $"FINAL  {series.HomeWins}\u2013{series.AwayWins}"
+			: series.GamesPlayed > 0
+				? $"SERIES  {series.HomeWins}\u2013{series.AwayWins}"
+				: $"{FormatDate(windowStart)}  ·  BEST OF 3";
+		return BuildMatchCard(label, home, homeTag, away, awayTag);
+	}
+
+	private HubTeam HubFor(string teamId)
+	{
+		string orgId = teamId;
+		GameWorld? world = _session.World;
+		if (world != null)
+		{
+			foreach (TeamIdentity team in world.Teams)
+			{
+				if (team.Id == teamId)
+				{
+					orgId = team.OrganizationId;
+					break;
+				}
+			}
+		}
+
+		return DistrictHubData.GetTeam(orgId);
+	}
+
+	private static string SeedTag(PostseasonSeed? seed, string fallback)
+	{
+		if (seed == null)
+		{
+			return fallback;
+		}
+
+		HubDistrict district = DistrictHubData.GetDistrict(seed.DistrictId);
+		return $"{district.Abbreviation} {seed.Seed}";
+	}
+
+	private static string FormatDate(DateOnly date) =>
+		date.ToString("MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
 
 	private Control BuildChampionEntry(string title, string detail, string path)
 	{
@@ -593,6 +861,7 @@ public partial class StandingsPage : Control
 		row.AddChild(MakeTag(seed, team.IsUserTeam ? Accent : Hairline, team.IsUserTeam ? TextOnAccent : TextMuted));
 		row.AddChild(BuildTeamIdentity(team.Id, team.Name.ToUpperInvariant(), team.IsUserTeam, 16));
 		row.AddChild(MakeText(team.Record(_session.ActiveTeam.Level), _semibold, 14, TextMuted, HorizontalAlignment.Right));
+		SchoolLinks.MakeClickable(row, team.Id);
 		return row;
 	}
 

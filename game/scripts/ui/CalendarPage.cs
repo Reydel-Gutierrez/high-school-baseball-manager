@@ -67,6 +67,7 @@ public partial class CalendarPage : Control
 		_boxScoreOverlay = new BoxScoreOverlay();
 		AddChild(_boxScoreOverlay);
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += OnCareerChanged;
 		ApplyActiveTeam();
 		RebuildMonth();
 		BindDetail();
@@ -77,7 +78,15 @@ public partial class CalendarPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= OnCareerChanged;
 		}
+	}
+
+	private void OnCareerChanged()
+	{
+		ApplyActiveTeam();
+		RebuildMonth();
+		BindDetail();
 	}
 
 	public void FocusCurrentDate()
@@ -870,6 +879,14 @@ public partial class CalendarPage : Control
 			box.AddChild(MakeEventLink("VIEW HALL OF FAME", OpenHallOfFame));
 		}
 
+		if (item.Id is "new-year" or "winter-break-open")
+		{
+			if (SeasonRolloverDesk.PendingOn(_session))
+			{
+				box.AddChild(MakeEventLink("VIEW YEAR IN REVIEW", OpenSeasonRollover));
+			}
+		}
+
 		if (item.Id == "coaching-carousel")
 		{
 			if (JobOfferDesk.HasPending(_session))
@@ -942,6 +959,14 @@ public partial class CalendarPage : Control
 		if (GetTree().CurrentScene is AppNavigator navigator)
 		{
 			navigator.ShowSeasonReview();
+		}
+	}
+
+	private void OpenSeasonRollover()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSeasonRollover();
 		}
 	}
 

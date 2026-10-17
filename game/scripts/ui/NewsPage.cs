@@ -1,10 +1,12 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// District Hub news desk: prototype notes on the district race, award
-/// watches, and the projected regional field.
+/// League news desk: condition-triggered wire copy from the live
+/// season, not a static briefing.
 /// </summary>
 public partial class NewsPage : Control
 {
@@ -29,6 +31,7 @@ public partial class NewsPage : Control
 	private VBoxContainer _featureHost = null!;
 	private VBoxContainer _listHost = null!;
 	private int _selectedIndex;
+	private List<NewsStory> _stories = new();
 
 	public override void _Ready()
 	{
@@ -40,8 +43,10 @@ public partial class NewsPage : Control
 
 		BuildPage();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += OnCareerChanged;
+		VisibilityChanged += OnVisibilityChanged;
 		ApplyActiveTeam();
-		SelectStory(0);
+		BindStories();
 	}
 
 	public override void _ExitTree()
@@ -49,6 +54,27 @@ public partial class NewsPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= OnCareerChanged;
+		}
+
+		VisibilityChanged -= OnVisibilityChanged;
+	}
+
+	private void OnVisibilityChanged()
+	{
+		if (IsVisibleInTree())
+		{
+			BindStories();
+			_session.AcknowledgeNews();
+		}
+	}
+
+	private void OnCareerChanged()
+	{
+		ApplyActiveTeam();
+		if (IsVisibleInTree())
+		{
+			BindStories();
 		}
 	}
 
@@ -57,9 +83,10 @@ public partial class NewsPage : Control
 	private void ApplyActiveTeam()
 	{
 		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
+		string desk = DistrictHubData.GetDistrict(DistrictHubData.UserDistrictId).Name.ToUpperInvariant();
 		_subtitle.Text = varsity
-			? "VARSITY  ·  GREAT LAKES DESK  ·  THURSDAY, APRIL 24"
-			: "JV  ·  GREAT LAKES DESK  ·  THURSDAY, APRIL 24";
+			? $"VARSITY  ·  {desk} DESK  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
+			: $"JV  ·  {desk} DESK  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
 	}
 
 	private void BuildPage()
@@ -136,8 +163,6 @@ public partial class NewsPage : Control
 		_listHost.AddThemeConstantOverride("separation", 0);
 		scroll.AddChild(_listHost);
 		body.AddChild(listCard);
-
-		RebuildList();
 	}
 
 	private Control BuildHeader()
@@ -153,12 +178,32 @@ public partial class NewsPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"DISTRICT HUB  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
 		identity.AddChild(MakeText("NEWS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DESK", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
 		return header;
+	}
+
+	private void BindStories()
+	{
+		_session.EnsureNews();
+		_stories = new List<NewsStory>(NewsDesk.For(_session));
+		if (_selectedIndex >= _stories.Count)
+		{
+			_selectedIndex = 0;
+		}
+
+		RebuildList();
+		if (_stories.Count > 0)
+		{
+			SelectStory(_selectedIndex);
+		}
+		else
+		{
+			BindEmpty();
+		}
 	}
 
 	private void RebuildList()
@@ -169,15 +214,14 @@ public partial class NewsPage : Control
 			child.QueueFree();
 		}
 
-		IReadOnlyList<HubNewsItem> items = DistrictHubData.News;
-		for (int i = 0; i < items.Count; i++)
+		for (int i = 0; i < _stories.Count; i++)
 		{
 			int index = i;
-			_listHost.AddChild(BuildListRow(items[i], i, index == _selectedIndex));
+			_listHost.AddChild(BuildListRow(_stories[i], i, index == _selectedIndex));
 		}
 	}
 
-	private Control BuildListRow(HubNewsItem item, int index, bool selected)
+	private Control BuildListRow(NewsStory item, int index, bool selected)
 	{
 		var row = new PanelContainer
 		{
@@ -204,7 +248,7 @@ public partial class NewsPage : Control
 		var columns = new HBoxContainer();
 		columns.AddThemeConstantOverride("separation", 10);
 
-		var date = MakeText(item.Date, _semibold, 11, TextMuted, HorizontalAlignment.Left);
+		var date = MakeText(item.DateLabel, _semibold, 11, TextMuted, HorizontalAlignment.Left);
 		date.CustomMinimumSize = new Vector2(52, 0);
 		columns.AddChild(date);
 
@@ -222,12 +266,40 @@ public partial class NewsPage : Control
 
 	private void SelectStory(int index)
 	{
-		_selectedIndex = index;
+		if (_stories.Count == 0)
+		{
+			BindEmpty();
+			return;
+		}
+
+		_selectedIndex = Math.Clamp(index, 0, _stories.Count - 1);
 		RebuildList();
-		BindFeature(DistrictHubData.News[index]);
+		BindFeature(_stories[_selectedIndex]);
 	}
 
-	private void BindFeature(HubNewsItem item)
+	private void BindEmpty()
+	{
+		foreach (Node child in _featureHost.GetChildren())
+		{
+			_featureHost.RemoveChild(child);
+			child.QueueFree();
+		}
+
+		_featureHost.AddChild(MakeTag(NewsTag.Note));
+		_featureHost.AddChild(MakeText("THE WIRE", _semibold, 11, TextMuted, HorizontalAlignment.Left));
+		var headline = MakeText("NO COPY YET", _bold, 26, TextPrimary, HorizontalAlignment.Left);
+		_featureHost.AddChild(headline);
+		var body = MakeText(
+			"Stories land when the season does something: a streak, a freshman who sticks, a board that starts asking questions, a bracket that locks.",
+			_medium,
+			15,
+			new Color(0.78f, 0.81f, 0.86f),
+			HorizontalAlignment.Left);
+		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		_featureHost.AddChild(body);
+	}
+
+	private void BindFeature(NewsStory item)
 	{
 		foreach (Node child in _featureHost.GetChildren())
 		{
@@ -236,11 +308,23 @@ public partial class NewsPage : Control
 		}
 
 		_featureHost.AddChild(MakeTag(item.Tag));
-		_featureHost.AddChild(MakeText(item.Date.ToUpperInvariant() + "  ·  GREAT LAKES DESK", _semibold, 11, TextMuted, HorizontalAlignment.Left));
+		string desk = "STATE DESK";
+		if (!string.IsNullOrEmpty(item.SubjectOrganizationId))
+		{
+			HubTeam mentioned = DistrictHubData.GetTeam(SchoolProfiles.NormalizeId(item.SubjectOrganizationId));
+			desk = DistrictHubData.GetDistrict(mentioned.DistrictId).Name.ToUpperInvariant() + " DESK";
+		}
+
+		_featureHost.AddChild(MakeText(item.DateLabel + "  ·  " + desk, _semibold, 11, TextMuted, HorizontalAlignment.Left));
 
 		var headline = MakeText(item.Headline.ToUpperInvariant(), _bold, 26, TextPrimary, HorizontalAlignment.Left);
 		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		_featureHost.AddChild(headline);
+		Control chips = SchoolLinks.MakeMentionChips(item.Headline + " " + item.Body, _semibold);
+		if (chips.GetChildCount() > 0)
+		{
+			_featureHost.AddChild(chips);
+		}
 		_featureHost.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
 
 		var body = MakeText(item.Body, _medium, 15, new Color(0.78f, 0.81f, 0.86f), HorizontalAlignment.Left);
@@ -272,12 +356,7 @@ public partial class NewsPage : Control
 		var pullCopy = new VBoxContainer();
 		pullCopy.AddThemeConstantOverride("separation", 4);
 		pullCopy.AddChild(MakeText("WHY IT MATTERS", _semibold, 10, Accent, HorizontalAlignment.Left));
-		var pullBody = MakeText(
-			"Cascade is 18-4 and first in the Great Lakes. The East Regional, if the field locked today, would send the Regional into a semi against Sandusky.",
-			_medium,
-			13,
-			TextMuted,
-			HorizontalAlignment.Left);
+		var pullBody = MakeText(item.Pull, _medium, 13, TextMuted, HorizontalAlignment.Left);
 		pullBody.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		pullCopy.AddChild(pullBody);
 		pull.AddChild(pullCopy);
@@ -288,10 +367,15 @@ public partial class NewsPage : Control
 	{
 		Color color = tag switch
 		{
-			"AWARDS" => Accent,
-			"PLAYOFFS" => Green,
-			"PITCHING" or "HITTING" => LakesBlue,
-			"RIVALRY" => new Color(0.906f, 0.298f, 0.235f, 1f),
+			NewsTag.Playoffs => Green,
+			NewsTag.Rankings => Accent,
+			NewsTag.Freshman => LakesBlue,
+			NewsTag.Coach => new Color(0.906f, 0.298f, 0.235f, 1f),
+			NewsTag.Pitching or NewsTag.Hitting => LakesBlue,
+			NewsTag.Rivalry => new Color(0.906f, 0.298f, 0.235f, 1f),
+			NewsTag.Calendar => Accent,
+			NewsTag.District => Green,
+			NewsTag.Results => Green,
 			_ => Hairline,
 		};
 		var pill = new PanelContainer

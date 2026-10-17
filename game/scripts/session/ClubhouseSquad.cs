@@ -20,6 +20,24 @@ public static class ClubhouseSquad
 
 	public static List<ClubhousePlayer> ForTeam(TeamLevel level)
 	{
+		GameSession? session = GameSession.Current;
+		if (session?.World != null)
+		{
+			TeamIdentity team = session.GetTeam(level);
+			var live = new List<ClubhousePlayer>();
+			foreach (Player player in session.World.Players)
+			{
+				if (player.TeamId != team.Id || player.Alumni)
+				{
+					continue;
+				}
+
+				live.Add(FromWorldPlayer(player, session));
+			}
+
+			return live;
+		}
+
 		var squad = new List<ClubhousePlayer>();
 		foreach (ClubhousePlayer player in All)
 		{
@@ -32,9 +50,43 @@ public static class ClubhouseSquad
 		return squad;
 	}
 
-	public static ClubhousePlayer? Find(int jersey)
+	public static List<ClubhousePlayer> Injured(TeamLevel level)
 	{
-		foreach (ClubhousePlayer player in All)
+		GameSession? session = GameSession.Current;
+		if (session?.World != null)
+		{
+			var injured = new List<ClubhousePlayer>();
+			foreach (Player player in session.RosterFor(session.GetTeam(level).Id))
+			{
+				if (player.Injury == null || !player.Injury.ActiveOn(session.CurrentDate))
+				{
+					continue;
+				}
+
+				injured.Add(FromWorldPlayer(player, session));
+			}
+
+			return injured;
+		}
+
+		var fallback = new List<ClubhousePlayer>();
+		foreach (ClubhousePlayer player in ForTeam(level))
+		{
+			if (!player.IsHealthy)
+			{
+				fallback.Add(player);
+			}
+		}
+
+		return fallback;
+	}
+
+	public static ClubhousePlayer? Find(int jersey) =>
+		Find(jersey, GameSession.Current?.ActiveTeam?.Level ?? TeamLevel.Varsity);
+
+	public static ClubhousePlayer? Find(int jersey, TeamLevel level)
+	{
+		foreach (ClubhousePlayer player in ForTeam(level))
 		{
 			if (player.Jersey == jersey)
 			{
@@ -99,6 +151,84 @@ public static class ClubhouseSquad
 		return false;
 	}
 
+	private static ClubhousePlayer FromWorldPlayer(Player player, GameSession session)
+	{
+		string group = player.IsPitcher
+			? GroupPitchers
+			: player.PrimaryPosition == PlayerPosition.Catcher
+				? GroupCatchers
+				: player.PrimaryPosition.IsOutfielder()
+					? GroupOutfield
+					: GroupInfield;
+		HittingLine? hitting = null;
+		PitchingLine? pitching = null;
+		if (session.World != null)
+		{
+			int year = GameSession.SeasonYear;
+			foreach (BattingSeasonStats row in session.World.BattingStats)
+			{
+				if (row.PlayerId == player.Id && row.SeasonYear == year && row.AtBats > 0)
+				{
+					hitting = Hit(
+						row.Games,
+						row.AtBats,
+						(float)row.Average,
+						row.HomeRuns,
+						row.RunsBattedIn,
+						(float)row.OnBasePercentage,
+						(float)row.Slugging,
+						row.StolenBases,
+						row.Walks,
+						row.Strikeouts);
+					break;
+				}
+			}
+
+			foreach (PitchingSeasonStats row in session.World.PitchingStats)
+			{
+				if (row.PlayerId == player.Id && row.SeasonYear == year && row.OutsRecorded > 0)
+				{
+					pitching = Pit(
+						row.Games,
+						row.GamesStarted,
+						row.Wins,
+						row.Losses,
+						row.Saves,
+						row.OutsRecorded / 3f,
+						row.Strikeouts,
+						(float)row.Era,
+						(float)row.Whip,
+						row.Walks);
+					break;
+				}
+			}
+		}
+
+		bool hurt = player.Injury != null && player.Injury.ActiveOn(session.CurrentDate);
+		return P(
+			player.FirstName,
+			player.LastName,
+			player.JerseyNumber,
+			player.DisplayPosition,
+			player.Grade.ToAbbrev(),
+			$"{player.Bats.ToAbbrev()}/{player.Throws.ToAbbrev()}",
+			group,
+			player.Overall,
+			player.Ratings.Contact,
+			player.Ratings.Power,
+			player.Ratings.Speed,
+			player.Ratings.ArmStrength,
+			player.Ratings.Fielding,
+			hurt ? player.Injury!.StatusLabel : "Healthy",
+			null,
+			player.TeamLevel.ToLabel(),
+			hitting,
+			pitching,
+			hurt ? player.Injury!.Kind : null,
+			hurt ? player.Injury!.RemainingLabel(session.CurrentDate) : null,
+			player.Id);
+	}
+
 	private static List<ClubhousePlayer> Build()
 	{
 		const string marini = "res://assets/teams/01_Cascade_Regional_High_School/Players/Cascade_player_01_Marini.png";
@@ -121,11 +251,11 @@ public static class ClubhouseSquad
 			P("Cam", "Whitaker", 2, "2B/SS", "SO", "S/R", GroupInfield, 74, 78, 61, 82, 74, 80, "Healthy", null, "Varsity",
 				Hit(20, 61, 0.311f, 1, 9, 0.408f, 0.443f, 11, 10, 9), null),
 			P("Eli", "Vargas", 24, "LF/RF", "SR", "L/R", GroupOutfield, 73, 80, 77, 68, 71, 66, "Day-to-Day", null, "Varsity",
-				Hit(16, 52, 0.308f, 3, 11, 0.379f, 0.558f, 3, 6, 10), null),
+				Hit(16, 52, 0.308f, 3, 11, 0.379f, 0.558f, 3, 6, 10), null, "Hamstring Strain", "7–14 days"),
 			P("Ryan", "Peck", 18, "RF/LF", "JR", "R/R", GroupOutfield, 72, 75, 79, 70, 83, 69, "Healthy", null, "Varsity",
 				Hit(20, 64, 0.281f, 3, 14, 0.352f, 0.500f, 4, 7, 14), null),
-			P("Ben", "Ortiz", 8, "RHP", "JR", "R/R", GroupPitchers, 71, 36, 34, 52, 79, 40, "Healthy", null, "Varsity",
-				null, Pit(9, 4, 2, 1, 1, 24.2f, 19, 3.28f, 1.26f, 9)),
+			P("Ben", "Ortiz", 8, "RHP", "JR", "R/R", GroupPitchers, 71, 36, 34, 52, 79, 40, "Unavailable", null, "Varsity",
+				null, Pit(9, 4, 2, 1, 1, 24.2f, 19, 3.28f, 1.26f, 9), "Shoulder Inflammation", "14–21 days"),
 			P("Jake", "Pruitt", 12, "RHP", "SR", "R/R", GroupPitchers, 74, 34, 32, 50, 82, 38, "Healthy", null, "Varsity",
 				null, Pit(8, 7, 4, 2, 0, 31.0f, 26, 3.09f, 1.22f, 10)),
 			P("Cole", "Reid", 22, "RHP", "JR", "R/R", GroupPitchers, 73, 38, 36, 56, 80, 40, "Healthy", null, "Varsity",
@@ -173,7 +303,7 @@ public static class ClubhouseSquad
 			P("Henry", "Cho", 36, "LF/RF", "FR", "L/R", GroupOutfield, 59, 60, 56, 70, 60, 58, "Healthy", null, "JV",
 				Hit(11, 26, 0.231f, 0, 3, 0.310f, 0.308f, 2, 3, 8), null),
 			P("Parker", "Dean", 38, "RF/LF", "SO", "R/R", GroupOutfield, 64, 63, 66, 62, 72, 60, "Day-to-Day", null, "JV",
-				Hit(16, 46, 0.239f, 1, 7, 0.314f, 0.370f, 2, 4, 11), null),
+				Hit(16, 46, 0.239f, 1, 7, 0.314f, 0.370f, 2, 4, 11), null, "Wrist Sprain", "5–10 days"),
 			P("Ian", "Frost", 42, "2B/3B", "FR", "R/R", GroupInfield, 58, 57, 50, 68, 60, 66, "Healthy", null, "JV",
 				Hit(11, 22, 0.182f, 0, 2, 0.269f, 0.227f, 1, 3, 7), null),
 			P("Luke", "Santos", 44, "LF/CF/RF", "FR", "L/R", GroupOutfield, 57, 58, 52, 72, 58, 56, "Healthy", null, "JV",
@@ -199,7 +329,10 @@ public static class ClubhouseSquad
 		string? portrait,
 		string squad,
 		HittingLine? hitting,
-		PitchingLine? pitching) =>
+		PitchingLine? pitching,
+		string? injury = null,
+		string? timeline = null,
+		Guid playerId = default) =>
 		new(
 			first,
 			last,
@@ -218,7 +351,10 @@ public static class ClubhouseSquad
 			portrait,
 			squad,
 			hitting,
-			pitching);
+			pitching,
+			injury,
+			timeline,
+			playerId);
 
 	private static HittingLine Hit(
 		int games,
@@ -292,11 +428,20 @@ public sealed record ClubhousePlayer(
 	string? PortraitPath,
 	string Squad,
 	HittingLine? Hitting,
-	PitchingLine? Pitching)
+	PitchingLine? Pitching,
+	string? Injury = null,
+	string? Timeline = null,
+	Guid PlayerId = default)
 {
 	public bool IsPitcher => Group == ClubhouseSquad.GroupPitchers;
+
+	public string FullName => $"{FirstName} {LastName}";
 
 	public bool IsHealthy => string.Equals(Status, "Healthy", StringComparison.OrdinalIgnoreCase);
 
 	public string DisplayLast => LastName.ToUpperInvariant();
+
+	public string InjuryLabel => string.IsNullOrWhiteSpace(Injury) ? "Undisclosed" : Injury;
+
+	public string TimelineLabel => string.IsNullOrWhiteSpace(Timeline) ? "TBD" : Timeline;
 }

@@ -81,6 +81,7 @@ public partial class AudioManager : Node
 		ResetDefaultPaths();
 		BuildPlayers();
 		GameSettings.ApplyAudio(this);
+		GameSettings.ApplyDisplay();
 		ApplyAllVolumes();
 		UiSounds.Attach(this);
 		LogStartupStatus();
@@ -296,7 +297,8 @@ public partial class AudioManager : Node
 
 		_soundtrackStarted = true;
 		_musicPaused = false;
-		PlayPlaylistIndex(_soundtrackIndex, fadeSeconds: 0.6f, force: true);
+		int start = Math.Clamp(GameSettings.SoundtrackIndex, 0, _soundtrack.Count - 1);
+		PlayPlaylistIndex(start, fadeSeconds: 0.6f, force: true);
 	}
 
 	public void NextTrack(float fadeSeconds = DefaultMusicFade)
@@ -495,6 +497,8 @@ public partial class AudioManager : Node
 		_advancingTrack = false;
 		_soundtrackStarted = true;
 		Log($"[Audio] Playing soundtrack on bus: {MusicBus} ({CurrentTrackTitle})");
+		GameSettings.SoundtrackIndex = _soundtrackIndex;
+		GameSettings.SaveAudio(this);
 		SoundtrackChanged?.Invoke();
 	}
 

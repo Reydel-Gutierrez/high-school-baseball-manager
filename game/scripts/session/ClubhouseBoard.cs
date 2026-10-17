@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using HSBM.Domain;
+using HSBM.Simulation;
 
 /// <summary>
-/// In-memory Clubhouse assignments for the active program. Lineup and
-/// rotation are per team (Varsity / JV) so the top-bar toggle keeps both.
+/// Clubhouse assignments for the active program. Saved cards use player
+/// IDs in the career world; the UI still works in jersey numbers.
 /// </summary>
 public static class ClubhouseBoard
 {
@@ -19,11 +20,17 @@ public static class ClubhouseBoard
 	private static readonly Dictionary<string, LineupCard> Lineups = new();
 	private static readonly Dictionary<string, RotationCard> Rotations = new();
 
+	public static void Reset()
+	{
+		Lineups.Clear();
+		Rotations.Clear();
+	}
+
 	public static LineupCard GetLineup(TeamIdentity team)
 	{
 		if (!Lineups.TryGetValue(team.Id, out LineupCard? card))
 		{
-			card = CreateDefaultLineup(team.Level);
+			card = LoadOrCreateLineup(team);
 			Lineups[team.Id] = card;
 		}
 
@@ -34,17 +41,320 @@ public static class ClubhouseBoard
 	{
 		if (!Rotations.TryGetValue(team.Id, out RotationCard? card))
 		{
-			card = CreateDefaultRotation(team.Level);
+			card = LoadOrCreateRotation(team);
 			Rotations[team.Id] = card;
 		}
 
 		return card;
 	}
 
+	public static void Commit(TeamIdentity team)
+	{
+		GameSession? session = GameSession.Current;
+		if (session?.World == null)
+		{
+			return;
+		}
+
+		session.World.Lineups.RemoveAll(card => card.TeamId == team.Id);
+		session.World.Lineups.Add(ToSavedLineup(team, GetLineup(team)));
+		session.World.Rotations.RemoveAll(card => card.TeamId == team.Id);
+		session.World.Rotations.Add(ToSavedRotation(team, GetRotation(team)));
+		session.PersistClubhouse();
+	}
+
 	public static ClubhousePlayer? GetLikelyStarter(TeamIdentity team)
 	{
 		RotationCard rotation = GetRotation(team);
-		return rotation.Starters[0] == 0 ? null : ClubhouseSquad.Find(rotation.Starters[0]);
+		var arms = new List<int>();
+		foreach (int jersey in rotation.Starters)
+		{
+			if (jersey != 0)
+			{
+				arms.Add(jersey);
+			}
+		}
+
+		if (arms.Count == 0)
+		{
+			return null;
+		}
+
+		int starts = 0;
+		GameSession? session = GameSession.Current;
+		if (session?.World != null)
+		{
+			foreach (ScheduledGame game in session.World.Games)
+			{
+				if (game.SeasonYear == GameSession.SeasonYear
+					&& game.Status == GameStatus.Completed
+					&& !game.GameType.IsExhibition()
+					&& game.Involves(team.Id))
+				{
+					starts++;
+				}
+			}
+		}
+
+		return ClubhouseSquad.Find(arms[starts % arms.Count], team.Level);
+	}
+
+	private static LineupCard LoadOrCreateLineup(TeamIdentity team)
+	{
+		GameSession? session = GameSession.Current;
+		if (session?.World != null)
+		{
+			foreach (TeamLineup saved in session.World.Lineups)
+			{
+				if (saved.TeamId == team.Id && saved.FilledCount > 0)
+				{
+					return FromSavedLineup(saved);
+				}
+			}
+
+			return FromAutomaticLineup(Roster(session, team));
+		}
+
+		return CreateDefaultLineup(team.Level);
+	}
+
+	private static RotationCard LoadOrCreateRotation(TeamIdentity team)
+	{
+		GameSession? session = GameSession.Current;
+		if (session?.World != null)
+		{
+			foreach (TeamRotation saved in session.World.Rotations)
+			{
+				if (saved.TeamId == team.Id && HasPitcher(saved))
+				{
+					return FromSavedRotation(saved);
+				}
+			}
+
+			return FromAutomaticRotation(Roster(session, team));
+		}
+
+		return CreateDefaultRotation(team.Level);
+	}
+
+	private static List<Player> Roster(GameSession session, TeamIdentity team)
+	{
+		var roster = new List<Player>();
+		foreach (Player player in session.World!.Players)
+		{
+			if (player.TeamId == team.Id && !player.Alumni)
+			{
+				roster.Add(player);
+			}
+		}
+
+		return roster;
+	}
+
+	private static LineupCard FromSavedLineup(TeamLineup saved)
+	{
+		var card = new LineupCard();
+		int count = Math.Min(saved.Slots.Count, LineupSize);
+		for (int i = 0; i < count; i++)
+		{
+			TeamLineupSlot slot = saved.Slots[i];
+			int jersey = JerseyFor(slot.PlayerId);
+			card.Set(i, jersey, string.IsNullOrWhiteSpace(slot.Position) ? FieldPositions[i] : slot.Position);
+		}
+
+		return card;
+	}
+
+	private static RotationCard FromSavedRotation(TeamRotation saved)
+	{
+		var card = new RotationCard();
+		int count = Math.Min(saved.Starters.Count, RotationSize);
+		for (int i = 0; i < count; i++)
+		{
+			card.Starters[i] = JerseyFor(saved.Starters[i]);
+		}
+
+		card.Closer = JerseyFor(saved.Closer);
+		card.Setup = JerseyFor(saved.Setup);
+		card.Middle = JerseyFor(saved.Middle);
+		card.LongRelief = JerseyFor(saved.LongRelief);
+		return card;
+	}
+
+	private static LineupCard FromAutomaticLineup(IReadOnlyList<Player> roster)
+	{
+		if (roster.Count == 0)
+		{
+			return new LineupCard();
+		}
+
+		TeamGamePlan plan = new AutomaticLineupProvider().Create(roster);
+		var card = new LineupCard();
+		int count = Math.Min(plan.BattingOrder.Count, LineupSize);
+		for (int i = 0; i < count; i++)
+		{
+			LineupBatter slot = plan.BattingOrder[i];
+			string position = slot.FieldPosition.IsPitcher() ? "P" : slot.FieldPosition.ToCode();
+			card.Set(i, slot.Player.JerseyNumber, position);
+		}
+
+		return card;
+	}
+
+	private static RotationCard FromAutomaticRotation(IReadOnlyList<Player> roster)
+	{
+		var card = new RotationCard();
+		if (roster.Count == 0)
+		{
+			return card;
+		}
+
+		TeamGamePlan plan = new AutomaticLineupProvider().Create(roster);
+		var arms = new List<Player>();
+		foreach (Player player in roster)
+		{
+			if (!player.IsPitcher || player.Id == plan.StartingPitcher.Id)
+			{
+				continue;
+			}
+
+			if (plan.Closer != null && player.Id == plan.Closer.Id)
+			{
+				continue;
+			}
+
+			arms.Add(player);
+		}
+
+		arms.Sort((a, b) => PlayerOverall.PitchingRating(b.Ratings).CompareTo(PlayerOverall.PitchingRating(a.Ratings)));
+		card.Starters[0] = plan.StartingPitcher.JerseyNumber;
+		int seat = 1;
+		foreach (Player arm in arms)
+		{
+			if (seat >= RotationSize)
+			{
+				break;
+			}
+
+			if (arm.PrimaryPosition == PlayerPosition.StartingPitcher)
+			{
+				card.Starters[seat] = arm.JerseyNumber;
+				seat++;
+			}
+		}
+
+		foreach (Player arm in arms)
+		{
+			if (seat >= RotationSize)
+			{
+				break;
+			}
+
+			if (card.Contains(arm.JerseyNumber))
+			{
+				continue;
+			}
+
+			card.Starters[seat] = arm.JerseyNumber;
+			seat++;
+		}
+
+		card.Closer = plan.Closer?.JerseyNumber ?? 0;
+		if (plan.Bullpen.Count > 0)
+		{
+			card.Setup = plan.Bullpen[0].JerseyNumber;
+		}
+
+		if (plan.Bullpen.Count > 1)
+		{
+			card.Middle = plan.Bullpen[1].JerseyNumber;
+		}
+
+		if (plan.Bullpen.Count > 2)
+		{
+			card.LongRelief = plan.Bullpen[2].JerseyNumber;
+		}
+
+		return card;
+	}
+
+	private static TeamLineup ToSavedLineup(TeamIdentity team, LineupCard card)
+	{
+		var saved = new TeamLineup { TeamId = team.Id };
+		foreach (LineupSlot slot in card.Slots)
+		{
+			saved.Slots.Add(new TeamLineupSlot
+			{
+				PlayerId = PlayerIdFor(slot.Jersey),
+				Position = slot.Position,
+			});
+		}
+
+		return saved;
+	}
+
+	private static TeamRotation ToSavedRotation(TeamIdentity team, RotationCard card)
+	{
+		var saved = new TeamRotation
+		{
+			TeamId = team.Id,
+			Starters = [null, null, null, null, null],
+		};
+		for (int i = 0; i < card.Starters.Length && i < saved.Starters.Count; i++)
+		{
+			saved.Starters[i] = PlayerIdFor(card.Starters[i]);
+		}
+
+		saved.Closer = PlayerIdFor(card.Closer);
+		saved.Setup = PlayerIdFor(card.Setup);
+		saved.Middle = PlayerIdFor(card.Middle);
+		saved.LongRelief = PlayerIdFor(card.LongRelief);
+		return saved;
+	}
+
+	private static bool HasPitcher(TeamRotation saved)
+	{
+		foreach (Guid id in saved.AssignedPitcherIds)
+		{
+			return id != Guid.Empty;
+		}
+
+		return false;
+	}
+
+	private static int JerseyFor(Guid? playerId)
+	{
+		if (!playerId.HasValue)
+		{
+			return 0;
+		}
+
+		GameSession? session = GameSession.Current;
+		if (session?.World == null)
+		{
+			return 0;
+		}
+
+		foreach (Player player in session.World.Players)
+		{
+			if (player.Id == playerId.Value)
+			{
+				return player.JerseyNumber;
+			}
+		}
+
+		return 0;
+	}
+
+	private static Guid? PlayerIdFor(int jersey)
+	{
+		if (jersey == 0)
+		{
+			return null;
+		}
+
+		ClubhousePlayer? player = ClubhouseSquad.Find(jersey);
+		return player == null || player.PlayerId == Guid.Empty ? null : player.PlayerId;
 	}
 
 	private static LineupCard CreateDefaultLineup(TeamLevel level)
@@ -247,6 +557,7 @@ public sealed class RotationCard
 			if (Closer != 0) count++;
 			if (Setup != 0) count++;
 			if (Middle != 0) count++;
+			if (LongRelief != 0) count++;
 			if (LongRelief != 0) count++;
 			return count;
 		}

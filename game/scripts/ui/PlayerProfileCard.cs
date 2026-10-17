@@ -323,6 +323,11 @@ public partial class PlayerProfileCard : PanelContainer
 				Accent,
 				HorizontalAlignment.Left));
 		}
+		if (!string.IsNullOrEmpty(player.SchoolInterest))
+		{
+			content.AddChild(MakeSection("SCHOOL INTEREST"));
+			content.AddChild(MakeText(player.SchoolInterest, _medium, 13, TextPrimary, HorizontalAlignment.Left));
+		}
 		if (player.IsCaptain)
 		{
 			content.AddChild(MakeText("CAPTAIN", _semibold, 12, Accent, HorizontalAlignment.Left));
@@ -650,6 +655,18 @@ public partial class PlayerProfileCard : PanelContainer
 		var wrap = new Control { CustomMinimumSize = new Vector2(size, size) };
 		wrap.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
 		wrap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+		if (player.Appearance != null)
+		{
+			var portrait = new PersonPortrait
+			{
+				CustomMinimumSize = new Vector2(size, size),
+			};
+			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			portrait.SetAppearance(player.Appearance);
+			wrap.AddChild(portrait);
+			return wrap;
+		}
+
 		if (!string.IsNullOrEmpty(player.PortraitPath))
 		{
 			var portrait = new TextureRect

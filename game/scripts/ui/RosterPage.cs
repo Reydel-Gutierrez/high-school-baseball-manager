@@ -35,7 +35,7 @@ public partial class RosterPage : Control
 	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.92f);
 	private static readonly Color BarBg = new(0.121569f, 0.137255f, 0.160784f, 1f);
 
-	private readonly List<RosterPlayer> _players = BuildPrototypeRoster();
+	private readonly List<RosterPlayer> _players = [];
 	private readonly Dictionary<string, Button> _filterButtons = new();
 	private readonly Dictionary<int, PanelContainer> _rowByJersey = new();
 
@@ -62,6 +62,7 @@ public partial class RosterPage : Control
 	private string _activeFilter = FilterAll;
 	private int _selectedJersey = 11;
 	private int _selectedSeasonYear = CurrentSeasonYear;
+	private bool _showSchoolProfile;
 
 	public override void _Ready()
 	{
@@ -90,6 +91,8 @@ public partial class RosterPage : Control
 
 		BuildActionOverlay();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.RosterBoardChanged += OnRosterBoardChanged;
+		ReloadPlayers();
 		ApplyActiveTeam();
 		ApplyFilter(_activeFilter);
 	}
@@ -99,11 +102,140 @@ public partial class RosterPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.RosterBoardChanged -= OnRosterBoardChanged;
 		}
+	}
+
+	private void OnRosterBoardChanged()
+	{
+		ReloadPlayers();
+		RebuildRows();
+	}
+
+	private void ReloadPlayers()
+	{
+		_players.Clear();
+		if (_session.World != null)
+		{
+			foreach (Player player in _session.RosterFor(_session.ActiveTeam.Id))
+			{
+				_players.Add(FromDomain(player));
+			}
+
+			return;
+		}
+
+		_players.AddRange(BuildPrototypeRoster());
+		MergeSignedPlayers();
+	}
+
+	private static RosterPlayer FromDomain(Player player)
+	{
+		string group = player.IsPitcher
+			? FilterPitchers
+			: player.PrimaryPosition == PlayerPosition.Catcher
+				? FilterCatchers
+				: player.PrimaryPosition.IsInfielder()
+					? FilterInfield
+					: FilterOutfield;
+		string position = player.SecondaryPosition is PlayerPosition secondary
+			? $"{player.DisplayPosition}/{secondary.ToCode()}"
+			: player.DisplayPosition;
+		return new RosterPlayer(
+			player.FirstName,
+			player.LastName,
+			player.JerseyNumber,
+			position,
+			player.Grade.ToAbbrev(),
+			player.Bats.ToBatsThrowsLabel(player.Throws),
+			group,
+			player.Overall,
+			player.Ratings.Contact,
+			player.Ratings.Power,
+			player.Ratings.Speed,
+			player.Ratings.ArmStrength,
+			player.Ratings.Fielding,
+			"Healthy",
+			null,
+			[],
+			player.TeamLevel == TeamLevel.Varsity ? "Varsity" : "JV",
+			false,
+			player.Id);
+	}
+
+	private void MergeSignedPlayers()
+	{
+		var usedJerseys = new HashSet<int>();
+		foreach (RosterPlayer player in _players)
+		{
+			usedJerseys.Add(player.Jersey);
+		}
+
+		foreach (FinalRosterPlayer board in _session.RosterBoard.Players)
+		{
+			if (!board.FromTryout)
+			{
+				continue;
+			}
+
+			if (_players.Exists(p =>
+				string.Equals(p.FirstName, board.FirstName, StringComparison.OrdinalIgnoreCase)
+				&& string.Equals(p.LastName, board.LastName, StringComparison.OrdinalIgnoreCase)))
+			{
+				continue;
+			}
+
+			int jersey = board.Jersey > 0 && usedJerseys.Add(board.Jersey)
+				? board.Jersey
+				: NextUnusedJersey(usedJerseys);
+			usedJerseys.Add(jersey);
+			string squad = board.Assignment == RosterAssignment.JuniorVarsity ? "JV" : "Varsity";
+			string group = board.Position.IsPitcher()
+				? FilterPitchers
+				: board.Position == PlayerPosition.Catcher
+					? FilterCatchers
+					: board.Position.IsInfielder()
+						? FilterInfield
+						: FilterOutfield;
+			_players.Add(MakePlayer(
+				board.FirstName,
+				board.LastName,
+				jersey,
+				board.PositionLabel,
+				board.Year.ToAbbrev(),
+				board.Bats.ToBatsThrowsLabel(board.Throws),
+				group,
+				board.Overall,
+				board.Overall,
+				board.Overall,
+				board.Overall,
+				board.Overall,
+				board.Overall,
+				"Healthy",
+				null,
+				board.Position.IsPitcher() ? null : PrototypeHitting(board.Year.ToAbbrev(), board.Overall, board.Overall),
+				board.Position.IsPitcher() ? PrototypePitching(board.Year.ToAbbrev(), board.Overall, false) : null,
+				squad,
+				sourceId: board.Id));
+		}
+	}
+
+	private static int NextUnusedJersey(HashSet<int> used)
+	{
+		for (int n = 1; n <= 99; n++)
+		{
+			if (used.Add(n))
+			{
+				return n;
+			}
+		}
+
+		return 99;
 	}
 
 	private void OnActiveTeamChanged(TeamIdentity _)
 	{
+		ReloadPlayers();
 		ApplyActiveTeam();
 		RebuildRows();
 	}
@@ -192,6 +324,28 @@ public partial class RosterPage : Control
 		SelectPlayer(visible[next].Jersey);
 	}
 
+	public bool TrySelectByName(string playerName)
+	{
+		foreach (RosterPlayer player in _players)
+		{
+			if (string.Equals($"{player.FirstName} {player.LastName}", playerName, StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(player.LastName, playerName, StringComparison.OrdinalIgnoreCase))
+			{
+				_showSchoolProfile = false;
+				if (_selectedJersey == player.Jersey && _detailHost.GetChildCount() > 0)
+				{
+					BindPlayerDetail(player);
+					return true;
+				}
+
+				SelectPlayer(player.Jersey);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private void SelectPlayer(int jersey)
 	{
 		if (_selectedJersey == jersey && _detailHost.GetChildCount() > 0)
@@ -201,6 +355,7 @@ public partial class RosterPage : Control
 
 		int previous = _selectedJersey;
 		_selectedJersey = jersey;
+		_showSchoolProfile = false;
 		_selectedSeasonYear = CurrentSeasonYear;
 		RefreshRowStyle(previous);
 		RefreshRowStyle(jersey);
@@ -251,26 +406,49 @@ public partial class RosterPage : Control
 		int jv = 0;
 		int varsity = 0;
 		int injured = 0;
-
-		foreach (RosterPlayer player in _players)
+		if (_session.World != null)
 		{
-			if (TeamLevel.JuniorVarsity.MatchesSquad(player.Squad))
+			foreach (Player player in _session.OrganizationRoster())
 			{
-				jv++;
-			}
-			else
-			{
-				varsity++;
-			}
+				if (player.TeamLevel == TeamLevel.JuniorVarsity)
+				{
+					jv++;
+				}
+				else
+				{
+					varsity++;
+				}
 
-			if (activeLevel.MatchesSquad(player.Squad)
-				&& !string.Equals(player.Status, "Healthy", StringComparison.OrdinalIgnoreCase))
+				if (player.TeamLevel == activeLevel
+					&& player.Injury != null
+					&& player.Injury.ActiveOn(_session.CurrentDate))
+				{
+					injured++;
+				}
+			}
+		}
+		else
+		{
+			foreach (RosterPlayer player in _players)
 			{
-				injured++;
+				if (TeamLevel.JuniorVarsity.MatchesSquad(player.Squad))
+				{
+					jv++;
+				}
+				else
+				{
+					varsity++;
+				}
+
+				if (activeLevel.MatchesSquad(player.Squad)
+					&& !string.Equals(player.Status, "Healthy", StringComparison.OrdinalIgnoreCase))
+				{
+					injured++;
+				}
 			}
 		}
 
-		_countValue.Text = FormatCap(_players.Count, _session.Organization.RosterCap);
+		_countValue.Text = FormatCap(_players.Count, activeLevel == TeamLevel.JuniorVarsity ? RosterCapJv : RosterCapVarsity);
 		_jvValue.Text = FormatCap(jv, RosterCapJv);
 		_varsityValue.Text = FormatCap(varsity, RosterCapVarsity);
 		_injuredValue.Text = FormatInt(injured);
@@ -392,10 +570,33 @@ public partial class RosterPage : Control
 		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildProfileHeader(player));
-		layout.AddChild(BuildRatingsRow(player));
-		layout.AddChild(MakeAccentLine());
-		layout.AddChild(BuildSeasonStats(player));
+		layout.AddChild(SchoolLinks.MakeModeToggle(_semibold, _showSchoolProfile, school =>
+		{
+			_showSchoolProfile = school;
+			BindPlayerDetail(player);
+		}));
+		if (_showSchoolProfile)
+		{
+			var schoolCard = new SchoolProfileCard
+			{
+				FrameVisible = false,
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			layout.AddChild(schoolCard);
+			schoolCard.Bind(_session.CatalogOrganizationId, _session.ActiveTeam.Level);
+			return;
+		}
+
+		var card = new PlayerProfileCard
+		{
+			FrameVisible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		card.SetAction("MANAGE PLAYER", OpenPlayerActions);
+		layout.AddChild(card);
+		card.Bind(ToSnapshot(player));
 	}
 
 	private Control BuildProfileHeader(RosterPlayer player)
@@ -599,10 +800,28 @@ public partial class RosterPage : Control
 		switch (action)
 		{
 			case "promote":
-				ReplacePlayer(player with { Squad = TeamLevel.Varsity.ToSquadKey() });
+				if (player.SourceId is Guid promoteId)
+				{
+					_session.TryAssignRoster(promoteId, RosterAssignment.Varsity);
+					ReloadPlayers();
+				}
+				else
+				{
+					ReplacePlayer(player with { Squad = TeamLevel.Varsity.ToSquadKey() });
+				}
+
 				break;
 			case "demote":
-				ReplacePlayer(player with { Squad = TeamLevel.JuniorVarsity.ToSquadKey() });
+				if (player.SourceId is Guid demoteId)
+				{
+					_session.TryAssignRoster(demoteId, RosterAssignment.JuniorVarsity);
+					ReloadPlayers();
+				}
+				else
+				{
+					ReplacePlayer(player with { Squad = TeamLevel.JuniorVarsity.ToSquadKey() });
+				}
+
 				break;
 			case "captain":
 				ReplacePlayer(player with { IsCaptain = !player.IsCaptain });
@@ -632,6 +851,13 @@ public partial class RosterPage : Control
 		RosterPlayer? player = FindPlayer(_selectedJersey);
 		if (player == null)
 		{
+			return;
+		}
+
+		if (player.SourceId is Guid id)
+		{
+			_session.TryReleaseRoster(id);
+			ReloadPlayers();
 			return;
 		}
 
@@ -1263,15 +1489,24 @@ public partial class RosterPage : Control
 
 	private RosterPlayer? FindPlayer(int jersey)
 	{
+		TeamLevel active = _session.ActiveTeam.Level;
+		RosterPlayer? fallback = null;
 		foreach (RosterPlayer player in _players)
 		{
-			if (player.Jersey == jersey)
+			if (player.Jersey != jersey)
+			{
+				continue;
+			}
+
+			if (active.MatchesSquad(player.Squad))
 			{
 				return player;
 			}
+
+			fallback ??= player;
 		}
 
-		return null;
+		return fallback;
 	}
 
 	private static string FormatInt(int value) => value.ToString(CultureInfo.InvariantCulture);
@@ -1435,7 +1670,7 @@ public partial class RosterPage : Control
 			MakePlayer("Ryan", "Peck", 18, "RF/LF", "JR", "R/R", FilterOutfield, 72, 75, 79, 70, 83, 69, "Healthy", null,
 				new SeasonHitting(20, 64, 12, 18, 3, 1, 3, 14, 7, 14, 4, 0.281f, 0.352f, 0.500f),
 				null),
-			MakePlayer("Ben", "Ortiz", 8, "RHP", "JR", "R/R", FilterPitchers, 71, 36, 34, 52, 79, 40, "Healthy", null,
+			MakePlayer("Ben", "Ortiz", 8, "RHP", "JR", "R/R", FilterPitchers, 71, 36, 34, 52, 79, 40, "Unavailable", null,
 				null,
 				new SeasonPitching(9, 4, 2, 1, 1, 24.2f, 22, 11, 10, 9, 19, 1, 3.28f, 1.26f)),
 			MakePlayer("Miles", "Grant", 5, "RHP", "SO", "R/R", FilterPitchers, 68, 33, 30, 58, 76, 38, "Healthy", null,
@@ -1561,7 +1796,8 @@ public partial class RosterPage : Control
 		SeasonPitching? pitching,
 		string squad = "Varsity",
 		bool isCaptain = false,
-		string? priorOrganization = null)
+		string? priorOrganization = null,
+		Guid? sourceId = null)
 	{
 		return new(
 			firstName,
@@ -1581,7 +1817,8 @@ public partial class RosterPage : Control
 			portraitPath,
 			BuildSeasons(year, hitting, pitching, priorOrganization),
 			squad,
-			isCaptain);
+			isCaptain,
+			sourceId);
 	}
 
 	private static SeasonHitting PrototypeHitting(string classYear, int overall, int speed)
@@ -1846,5 +2083,164 @@ public partial class RosterPage : Control
 		string? PortraitPath,
 		IReadOnlyList<PlayerSeason> Seasons,
 		string Squad = "Varsity",
-		bool IsCaptain = false);
+		bool IsCaptain = false,
+		Guid? SourceId = null);
+
+	private PlayerProfileSnapshot ToSnapshot(RosterPlayer player)
+	{
+		var seasons = new List<HubPlayerSeason>(player.Seasons.Count);
+		foreach (PlayerSeason season in player.Seasons)
+		{
+			seasons.Add(new HubPlayerSeason(
+				season.Year,
+				season.OrganizationName,
+				season.Hitting == null
+					? null
+					: new HubSeasonHitting(
+						season.Hitting.Games,
+						season.Hitting.AtBats,
+						season.Hitting.Runs,
+						season.Hitting.Hits,
+						season.Hitting.Doubles,
+						season.Hitting.Triples,
+						season.Hitting.HomeRuns,
+						season.Hitting.Rbi,
+						season.Hitting.Walks,
+						season.Hitting.Strikeouts,
+						season.Hitting.StolenBases,
+						season.Hitting.Average,
+						season.Hitting.OnBase,
+						season.Hitting.Slugging),
+				season.Pitching == null
+					? null
+					: new HubSeasonPitching(
+						season.Pitching.Games,
+						season.Pitching.GamesStarted,
+						season.Pitching.Wins,
+						season.Pitching.Losses,
+						season.Pitching.Saves,
+						season.Pitching.Innings,
+						season.Pitching.Hits,
+						season.Pitching.Runs,
+						season.Pitching.EarnedRuns,
+						season.Pitching.Walks,
+						season.Pitching.Strikeouts,
+						season.Pitching.HomeRuns,
+						season.Pitching.Era,
+						season.Pitching.Whip)));
+		}
+
+		if (player.SourceId is Guid id && _session.World != null)
+		{
+			Player? live = _session.FindWorldPlayer(id);
+			if (live != null)
+			{
+				PlayerProfileSnapshot worldSnap = PlayerProfiles.FromWorld(
+					live,
+					_session.World,
+					player.IsCaptain,
+					AgreementSnapshot(player));
+				string? worldHook = HookFor(player);
+				if (string.IsNullOrEmpty(worldHook))
+				{
+					return worldSnap;
+				}
+
+				return worldSnap with { RecruitingHook = worldHook };
+			}
+		}
+
+		PlayerProfileSnapshot snapshot = PlayerProfiles.From(
+			player.FirstName,
+			player.LastName,
+			player.Jersey,
+			player.Position,
+			player.Year,
+			player.BatsThrows,
+			player.Overall,
+			player.Contact,
+			player.Power,
+			player.Speed,
+			player.Arm,
+			player.Field,
+			player.Status,
+			player.PortraitPath,
+			DistrictHubData.UserTeamId,
+			"CASCADE",
+			player.Squad,
+			seasons,
+			player.IsCaptain,
+			AgreementSnapshot(player));
+		string? hook = HookFor(player);
+		if (string.IsNullOrEmpty(hook))
+		{
+			return snapshot;
+		}
+
+		return snapshot with
+		{
+			Personality = ProspectFor(player)?.Priorities.Label ?? snapshot.Personality,
+			RecruitingHook = hook,
+		};
+	}
+
+	private string? HookFor(RosterPlayer player) => ProspectFor(player)?.Priorities.Hook;
+
+	private Player? ProspectFor(RosterPlayer player)
+	{
+		if (player.SourceId is Guid id)
+		{
+			return _session.FindProspect(id);
+		}
+
+		foreach (Player candidate in _session.Recruiting.Prospects)
+		{
+			if (string.Equals(candidate.FirstName, player.FirstName, StringComparison.OrdinalIgnoreCase)
+				&& string.Equals(candidate.LastName, player.LastName, StringComparison.OrdinalIgnoreCase))
+			{
+				return candidate;
+			}
+		}
+
+		return null;
+	}
+
+	private PlayerAgreementSnapshot? AgreementSnapshot(RosterPlayer player)
+	{
+		if (player.SourceId is not Guid id)
+		{
+			Player? prospect = null;
+			foreach (Player candidate in _session.Recruiting.Prospects)
+			{
+				if (string.Equals(candidate.FirstName, player.FirstName, StringComparison.OrdinalIgnoreCase)
+					&& string.Equals(candidate.LastName, player.LastName, StringComparison.OrdinalIgnoreCase))
+				{
+					prospect = candidate;
+					break;
+				}
+			}
+
+			if (prospect == null)
+			{
+				return null;
+			}
+
+			id = prospect.Id;
+		}
+
+		PlayerAgreement? agreement = _session.RecruitingMarket.AgreementFor(id);
+		if (agreement == null)
+		{
+			return null;
+		}
+
+		OrganizationState? school = _session.RecruitingSchool(agreement.OrganizationId);
+		return new PlayerAgreementSnapshot(
+			school?.DisplayName ?? agreement.OrganizationId,
+			agreement.StartSeasonYear,
+			agreement.YearsRemaining,
+			agreement.TermYears,
+			agreement.AnnualSponsorship,
+			agreement.TotalCommitment);
+	}
 }

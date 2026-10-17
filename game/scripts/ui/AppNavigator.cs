@@ -42,6 +42,7 @@ public partial class AppNavigator : MarginContainer
 	public const string ChampionshipViewKey = "championship";
 	public const string SeasonReviewViewKey = "season-review";
 	public const string HallOfFameViewKey = "hall-of-fame";
+	public const string SeasonRolloverViewKey = "season-rollover";
 
 	public const int OrganizationRosterId = 100;
 	public const int OrganizationTradesId = 101;
@@ -105,6 +106,7 @@ public partial class AppNavigator : MarginContainer
 	private ChampionshipCelebrationPage _championshipPage = null!;
 	private SeasonReviewPage _seasonReviewPage = null!;
 	private HallOfFameInductionPage _hallOfFamePage = null!;
+	private SeasonRolloverPage _seasonRolloverPage = null!;
 	private readonly Dictionary<string, Control> _views = new();
 	private string _activeView = HomeViewKey;
 	private string _previewReturnView = HomeViewKey;
@@ -161,6 +163,8 @@ public partial class AppNavigator : MarginContainer
 		_gamePreviewPage.Closed += ReturnFromGamePreview;
 		_gamePreviewPage.EditLineupRequested += ShowLineups;
 		_gamePreviewPage.EditRotationRequested += ShowRotation;
+		_gamePreviewPage.SimulateRequested += OnSimulateGame;
+		_gamePreviewPage.PlayGameRequested += OnSimulateGame;
 
 		_championshipPage = GetNode<ChampionshipCelebrationPage>("AppLayout/ContentArea/ChampionshipView");
 		_championshipPage.Closed += ReturnFromFullscreenDesk;
@@ -172,6 +176,17 @@ public partial class AppNavigator : MarginContainer
 		_hallOfFamePage = GetNode<HallOfFameInductionPage>("AppLayout/ContentArea/HallOfFameView");
 		_hallOfFamePage.Closed += ReturnFromFullscreenDesk;
 		_hallOfFamePage.Continued += OnHallOfFameContinued;
+
+		_seasonRolloverPage = new SeasonRolloverPage
+		{
+			Name = "SeasonRolloverView",
+			Visible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		GetNode("AppLayout/ContentArea").AddChild(_seasonRolloverPage);
+		_seasonRolloverPage.Closed += ReturnFromFullscreenDesk;
+		_seasonRolloverPage.Continued += OnSeasonRolloverContinued;
 
 		_views[HomeViewKey] = _homeView;
 		_views[CalendarViewKey] = _calendarView;
@@ -206,6 +221,7 @@ public partial class AppNavigator : MarginContainer
 		_views[ChampionshipViewKey] = _championshipPage;
 		_views[SeasonReviewViewKey] = _seasonReviewPage;
 		_views[HallOfFameViewKey] = _hallOfFamePage;
+		_views[SeasonRolloverViewKey] = _seasonRolloverPage;
 
 		ConnectChrome();
 		_session = GetNode<GameSession>("/root/GameSession");
@@ -284,6 +300,13 @@ public partial class AppNavigator : MarginContainer
 		ShowView(HallOfFameViewKey, TopBarNavigation.HomeKey);
 	}
 
+	public void ShowSeasonRollover()
+	{
+		RememberFullscreenReturn();
+		_seasonRolloverPage.Refresh();
+		ShowView(SeasonRolloverViewKey, TopBarNavigation.HomeKey);
+	}
+
 	public void ShowCareerHallOfFame()
 	{
 		ShowCareer();
@@ -313,7 +336,7 @@ public partial class AppNavigator : MarginContainer
 
 	private void RememberFullscreenReturn()
 	{
-		if (_activeView is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or GamePreviewViewKey
+		if (_activeView is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey
 			|| (_activeView == AwardsViewKey && _awardsCeremony))
 		{
 			return;
@@ -357,12 +380,23 @@ public partial class AppNavigator : MarginContainer
 		ShowCareerHallOfFame();
 	}
 
+	private void OnSeasonRolloverContinued()
+	{
+		_session.AcknowledgeSeasonRollover();
+		SimulationRun run = _session.SimulateDays(1);
+		ShowHome();
+		if (_homeView is HomePage home)
+		{
+			home.ApplySimulationRun(run);
+		}
+	}
+
 	private void ReturnFromFullscreenDesk()
 	{
 		string view = _previewReturnView;
 		string topBar = _previewReturnTopBar;
 		if (string.IsNullOrEmpty(view)
-			|| view is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or GamePreviewViewKey
+			|| view is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey
 			|| view == AwardsViewKey && _awardsCeremony
 			|| !_views.ContainsKey(view))
 		{
@@ -406,6 +440,17 @@ public partial class AppNavigator : MarginContainer
 		if (view == ScheduleViewKey && _scheduleView is SchedulePage schedule)
 		{
 			schedule.FocusCurrentGame();
+		}
+	}
+
+	private void OnSimulateGame()
+	{
+		SimulationRun run = _session.SimulateDays(1);
+		ReturnFromGamePreview();
+		ShowHome();
+		if (_homeView is HomePage home)
+		{
+			home.ApplySimulationRun(run);
 		}
 	}
 
@@ -713,6 +758,12 @@ public partial class AppNavigator : MarginContainer
 			case InboxDestination.HallOfFame:
 				ShowHallOfFameInduction();
 				break;
+			case InboxDestination.SeasonRollover:
+				ShowSeasonRollover();
+				break;
+			case InboxDestination.Transactions:
+				ShowTransactions();
+				break;
 			case InboxDestination.GamePreview:
 				if (item.Game != null)
 				{
@@ -821,7 +872,11 @@ public partial class AppNavigator : MarginContainer
 		Button careerButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CareerButton");
 		careerButton.Pressed += ShowCareer;
 
+		HBoxContainer rightCluster = GetNode<HBoxContainer>("AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster");
 		Button settingsButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster/SettingsButton");
+		var soundtrack = new SoundtrackControls { Name = "SoundtrackControls" };
+		rightCluster.AddChild(soundtrack);
+		rightCluster.MoveChild(soundtrack, settingsButton.GetIndex());
 		settingsButton.Pressed += ShowSettings;
 	}
 
@@ -1002,7 +1057,7 @@ public partial class AppNavigator : MarginContainer
 			pair.Value.Visible = pair.Key == viewKey;
 		}
 
-		_topBar.Visible = viewKey is not (GamePreviewViewKey or ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey)
+		_topBar.Visible = viewKey is not (GamePreviewViewKey or ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey)
 			&& !(viewKey == AwardsViewKey && _awardsCeremony);
 		_topBar.ApplyCareerShell(
 			hideClubhouseNav: _unsignedLock || viewKey == CareerViewKey,

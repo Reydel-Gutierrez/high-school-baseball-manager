@@ -117,7 +117,8 @@ public static class SchoolProfiles
 			sponsorships,
 			budgetLeft,
 			recruitingLeft,
-			coachSalary);
+			coachSalary,
+			BuildAlumni(session, team.Id));
 	}
 
 	public static List<HubTeam> FindMentioned(string text)
@@ -265,10 +266,19 @@ public static class SchoolProfiles
 
 	private static List<SchoolGame> BuildSchedule(HubTeam team, TeamLevel level, int seed)
 	{
-		var games = new List<SchoolGame>();
-		if (team.Id == DistrictHubData.UserTeamId)
+		GameWorld? world = GameSession.Current?.World;
+		if (world != null)
 		{
-			foreach (CalendarContest contest in ClubhouseCalendar.Contests)
+			return FromWorldSchedule(world, team, level);
+		}
+
+		var games = new List<SchoolGame>();
+		IReadOnlyList<CalendarContest> contests = GameSession.Current != null
+			? GameSession.Current.SeasonContests(level)
+			: ClubhouseCalendar.Contests;
+		if (team.Id == DistrictHubData.UserTeamId || team.Id == GameSession.Current?.CatalogOrganizationId)
+		{
+			foreach (CalendarContest contest in contests)
 			{
 				if (contest.Level != level)
 				{
@@ -292,7 +302,7 @@ public static class SchoolProfiles
 			return games;
 		}
 
-		foreach (CalendarContest contest in ClubhouseCalendar.Contests)
+		foreach (CalendarContest contest in contests)
 		{
 			if (contest.Level != level || contest.OpponentId != team.Id)
 			{
@@ -343,6 +353,40 @@ public static class SchoolProfiles
 		}
 
 		games.Sort((a, b) => a.Date.CompareTo(b.Date));
+		return games;
+	}
+
+	private static List<SchoolGame> FromWorldSchedule(GameWorld world, HubTeam team, TeamLevel level)
+	{
+		string teamId = LeagueCatalog.TeamIdFor(team.Id, level);
+		var games = new List<SchoolGame>();
+		foreach (ScheduledGame game in CareerCalendar.SeasonGames(world, teamId))
+		{
+			bool home = game.HomeTeamId == teamId;
+			string opponentTeam = home ? game.AwayTeamId : game.HomeTeamId;
+			string opponentOrg = CareerCalendar.OrganizationIdForTeam(world, opponentTeam);
+			HubTeam opponent = DistrictHubData.GetTeam(opponentOrg);
+			bool complete = game.Status == GameStatus.Completed;
+			int? us = complete ? (home ? game.HomeScore : game.AwayScore) : null;
+			int? them = complete ? (home ? game.AwayScore : game.HomeScore) : null;
+			string result = !complete
+				? "SCHED"
+				: game.WinningTeamId == teamId
+					? $"W {us}-{them}"
+					: $"L {us}-{them}";
+			games.Add(new SchoolGame(
+				game.Date,
+				opponent.Id,
+				opponent.Name,
+				home,
+				CareerCalendar.GameTime(game.Date, level),
+				game.GameType.IsExhibition(),
+				complete,
+				us,
+				them,
+				result));
+		}
+
 		return games;
 	}
 
@@ -399,6 +443,39 @@ public static class SchoolProfiles
 
 		seasons.Sort((a, b) => a.Year.CompareTo(b.Year));
 		return seasons;
+	}
+
+	private static List<SchoolAlum> BuildAlumni(GameSession? session, string organizationId)
+	{
+		var list = new List<SchoolAlum>();
+		if (session?.World == null)
+		{
+			return list;
+		}
+
+		IReadOnlyList<ProgramGraduate> graduates = GraduateHistory.For(
+			session.World.Players,
+			session.World.BattingStats,
+			session.World.PitchingStats,
+			organizationId);
+		int take = 0;
+		foreach (ProgramGraduate graduate in graduates)
+		{
+			if (take >= 8)
+			{
+				break;
+			}
+
+			list.Add(new SchoolAlum(
+				graduate.FullName,
+				graduate.Position,
+				graduate.GraduatedYear,
+				graduate.Overall,
+				graduate.HasDestination ? graduate.Destination.School : ""));
+			take++;
+		}
+
+		return list;
 	}
 
 	private static List<SchoolRecordGroup> BuildRecords(
@@ -505,11 +582,14 @@ public sealed record SchoolSnapshot(
 	int SponsorshipCommitted = 0,
 	int BudgetAvailable = 0,
 	int RecruitingAvailable = 0,
-	int CoachSalary = 0)
+	int CoachSalary = 0,
+	IReadOnlyList<SchoolAlum>? Alumni = null)
 {
 	public string RecordLabel => $"{Wins}\u2013{Losses}";
 
 	public string PlaceLabel => $"District: {Ordinal.Format(DistrictPlace)}";
+
+	public IReadOnlyList<SchoolAlum> NotableAlumni => Alumni ?? [];
 }
 
 public sealed record SchoolGame(
@@ -525,6 +605,8 @@ public sealed record SchoolGame(
 	string ResultLabel);
 
 public sealed record SchoolSeason(int Year, int Wins, int Losses, int DistrictFinish, string Postseason);
+
+public sealed record SchoolAlum(string Name, string Position, int GraduatedYear, int Overall, string Destination);
 
 public sealed record SchoolRecordGroup(string Category, IReadOnlyList<SchoolRecordEntry> Leaders);
 

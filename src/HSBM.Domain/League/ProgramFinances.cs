@@ -1,0 +1,260 @@
+namespace HSBM.Domain;
+
+/// <summary>
+/// Lightweight program books: the annual baseball budget split into
+/// operating allocations, plus local business sponsors. Sponsor cash is
+/// already inside <see cref="ProgramProfile.BaseballBudget"/> — this is
+/// the public face of that purse, not a second wallet.
+/// </summary>
+public static class ProgramFinances
+{
+	public static ProgramFinanceSnapshot Empty { get; } = new(
+		0,
+		0,
+		0,
+		0,
+		0,
+		[],
+		Allocations(0),
+		[]);
+
+	public static ProgramFinanceSnapshot For(
+		OrganizationState program,
+		IReadOnlyList<PlayerAgreement> agreements,
+		int coachSalary)
+	{
+		ProgramProfile profile = program.Profile;
+		int salary = Math.Max(0, coachSalary);
+		int recruiting = ProgramBudget.CommittedSponsorship(agreements, program.Id);
+		int pool = ProgramBudget.RecruitingPool(profile.BaseballBudget);
+		return new ProgramFinanceSnapshot(
+			profile.BaseballBudget,
+			ProgramBudget.Available(profile, agreements, program.Id, salary),
+			salary,
+			recruiting,
+			pool,
+			Spending(salary, recruiting),
+			Allocations(profile.BaseballBudget, salary, recruiting),
+			Sponsors(program.Id, program.ShortName, DistrictName(program.Id), profile.BaseballBudget));
+	}
+
+	public static IReadOnlyList<BudgetLine> Spending(int coachSalary, int recruitingCommitted)
+	{
+		int salary = Math.Max(0, coachSalary);
+		int recruiting = Math.Max(0, recruitingCommitted);
+		return
+		[
+			new BudgetLine("Head Coach", salary, salary),
+			new BudgetLine("Player Sponsorships", recruiting, recruiting),
+		];
+	}
+
+	public static IReadOnlyList<BudgetLine> Allocations(int baseballBudget) =>
+		Allocations(baseballBudget, 0, 0);
+
+	public static IReadOnlyList<BudgetLine> Allocations(
+		int baseballBudget,
+		int coachSalary,
+		int recruitingSpent)
+	{
+		int total = Math.Max(0, baseballBudget);
+		int salary = Math.Clamp(coachSalary, 0, total);
+		int scouting = ProgramBudget.RecruitingPool(total);
+		int rest = Math.Max(0, total - salary - scouting);
+		int equipment = Snap(rest * 0.32);
+		int travel = Snap(rest * 0.25);
+		int facilities = Snap(rest * 0.35);
+		int misc = rest - equipment - travel - facilities;
+		if (misc < 0)
+		{
+			facilities += misc;
+			misc = 0;
+			if (facilities < 0)
+			{
+				travel += facilities;
+				facilities = 0;
+				if (travel < 0)
+				{
+					equipment = Math.Max(0, equipment + travel);
+					travel = 0;
+				}
+			}
+		}
+
+		return
+		[
+			new BudgetLine("Equipment", Math.Max(0, equipment)),
+			new BudgetLine("Travel", Math.Max(0, travel)),
+			new BudgetLine("Facilities", Math.Max(0, facilities)),
+			new BudgetLine("Scouting", scouting, Math.Min(Math.Max(0, recruitingSpent), scouting)),
+			new BudgetLine("Misc.", Math.Max(0, misc)),
+		];
+	}
+
+	public static IReadOnlyList<ProgramSponsor> Sponsors(
+		string organizationId,
+		string schoolShortName,
+		string districtName,
+		int baseballBudget)
+	{
+		int seed = StableSeed(organizationId);
+		var rng = new SeededRandom(seed);
+		string locality = Locality(schoolShortName, districtName);
+		string[] banks = BanksFor(districtName, locality);
+		var list = new List<ProgramSponsor>(3)
+		{
+			new(rng.Pick(banks), SnapSponsor(baseballBudget * LeadShare(rng)), false, ""),
+			new("Local Sports Supply", 0, true, "Equipment sponsorship"),
+		};
+
+		if (baseballBudget >= 50_000)
+		{
+			string extra = rng.Pick(new[]
+			{
+				$"{locality} Auto Group",
+				$"{locality} Hardware",
+				$"{schoolShortName} Boosters",
+			});
+			list.Add(new ProgramSponsor(extra, SnapSponsor(baseballBudget * 0.05), false, ""));
+		}
+
+		return list;
+	}
+
+	private static string DistrictName(string organizationId)
+	{
+		LeagueCatalog catalog = LeagueCatalog.Standard;
+		if (!catalog.OrganizationDistricts.TryGetValue(organizationId, out string? districtId))
+		{
+			return "";
+		}
+
+		foreach (DistrictIdentity district in catalog.Districts)
+		{
+			if (district.Id == districtId)
+			{
+				return district.Name;
+			}
+		}
+
+		return "";
+	}
+
+	private static string Locality(string schoolShortName, string districtName)
+	{
+		string name = schoolShortName.Trim();
+		int space = name.IndexOf(' ');
+		if (space > 0)
+		{
+			name = name[..space];
+		}
+
+		return string.IsNullOrWhiteSpace(name)
+			? (string.IsNullOrWhiteSpace(districtName) ? "County" : districtName)
+			: name;
+	}
+
+	private static string[] BanksFor(string districtName, string locality)
+	{
+		string key = districtName.Trim().ToLowerInvariant();
+		return key switch
+		{
+			"great lakes" => ["South County Bank", "Lakeshore Bank", $"{locality} Trust"],
+			"north shore" => ["North Shore Bank", "Lakefront Credit Union", $"{locality} Bank"],
+			"capital valley" => ["Capital Valley Bank", "Valley Trust", $"{locality} Bank"],
+			"iron range" => ["Range National Bank", "North Country Bank", $"{locality} Credit Union"],
+			_ => [$"{locality} Bank", $"{locality} Credit Union", "County Trust"],
+		};
+	}
+
+	private static double LeadShare(SeededRandom rng) =>
+		0.10 + (rng.Next(0, 7) * 0.01);
+
+	private static int Snap(double value)
+	{
+		if (value <= 0)
+		{
+			return 0;
+		}
+
+		return (int)Math.Round(value / 250.0, MidpointRounding.AwayFromZero) * 250;
+	}
+
+	private static int SnapSponsor(double value)
+	{
+		int snapped = (int)Math.Round(Math.Max(0, value) / 500.0, MidpointRounding.AwayFromZero) * 500;
+		return Math.Clamp(snapped, 2_000, 12_000);
+	}
+
+	private static int StableSeed(string value)
+	{
+		unchecked
+		{
+			int hash = 17;
+			foreach (char c in value)
+			{
+				hash = (hash * 31) + c;
+			}
+
+			return hash == int.MinValue ? 17 : Math.Abs(hash);
+		}
+	}
+}
+
+public sealed record ProgramFinanceSnapshot(
+	int BaseballBudget,
+	int Available,
+	int CoachSalary,
+	int RecruitingCommitted,
+	int RecruitingPool,
+	IReadOnlyList<BudgetLine> Spending,
+	IReadOnlyList<BudgetLine> Allocations,
+	IReadOnlyList<ProgramSponsor> Sponsors)
+{
+	public int Spent
+	{
+		get
+		{
+			int total = 0;
+			foreach (BudgetLine line in Spending)
+			{
+				total += line.Spent;
+			}
+
+			return total;
+		}
+	}
+
+	public int AllocatedTotal
+	{
+		get
+		{
+			int total = 0;
+			foreach (BudgetLine line in Allocations)
+			{
+				total += line.Amount;
+			}
+
+			return total;
+		}
+	}
+}
+
+public sealed record BudgetLine(string Label, int Amount, int Spent = 0)
+{
+	public int Remaining => Math.Max(0, Amount - Spent);
+
+	public string AmountLabel => PlayerAgreement.FormatMoney(Amount);
+
+	public string SpentLabel => PlayerAgreement.FormatMoney(Spent);
+
+	public string RemainingLabel => PlayerAgreement.FormatMoney(Remaining);
+}
+
+public sealed record ProgramSponsor(string Name, int AnnualAmount, bool InKind, string Detail)
+{
+	public string AmountLabel =>
+		InKind
+			? (string.IsNullOrWhiteSpace(Detail) ? "In-kind support" : Detail)
+			: $"{PlayerAgreement.FormatMoney(AnnualAmount)} / season";
+}

@@ -400,6 +400,7 @@ public partial class RotationPage : Control
 			ClubhouseBoard.GetRotation(_session.ActiveTeam).SwapSeats(_selectedSeat, key);
 			ClearSelection();
 			RefreshAll();
+			ClubhouseBoard.Commit(_session.ActiveTeam);
 			return;
 		}
 
@@ -443,6 +444,7 @@ public partial class RotationPage : Control
 		_selectedSeat = seat;
 		_selectedArm = 0;
 		RefreshAll();
+		ClubhouseBoard.Commit(_session.ActiveTeam);
 	}
 
 	private void SendSelectedToAvailable()
@@ -455,6 +457,7 @@ public partial class RotationPage : Control
 		ClubhouseBoard.GetRotation(_session.ActiveTeam).SetSeat(_selectedSeat, 0);
 		ClearSelection();
 		RefreshAll();
+		ClubhouseBoard.Commit(_session.ActiveTeam);
 	}
 
 	private static void ClearJersey(RotationCard rotation, int jersey)
@@ -632,6 +635,7 @@ public partial class RotationPage : Control
 			Alignment = BoxContainer.AlignmentMode.Center,
 		};
 		box.AddThemeConstantOverride("separation", -2);
+		PlayerLinks.MakeClickable(box, DistrictHubData.UserTeamId, $"{player.FirstName} {player.LastName}");
 		box.AddChild(MakeText(player.DisplayLast, _semibold, 13, TextPrimary, HorizontalAlignment.Left));
 		box.AddChild(MakeText($"{player.FirstName}  ·  {player.Year}", _medium, 10, TextMuted, HorizontalAlignment.Left));
 		return box;

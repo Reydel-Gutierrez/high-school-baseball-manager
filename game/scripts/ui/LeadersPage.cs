@@ -3,7 +3,7 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// District Hub leaders: one stat table at a time. Batting and pitching
+/// League leaders: one stat table at a time. Batting and pitching
 /// pills pick the group; stat tabs swap the ranked column.
 /// </summary>
 public partial class LeadersPage : Control
@@ -50,6 +50,7 @@ public partial class LeadersPage : Control
 
 		BuildPage();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += Refresh;
 		Refresh();
 	}
 
@@ -58,6 +59,7 @@ public partial class LeadersPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= Refresh;
 		}
 	}
 
@@ -101,7 +103,7 @@ public partial class LeadersPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"DISTRICT HUB  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
 		identity.AddChild(MakeText("LEADERS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  FOUR DISTRICTS", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
@@ -292,6 +294,7 @@ public partial class LeadersPage : Control
 
 		var name = MakeText(row.Name, user ? _bold : _semibold, 15, user ? Accent : TextPrimary, HorizontalAlignment.Left);
 		name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		PlayerLinks.MakeClickable(name, row.TeamId, row.Name);
 		columns.AddChild(name);
 
 		columns.AddChild(MakeFixed(row.Position, 44, _semibold, 13, TextMuted, HorizontalAlignment.Left));
@@ -356,6 +359,7 @@ public partial class LeadersPage : Control
 		var label = MakeText(teamShort, _semibold, 13, TextMuted, HorizontalAlignment.Left);
 		label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		mark.AddChild(label);
+		SchoolLinks.MakeClickable(mark, teamId);
 		return mark;
 	}
 

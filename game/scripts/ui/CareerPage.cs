@@ -4,16 +4,18 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// The coach's personal desk: identity, inbox, trophy cabinet, and a
-/// job board for seats at other programs. Distinct from the team pages.
+/// The coach's career office: email, job market, awards, and development.
+/// Clubhouse pages stay off this screen; it is its own hub.
 /// </summary>
 public partial class CareerPage : Control
 {
 	private enum DeskMode
 	{
-		Desk,
-		Cabinet,
-		Openings,
+		Email,
+		JobMarket,
+		Awards,
+		HallOfFame,
+		Development,
 	}
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
@@ -41,22 +43,29 @@ public partial class CareerPage : Control
 	private FontFile _medium = null!;
 	private Texture2D _iconMail = null!;
 	private Texture2D _iconTrophy = null!;
+	private Texture2D _iconFolder = null!;
+	private Texture2D _iconStar = null!;
+	private Texture2D _iconHome = null!;
 
-	private readonly List<CareerMail> _mail = new(CareerDesk.Inbox);
+	private readonly List<CareerMail> _mail = [];
 	private readonly HashSet<string> _applied = new();
 	private readonly HashSet<string> _acceptedInterviews = new();
 
 	private readonly Dictionary<DeskMode, Button> _modeButtons = new();
-	private Label _boardValue = null!;
-	private Label _securityValue = null!;
+	private Label _windowTitle = null!;
+	private Label _windowMeta = null!;
 	private Control _deskView = null!;
 	private Control _cabinetView = null!;
+	private Control _hallView = null!;
+	private VBoxContainer _hallHost = null!;
 	private Control _openingsView = null!;
+	private Control _developmentView = null!;
+	private Control? _licenseModal;
 	private VBoxContainer _inboxHost = null!;
 	private VBoxContainer _letterHost = null!;
 	private GridContainer _openingsHost = null!;
 
-	private DeskMode _mode = DeskMode.Desk;
+	private DeskMode _mode = DeskMode.Email;
 	private int _selectedMail;
 
 	public override void _Ready()
@@ -64,245 +73,722 @@ public partial class CareerPage : Control
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
 		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
 		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
-		_iconMail = UiSvg.Load("res://assets/ui/icon_mail.svg");
+		_iconMail = UiSvg.Load("res://assets/ui/icon_mail.svg", 512);
 		_iconTrophy = UiSvg.Load("res://assets/ui/icon_trophy.svg");
+		_iconFolder = UiSvg.Load("res://assets/ui/icon_folder.svg");
+		_iconStar = UiSvg.Load("res://assets/ui/icon_star.svg");
+		_iconHome = UiSvg.Load("res://assets/ui/icon_home.svg");
 		_session = GetNode<GameSession>("/root/GameSession");
-
-		BuildPage();
-		_session.ActiveTeamChanged += OnActiveTeamChanged;
-		ApplyStanding();
-		ShowMode(DeskMode.Desk);
-		SelectMail(FirstUnreadIndex());
+		_session.ContractStateChanged += OnContractStateChanged;
+		_session.CareerChanged += OnContractStateChanged;
+		MountContent();
 	}
 
 	public override void _ExitTree()
 	{
 		if (_session != null)
 		{
-			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.ContractStateChanged -= OnContractStateChanged;
+			_session.CareerChanged -= OnContractStateChanged;
 		}
 	}
 
-	private void OnActiveTeamChanged(TeamIdentity _) => ApplyStanding();
+	private void OnContractStateChanged() => MountContent();
 
-	private void ApplyStanding()
+	public override void _UnhandledInput(InputEvent ev)
 	{
-		_boardValue.Text = _session.BoardSatisfaction.ToLabel().ToUpperInvariant();
-		_boardValue.AddThemeColorOverride("font_color", SatisfactionColor(_session.BoardSatisfaction));
-		_securityValue.Text = _session.JobSecurity.ToLabel().ToUpperInvariant();
-		_securityValue.AddThemeColorOverride("font_color", SecurityColor(_session.JobSecurity));
+		if (_licenseModal != null && _licenseModal.Visible && ev.IsActionPressed("ui_cancel"))
+		{
+			CloseLicenseModal();
+			GetViewport().SetInputAsHandled();
+		}
+	}
+
+	private void ReturnToClubhouse()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowHome();
+		}
+	}
+
+	private void ShowLicenseModal()
+	{
+		if (_licenseModal != null)
+		{
+			_licenseModal.Visible = true;
+			_licenseModal.MoveToFront();
+			return;
+		}
+
+		_licenseModal = new Control
+		{
+			Name = "LicenseModal",
+			MouseFilter = MouseFilterEnum.Stop,
+		};
+		_licenseModal.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+
+		var dim = new ColorRect
+		{
+			Color = new Color(0.02f, 0.03f, 0.04f, 0.78f),
+			MouseFilter = MouseFilterEnum.Stop,
+		};
+		dim.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		dim.GuiInput += OnLicenseDimInput;
+		_licenseModal.AddChild(dim);
+
+		var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
+		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		_licenseModal.AddChild(center);
+
+		var panel = new PanelContainer
+		{
+			CustomMinimumSize = new Vector2(620, 0),
+			MouseFilter = MouseFilterEnum.Stop,
+		};
+		panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0.09f, 0.07f, 0.045f, 0.98f),
+			BorderColor = Gold,
+			BorderWidthLeft = 4,
+			BorderWidthTop = 1,
+			BorderWidthRight = 1,
+			BorderWidthBottom = 1,
+			ContentMarginLeft = 20,
+			ContentMarginTop = 16,
+			ContentMarginRight = 20,
+			ContentMarginBottom = 16,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomRight = 3,
+			CornerRadiusBottomLeft = 3,
+		});
+		center.AddChild(panel);
+
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 10);
+		panel.AddChild(layout);
+		layout.AddChild(MakeText(CoachingLicensure.Association.ToUpperInvariant(), _semibold, 10, Gold, HorizontalAlignment.Left));
+		layout.AddChild(MakeText(CoachingLicensure.Office.ToUpperInvariant(), _bold, 22, TextPrimary, HorizontalAlignment.Left));
+		layout.AddChild(MakeText(
+			$"{CoachingLicensure.Director.ToUpperInvariant()}  ·  {CoachingLicensure.DirectorTitle.ToUpperInvariant()}",
+			_medium,
+			12,
+			new Color(0.82f, 0.78f, 0.70f),
+			HorizontalAlignment.Left));
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Gold });
+
+		float bodyHeight = Mathf.Clamp(GetViewportRect().Size.Y * 0.42f, 180f, 340f);
+		var bodyScroll = new ScrollContainer
+		{
+			CustomMinimumSize = new Vector2(560, bodyHeight),
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+		};
+		layout.AddChild(bodyScroll);
+
+		var body = MakeText(CoachingLicensure.LetterBody(_session.CoachName), _medium, 14, new Color(0.86f, 0.84f, 0.80f), HorizontalAlignment.Left);
+		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		body.CustomMinimumSize = new Vector2(540, 0);
+		body.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		bodyScroll.AddChild(body);
+
+		var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+		actions.AddChild(MakeAction("CLOSE", true, CloseLicenseModal));
+		layout.AddChild(actions);
+
+		AddChild(_licenseModal);
+		_licenseModal.MoveToFront();
+	}
+
+	private void CloseLicenseModal()
+	{
+		_session.DismissLicenseNotice();
+		if (_licenseModal != null)
+		{
+			_licenseModal.Visible = false;
+		}
+
+		ShowMode(DeskMode.JobMarket);
+	}
+
+	private void OnLicenseDimInput(InputEvent ev)
+	{
+		if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
+		{
+			CloseLicenseModal();
+		}
+	}
+
+	private string CoachInitials()
+	{
+		string[] parts = _session.CoachName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length == 0)
+		{
+			return "HC";
+		}
+
+		if (parts.Length == 1)
+		{
+			return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+		}
+
+		return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}";
+	}
+
+	private Button MakeDossierButton(string text, Action onPressed)
+	{
+		var button = new Button
+		{
+			Text = text,
+			Flat = false,
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			CustomMinimumSize = new Vector2(120, 32),
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		button.AddThemeFontOverride("font", _semibold);
+		button.AddThemeFontSizeOverride("font_size", 12);
+		button.AddThemeColorOverride("font_color", TextOnAccent);
+		button.AddThemeColorOverride("font_hover_color", TextOnAccent);
+		button.AddThemeStyleboxOverride("normal", MakeFilledButton(Gold));
+		button.AddThemeStyleboxOverride("hover", MakeFilledButton(AccentHover));
+		button.AddThemeStyleboxOverride("pressed", MakeFilledButton(AccentHover));
+		button.AddThemeStyleboxOverride("focus", MakeFilledButton(AccentHover));
+		button.Pressed += onPressed;
+		return button;
+	}
+
+	private void MountContent()
+	{
+		foreach (Node child in GetChildren())
+		{
+			if (child.Name == "BackgroundImage")
+			{
+				continue;
+			}
+
+			RemoveChild(child);
+			child.QueueFree();
+		}
+
+		_modeButtons.Clear();
+		_licenseModal = null;
+		_mail.Clear();
+		if (_session.HasSignedContract)
+		{
+			_mail.AddRange(CareerDesk.Inbox);
+		}
+
+		BuildPage();
+		ShowMode(_session.HasSignedContract ? DeskMode.Email : DeskMode.JobMarket);
+		if (_session.HasSignedContract)
+		{
+			SelectMail(FirstUnreadIndex());
+		}
+
+		if (!_session.HasSignedContract && !_session.LicenseNoticeDismissed)
+		{
+			ShowLicenseModal();
+		}
 	}
 
 	private void BuildPage()
 	{
+		AddChild(BuildOfficeWash());
+
 		var margin = new MarginContainer();
 		margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 8);
-		margin.AddThemeConstantOverride("margin_top", 8);
-		margin.AddThemeConstantOverride("margin_right", 8);
+		margin.AddThemeConstantOverride("margin_left", 12);
+		margin.AddThemeConstantOverride("margin_top", 10);
+		margin.AddThemeConstantOverride("margin_right", 12);
 		margin.AddThemeConstantOverride("margin_bottom", 8);
 		AddChild(margin);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
+		layout.AddThemeConstantOverride("separation", 10);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildDossier());
-		layout.AddChild(BuildModeBar());
+		var body = new HBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		body.AddThemeConstantOverride("separation", 12);
+		layout.AddChild(body);
+		body.AddChild(BuildDossier());
+		body.AddChild(BuildAppWindow());
+		layout.AddChild(BuildDeskTray());
+	}
+
+	private Control BuildOfficeWash()
+	{
+		var wash = new ColorRect
+		{
+			Color = new Color(0.06f, 0.035f, 0.02f, 0.42f),
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		wash.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		return wash;
+	}
+
+	private Control BuildAppWindow()
+	{
+		var frame = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		frame.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0.07f, 0.05f, 0.035f, 0.96f),
+			BorderColor = GoldDeep,
+			BorderWidthLeft = 2,
+			BorderWidthTop = 2,
+			BorderWidthRight = 2,
+			BorderWidthBottom = 2,
+			ContentMarginLeft = 0,
+			ContentMarginTop = 0,
+			ContentMarginRight = 0,
+			ContentMarginBottom = 0,
+			CornerRadiusTopLeft = 4,
+			CornerRadiusTopRight = 4,
+			CornerRadiusBottomRight = 4,
+			CornerRadiusBottomLeft = 4,
+			ShadowColor = new Color(0f, 0f, 0f, 0.45f),
+			ShadowSize = 10,
+			ShadowOffset = new Vector2(0, 4),
+		});
+
+		var column = new VBoxContainer();
+		column.AddThemeConstantOverride("separation", 0);
+		frame.AddChild(column);
+		column.AddChild(BuildWindowChrome());
+		column.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Gold });
 
 		var host = new Control
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 			ClipContents = true,
+			MouseFilter = MouseFilterEnum.Ignore,
 		};
-		layout.AddChild(host);
+		column.AddChild(host);
 
 		_deskView = BuildDesk();
 		_cabinetView = BuildCabinet();
-		_openingsView = BuildOpenings();
-		host.AddChild(_deskView);
-		host.AddChild(_cabinetView);
-		host.AddChild(_openingsView);
+		_hallView = BuildHallOfFame();
+		_openingsView = BuildJobMarket();
+		_developmentView = BuildDevelopment();
+		foreach (Control app in new[] { _deskView, _cabinetView, _hallView, _openingsView, _developmentView })
+		{
+			app.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			app.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			app.SizeFlagsVertical = SizeFlags.ExpandFill;
+			host.AddChild(app);
+		}
+
+		return frame;
+	}
+
+	private Control BuildWindowChrome()
+	{
+		var chrome = new PanelContainer();
+		chrome.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = Wood,
+			ContentMarginLeft = 14,
+			ContentMarginTop = 8,
+			ContentMarginRight = 12,
+			ContentMarginBottom = 8,
+		});
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 10);
+		chrome.AddChild(row);
+
+		var titles = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		titles.AddThemeConstantOverride("separation", -2);
+		_windowTitle = MakeText("MAIL", _bold, 16, Gold, HorizontalAlignment.Left);
+		_windowMeta = MakeText("Athletic office inbox", _medium, 11, new Color(0.82f, 0.78f, 0.70f), HorizontalAlignment.Left);
+		titles.AddChild(_windowTitle);
+		titles.AddChild(_windowMeta);
+		row.AddChild(titles);
+		row.AddChild(MakeDossierButton("CLUBHOUSE", ReturnToClubhouse));
+		return chrome;
+	}
+
+	private Control BuildJobMarket()
+	{
+		var board = new JobMarketBoard
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		board.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		return board;
+	}
+
+	public void ShowJobMarket()
+	{
+		_session.AcknowledgeJobMarket();
+		ShowMode(DeskMode.JobMarket);
+	}
+
+	private Control BuildDevelopment()
+	{
+		var card = new PanelContainer();
+		card.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(24));
+		var layout = new VBoxContainer
+		{
+			Alignment = BoxContainer.AlignmentMode.Center,
+		};
+		layout.AddThemeConstantOverride("separation", 8);
+		card.AddChild(layout);
+		layout.AddChild(MakeText("MANAGER DEVELOPMENT", _bold, 22, TextPrimary, HorizontalAlignment.Center));
+		layout.AddChild(MakeText(
+			"Licensing courses, clinic hours, and in-season staff work will live here.",
+			_medium,
+			13,
+			TextMuted,
+			HorizontalAlignment.Center));
+		return card;
 	}
 
 	private Control BuildDossier()
 	{
-		var card = new PanelContainer();
+		var card = new PanelContainer
+		{
+			CustomMinimumSize = new Vector2(340, 0),
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
 		card.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = Office,
-			BorderColor = Gold,
-			BorderWidthLeft = 4,
+			BgColor = new Color(0.93f, 0.88f, 0.76f, 0.97f),
+			BorderColor = GoldDeep,
+			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
 			BorderWidthRight = 1,
 			BorderWidthBottom = 1,
-			ContentMarginLeft = 16,
-			ContentMarginTop = 12,
-			ContentMarginRight = 16,
-			ContentMarginBottom = 12,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
-			CornerDetail = 4,
+			ContentMarginLeft = 18,
+			ContentMarginTop = 16,
+			ContentMarginRight = 18,
+			ContentMarginBottom = 16,
+			CornerRadiusTopLeft = 2,
+			CornerRadiusTopRight = 2,
+			CornerRadiusBottomRight = 2,
+			CornerRadiusBottomLeft = 2,
+			ShadowColor = new Color(0f, 0f, 0f, 0.4f),
+			ShadowSize = 12,
+			ShadowOffset = new Vector2(2, 6),
 		});
 
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 16);
-		card.AddChild(row);
-		row.AddChild(BuildMonogram());
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+		};
+		card.AddChild(scroll);
 
+		var layout = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		layout.AddThemeConstantOverride("separation", 8);
+		scroll.AddChild(layout);
+
+		Color ink = new(0.12f, 0.09f, 0.06f, 1f);
+		Color mutedInk = new(0.38f, 0.30f, 0.18f, 1f);
+		Color rule = new(0.62f, 0.48f, 0.22f, 0.55f);
+
+		var head = new HBoxContainer();
+		head.AddThemeConstantOverride("separation", 12);
+		layout.AddChild(head);
+		head.AddChild(BuildPortrait());
 		var identity = new VBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
-		identity.AddThemeConstantOverride("separation", -1);
-		identity.AddChild(MakeText($"MY CAREER  ·  {CareerDesk.SeasonYear}", _medium, 10, Gold, HorizontalAlignment.Left));
-		identity.AddChild(MakeText(CareerDesk.CoachName.ToUpperInvariant(), _bold, 28, TextPrimary, HorizontalAlignment.Left));
+		identity.AddThemeConstantOverride("separation", -2);
+		identity.AddChild(MakeText(_session.CoachName.ToUpperInvariant(), _bold, 26, ink, HorizontalAlignment.Left));
 		identity.AddChild(MakeText(
-			$"HEAD COACH  ·  {_session.Organization.Name.ToUpperInvariant()}",
+			_session.HasSignedContract ? "HEAD COACH" : "LICENSED  ·  UNSIGNED",
 			_semibold,
-			13,
-			new Color(0.82f, 0.78f, 0.70f),
+			14,
+			new Color(0.42f, 0.28f, 0.10f, 1f),
 			HorizontalAlignment.Left));
-		identity.AddChild(MakeText(
-			$"YEAR {_session.ContractYear} OF {_session.ContractLength}  ·  PROMOTED FROM THE JV BENCH",
-			_medium,
-			11,
-			TextMuted,
-			HorizontalAlignment.Left));
-		row.AddChild(identity);
+		identity.AddChild(MakeText(_session.SeasonOrdinalLabel, _medium, 13, mutedInk, HorizontalAlignment.Left));
+		head.AddChild(identity);
 
-		var metrics = new HBoxContainer
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = GoldDeep });
+		layout.AddChild(BuildPaperStat("CAREER RECORD", _session.CareerRecordLabel, ink, mutedInk));
+		layout.AddChild(BuildPaperStat("WIN %", _session.CareerWinPctLabel, ink, mutedInk));
+		layout.AddChild(BuildReputationBlock(ink, mutedInk));
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = rule });
+		layout.AddChild(MakeText("TROPHIES", _semibold, 11, GoldDeep, HorizontalAlignment.Left));
+		layout.AddChild(BuildPaperStat("State Championships", _session.CareerStateTitles.ToString(), ink, mutedInk));
+		layout.AddChild(BuildPaperStat("Regional Championships", _session.CareerRegionalTitles.ToString(), ink, mutedInk));
+		layout.AddChild(BuildPaperStat("District Championships", _session.CareerDistrictTitles.ToString(), ink, mutedInk));
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = rule });
+		layout.AddChild(MakeText("CAREER HISTORY", _semibold, 11, GoldDeep, HorizontalAlignment.Left));
+		IReadOnlyList<CoachStint> stints = _session.CareerStints;
+		if (stints.Count == 0)
 		{
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		metrics.AddThemeConstantOverride("separation", 18);
-		AddMetric(metrics, CareerDesk.ThisYearRecord, "THIS YEAR", TextPrimary);
-		AddMetric(metrics, CareerDesk.CareerRecord, "CAREER", TextPrimary);
-		AddMetric(metrics, CareerDesk.Reputation.ToUpperInvariant(), "REPUTATION", Gold);
-		_boardValue = AddMetric(metrics, "AVERAGE", "BOARD", Accent);
-		_securityValue = AddMetric(metrics, "AVERAGE", "SECURITY", Accent);
-		row.AddChild(metrics);
+			layout.AddChild(MakeText(
+				_session.HasSignedContract
+					? $"{GameSession.SeasonYear}\u2013     {_session.Organization.ShortName}"
+					: "No seat yet. The job market is on the desk.",
+				_medium,
+				13,
+				mutedInk,
+				HorizontalAlignment.Left));
+		}
+		else
+		{
+			foreach (CoachStint stint in stints)
+			{
+				string line = stint.Games > 0
+					? $"{stint.SchoolName}  ·  {stint.RecordLabel}"
+					: stint.SchoolName;
+				layout.AddChild(BuildPaperStat(stint.YearsLabel, line, ink, mutedInk));
+			}
+		}
+
+		if (_session.HasSignedContract)
+		{
+			layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = rule });
+			layout.AddChild(MakeText(
+				$"Board {_session.BoardSatisfactionScore}  ·  {_session.BoardSatisfaction.ToLabel()}  ·  Job {_session.JobSecurity.ToLabel()}",
+				_medium,
+				12,
+				mutedInk,
+				HorizontalAlignment.Left));
+			layout.AddChild(MakeText(
+				$"This year {_session.RecordLabel}  ·  Year {_session.ContractYear} of {_session.ContractLength}",
+				_medium,
+				12,
+				mutedInk,
+				HorizontalAlignment.Left));
+			if (_session.AnnualSalary > 0)
+			{
+				layout.AddChild(MakeText(
+					$"{PlayerAgreement.FormatMoney(_session.AnnualSalary)} / year  ·  paid from the baseball budget",
+					_medium,
+					12,
+					mutedInk,
+					HorizontalAlignment.Left));
+			}
+		}
 
 		return card;
 	}
 
-	private Control BuildMonogram()
+	private Control BuildPortrait()
 	{
-		var avatar = new PanelContainer
+		var frame = new PanelContainer
 		{
-			CustomMinimumSize = new Vector2(72, 72),
+			CustomMinimumSize = new Vector2(84, 104),
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
-		avatar.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		frame.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.12f, 0.08f, 0.04f, 1f),
-			BorderColor = Gold,
+			BgColor = new Color(0.16f, 0.10f, 0.05f, 1f),
+			BorderColor = GoldDeep,
 			BorderWidthLeft = 2,
 			BorderWidthTop = 2,
 			BorderWidthRight = 2,
 			BorderWidthBottom = 2,
-			CornerRadiusTopLeft = 36,
-			CornerRadiusTopRight = 36,
-			CornerRadiusBottomRight = 36,
-			CornerRadiusBottomLeft = 36,
-			CornerDetail = 8,
+			ContentMarginLeft = 2,
+			ContentMarginTop = 2,
+			ContentMarginRight = 2,
+			ContentMarginBottom = 2,
 		});
-		var initials = MakeText(CareerDesk.CoachInitials, _bold, 26, Gold, HorizontalAlignment.Center);
+
+		PersonAppearance appearance = _session.Coach.Appearance;
+		if (appearance.Seed != 0)
+		{
+			var portrait = new PersonPortrait
+			{
+				CustomMinimumSize = new Vector2(80, 100),
+			};
+			portrait.SetAppearance(appearance);
+			frame.AddChild(portrait);
+			return frame;
+		}
+
+		var initials = MakeText(CoachInitials(), _bold, 28, Gold, HorizontalAlignment.Center);
 		initials.VerticalAlignment = VerticalAlignment.Center;
 		initials.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		initials.SizeFlagsVertical = SizeFlags.ExpandFill;
-		avatar.AddChild(initials);
-		return avatar;
+		frame.AddChild(initials);
+		return frame;
 	}
 
-	private Label AddMetric(HBoxContainer row, string value, string label, Color valueColor)
+	private Control BuildReputationBlock(Color ink, Color mutedInk)
 	{
 		var col = new VBoxContainer();
-		col.AddThemeConstantOverride("separation", -4);
-		col.Alignment = BoxContainer.AlignmentMode.Center;
-		var amount = MakeText(value, _bold, 22, valueColor, HorizontalAlignment.Right);
-		col.AddChild(amount);
-		col.AddChild(MakeText(label, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		row.AddChild(col);
-		return amount;
+		col.AddThemeConstantOverride("separation", 4);
+		col.AddChild(BuildPaperStat(
+			"COACH REPUTATION",
+			$"{CoachReputation.ToLabel(_session.CoachReputationScore).ToUpperInvariant()}  {_session.CoachReputationScore}",
+			ink,
+			mutedInk));
+
+		var bar = new ProgressBar
+		{
+			MinValue = 0,
+			MaxValue = 99,
+			Value = _session.CoachReputationScore,
+			ShowPercentage = false,
+			CustomMinimumSize = new Vector2(0, 8),
+		};
+		bar.AddThemeStyleboxOverride("background", MakeFlatFill(new Color(0.78f, 0.70f, 0.52f, 0.55f), 3));
+		bar.AddThemeStyleboxOverride("fill", MakeFlatFill(GoldDeep, 3));
+		col.AddChild(bar);
+
+		var hint = MakeText(
+			"Athletic directors use this number. Programs sitting too far above you will not take the call.",
+			_medium,
+			11,
+			mutedInk,
+			HorizontalAlignment.Left);
+		hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		col.AddChild(hint);
+		return col;
 	}
 
-	private Control BuildModeBar()
+	private Control BuildPaperStat(string label, string value, Color ink, Color muted)
+	{
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 8);
+		var name = MakeText(label, _medium, 12, muted, HorizontalAlignment.Left);
+		name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		row.AddChild(name);
+		row.AddChild(MakeText(value, _bold, 16, ink, HorizontalAlignment.Right));
+		return row;
+	}
+
+	private static StyleBoxFlat MakeFlatFill(Color color, int radius) => new()
+	{
+		BgColor = color,
+		CornerRadiusTopLeft = radius,
+		CornerRadiusTopRight = radius,
+		CornerRadiusBottomRight = radius,
+		CornerRadiusBottomLeft = radius,
+	};
+
+	private Control BuildDeskTray()
 	{
 		var frame = new PanelContainer();
 		frame.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.047f, 0.04f, 0.035f, 0.96f),
-			BorderColor = new Color(Gold.R, Gold.G, Gold.B, 0.35f),
+			BgColor = new Color(0.16f, 0.10f, 0.05f, 0.96f),
+			BorderColor = new Color(Gold.R, Gold.G, Gold.B, 0.4f),
 			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
+			BorderWidthTop = 2,
 			BorderWidthRight = 1,
 			BorderWidthBottom = 1,
-			ContentMarginLeft = 3,
-			ContentMarginTop = 3,
-			ContentMarginRight = 3,
-			ContentMarginBottom = 3,
+			ContentMarginLeft = 8,
+			ContentMarginTop = 8,
+			ContentMarginRight = 8,
+			ContentMarginBottom = 8,
 			CornerRadiusTopLeft = 4,
 			CornerRadiusTopRight = 4,
 			CornerRadiusBottomRight = 4,
 			CornerRadiusBottomLeft = 4,
-			CornerDetail = 4,
 		});
 
 		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 3);
+		row.AddThemeConstantOverride("separation", 8);
 		frame.AddChild(row);
-
-		row.AddChild(MakeModeButton(DeskMode.Desk, "DESK", _iconMail));
-		row.AddChild(MakeModeButton(DeskMode.Cabinet, "CABINET", _iconTrophy));
-		row.AddChild(MakeModeButton(DeskMode.Openings, "OPENINGS", null));
+		row.AddChild(MakeTrayButton(DeskMode.Email, "MAIL", _iconMail));
+		row.AddChild(MakeTrayButton(DeskMode.JobMarket, "JOB MARKET", _iconFolder));
+		row.AddChild(MakeTrayButton(DeskMode.Awards, "AWARDS", _iconTrophy));
+		row.AddChild(MakeTrayButton(DeskMode.HallOfFame, "HALL OF FAME", _iconStar));
+		row.AddChild(MakeTrayButton(DeskMode.Development, "DEVELOPMENT", _iconHome));
 		return frame;
 	}
 
-	private Button MakeModeButton(DeskMode mode, string label, Texture2D? icon)
+	private Button MakeTrayButton(DeskMode mode, string label, Texture2D? icon)
 	{
 		var button = new Button
 		{
 			Text = label,
 			Flat = false,
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			CustomMinimumSize = new Vector2(0, 32),
+			CustomMinimumSize = new Vector2(0, 52),
 			MouseDefaultCursorShape = CursorShape.PointingHand,
 			Icon = icon,
 			ExpandIcon = true,
 		};
 		if (icon != null)
 		{
-			button.AddThemeConstantOverride("icon_max_width", 16);
+			button.AddThemeConstantOverride("icon_max_width", 22);
 		}
 
 		button.AddThemeFontOverride("font", _semibold);
 		button.AddThemeFontSizeOverride("font_size", 13);
-		button.Pressed += () => ShowMode(mode);
+		button.Pressed += () =>
+		{
+			if (mode == DeskMode.JobMarket)
+			{
+				ShowJobMarket();
+				return;
+			}
+
+			ShowMode(mode);
+		};
 		_modeButtons[mode] = button;
 		return button;
 	}
 
+	public void ShowHallOfFame() => ShowMode(DeskMode.HallOfFame);
+
 	private void ShowMode(DeskMode mode)
 	{
 		_mode = mode;
-		_deskView.Visible = mode == DeskMode.Desk;
-		_cabinetView.Visible = mode == DeskMode.Cabinet;
-		_openingsView.Visible = mode == DeskMode.Openings;
+		_deskView.Visible = mode == DeskMode.Email;
+		_cabinetView.Visible = mode == DeskMode.Awards;
+		_hallView.Visible = mode == DeskMode.HallOfFame;
+		_openingsView.Visible = mode == DeskMode.JobMarket;
+		_developmentView.Visible = mode == DeskMode.Development;
+		if (_windowTitle != null)
+		{
+			_windowTitle.Text = mode switch
+			{
+				DeskMode.Email => "MAIL",
+				DeskMode.JobMarket => "JOB MARKET",
+				DeskMode.Awards => "TROPHY CABINET",
+				DeskMode.HallOfFame => "HALL OF FAME",
+				_ => "DEVELOPMENT",
+			};
+			_windowMeta.Text = mode switch
+			{
+				DeskMode.Email => "Letters on the desk",
+				DeskMode.JobMarket => "Posted seats. Reputation decides who calls.",
+				DeskMode.Awards => "Cups already on the shelf",
+				DeskMode.HallOfFame => "Plaques that stay after they graduate",
+				_ => "Licensing courses and clinic hours",
+			};
+		}
+
 		RefreshModeButtons();
 
-		if (mode == DeskMode.Desk)
+		if (mode == DeskMode.Email)
 		{
 			RebuildInbox();
 			BindLetter();
 		}
-		else if (mode == DeskMode.Openings)
+
+		if (mode == DeskMode.HallOfFame)
 		{
-			RebuildOpenings();
+			RebuildHallOfFame();
 		}
 	}
 
@@ -313,13 +799,15 @@ public partial class CareerPage : Control
 		{
 			bool active = pair.Key == _mode;
 			Button button = pair.Value;
-			button.Text = pair.Key == DeskMode.Desk && unread > 0 && !active
-				? $"DESK  ·  {unread}"
+			button.Text = pair.Key == DeskMode.Email && unread > 0 && !active
+				? $"MAIL  ·  {unread}"
 				: pair.Key switch
 				{
-					DeskMode.Desk => "DESK",
-					DeskMode.Cabinet => "CABINET",
-					_ => "OPENINGS",
+					DeskMode.Email => "MAIL",
+					DeskMode.JobMarket => "JOB MARKET",
+					DeskMode.Awards => "AWARDS",
+					DeskMode.HallOfFame => "HALL OF FAME",
+					_ => "DEVELOPMENT",
 				};
 
 			button.AddThemeColorOverride("font_color", active ? TextOnAccent : TextPrimary);
@@ -512,6 +1000,23 @@ public partial class CareerPage : Control
 
 		if (_mail.Count == 0)
 		{
+			var empty = new VBoxContainer
+			{
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+				Alignment = BoxContainer.AlignmentMode.Center,
+			};
+			empty.AddThemeConstantOverride("separation", 6);
+			empty.AddChild(MakeText("NO MAIL", _bold, 16, TextMuted, HorizontalAlignment.Center));
+			empty.AddChild(MakeText(
+				_session.HasSignedContract
+					? "The inbox is clear."
+					: "School mail opens after you accept a job. Association notices arrive as license letters.",
+				_medium,
+				12,
+				TextMuted,
+				HorizontalAlignment.Center));
+			_letterHost.AddChild(empty);
 			return;
 		}
 
@@ -584,7 +1089,7 @@ public partial class CareerPage : Control
 		switch (mail.Kind)
 		{
 			case CareerMailKind.Contract:
-				row.AddChild(MakeAction("VIEW CONTRACT GOALS", true, () =>
+				row.AddChild(MakeAction("VIEW BOARD GOALS", true, () =>
 				{
 					if (GetTree().CurrentScene is AppNavigator navigator)
 					{
@@ -593,7 +1098,7 @@ public partial class CareerPage : Control
 				}));
 				return pad;
 			case CareerMailKind.JobOffer when mail.JobId != null:
-				row.AddChild(MakeAction("VIEW OPENINGS", false, () => ShowMode(DeskMode.Openings)));
+				row.AddChild(MakeAction("VIEW JOB MARKET", false, () => ShowJobMarket()));
 				row.AddChild(MakeAction(
 					_applied.Contains(mail.JobId) ? "APPLICATION SENT" : "APPLY FOR THE SEAT",
 					true,
@@ -601,7 +1106,7 @@ public partial class CareerPage : Control
 					_applied.Contains(mail.JobId)));
 				return pad;
 			case CareerMailKind.Award:
-				row.AddChild(MakeAction("OPEN THE CABINET", true, () => ShowMode(DeskMode.Cabinet)));
+				row.AddChild(MakeAction("OPEN AWARDS", true, () => ShowMode(DeskMode.Awards)));
 				return pad;
 			case CareerMailKind.Media:
 				bool accepted = _acceptedInterviews.Contains(mail.Id);
@@ -806,6 +1311,123 @@ public partial class CareerPage : Control
 		return wrap;
 	}
 
+	private Control BuildHallOfFame()
+	{
+		var card = new PanelContainer();
+		card.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(14));
+
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 10);
+		card.AddChild(layout);
+
+		var heading = new VBoxContainer();
+		heading.AddThemeConstantOverride("separation", -2);
+		OrganizationState? school = HallOfFameDesk.ProgramFor(_session);
+		string name = (school?.DisplayName ?? _session.Organization.ShortName).ToUpperInvariant();
+		heading.AddChild(MakeText(name, _semibold, 12, Gold, HorizontalAlignment.Left));
+		heading.AddChild(MakeText("PROGRAM HALL OF FAME", _bold, 18, TextPrimary, HorizontalAlignment.Left));
+		heading.AddChild(MakeText("One inductee a year. The plaque stays after they graduate.", _medium, 12, TextMuted, HorizontalAlignment.Left));
+		layout.AddChild(heading);
+		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Gold });
+
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+		};
+		layout.AddChild(scroll);
+		_hallHost = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		_hallHost.AddThemeConstantOverride("separation", 10);
+		scroll.AddChild(_hallHost);
+		RebuildHallOfFame();
+		return card;
+	}
+
+	private void RebuildHallOfFame()
+	{
+		if (_hallHost == null)
+		{
+			return;
+		}
+
+		foreach (Node child in _hallHost.GetChildren())
+		{
+			child.QueueFree();
+		}
+
+		IReadOnlyList<ProgramHallOfFameInductee> wall = HallOfFameDesk.Wall(_session);
+		if (wall.Count == 0)
+		{
+			_hallHost.AddChild(MakeText("The hall is empty until the first induction.", _medium, 14, TextMuted, HorizontalAlignment.Left));
+			return;
+		}
+
+		var grid = new GridContainer
+		{
+			Columns = 3,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		grid.AddThemeConstantOverride("h_separation", 10);
+		grid.AddThemeConstantOverride("v_separation", 10);
+		_hallHost.AddChild(grid);
+		foreach (ProgramHallOfFameInductee inductee in wall)
+		{
+			grid.AddChild(BuildPlaque(inductee));
+		}
+	}
+
+	private Control BuildPlaque(ProgramHallOfFameInductee inductee)
+	{
+		var plaque = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			CustomMinimumSize = new Vector2(0, 168),
+		};
+		plaque.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0.07f, 0.055f, 0.035f, 0.96f),
+			BorderColor = Gold,
+			BorderWidthLeft = 2,
+			BorderWidthTop = 2,
+			BorderWidthRight = 2,
+			BorderWidthBottom = 2,
+			ContentMarginLeft = 12,
+			ContentMarginTop = 12,
+			ContentMarginRight = 12,
+			ContentMarginBottom = 12,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomRight = 3,
+			CornerRadiusBottomLeft = 3,
+		});
+		if (!string.IsNullOrWhiteSpace(inductee.PlayerName))
+		{
+			PlayerLinks.MakeClickable(plaque, _session.CatalogOrganizationId, inductee.PlayerName);
+		}
+
+		var col = new VBoxContainer();
+		col.AddThemeConstantOverride("separation", 2);
+		plaque.AddChild(col);
+		col.AddChild(MakeText(inductee.PlayerName.ToUpperInvariant(), _bold, 16, TextPrimary, HorizontalAlignment.Left));
+		col.AddChild(MakeText(inductee.YearsLabel, _semibold, 13, Gold, HorizontalAlignment.Left));
+		col.AddChild(MakeText(inductee.Position, _bold, 14, Accent, HorizontalAlignment.Left));
+		foreach (string honor in inductee.HonorLines)
+		{
+			col.AddChild(MakeText(honor, _medium, 12, TextPrimary, HorizontalAlignment.Left));
+		}
+
+		col.AddChild(MakeText(inductee.CareerLine, _medium, 12, TextMuted, HorizontalAlignment.Left));
+		return plaque;
+	}
+
 	private Control BuildTimeline()
 	{
 		var strip = new PanelContainer();
@@ -832,14 +1454,33 @@ public partial class CareerPage : Control
 		strip.AddChild(layout);
 		layout.AddChild(MakeText("THE PATH HERE", _semibold, 11, Gold, HorizontalAlignment.Left));
 
+		IReadOnlyList<CoachStint> stints = _session.CareerStints;
+		if (stints.Count == 0)
+		{
+			layout.AddChild(MakeText(
+				_session.HasSignedContract
+					? $"{GameSession.SeasonYear}\u2013     {_session.Organization.ShortName}"
+					: "No seat yet. The job market is on the desk.",
+				_medium,
+				12,
+				TextMuted,
+				HorizontalAlignment.Left));
+			return strip;
+		}
+
 		var row = new HBoxContainer();
 		row.AddThemeConstantOverride("separation", 0);
 		layout.AddChild(row);
 
-		for (int i = 0; i < CareerDesk.Timeline.Count; i++)
+		for (int i = 0; i < stints.Count; i++)
 		{
-			CareerStop stop = CareerDesk.Timeline[i];
-			bool current = i == CareerDesk.Timeline.Count - 1;
+			CoachStint stint = stints[i];
+			bool current = stint.IsCurrent || i == stints.Count - 1;
+			string note = stint.Games > 0
+				? stint.RecordLabel
+				: current
+					? $"Year {_session.ContractYear} of {_session.ContractLength}."
+					: "Hired.";
 
 			if (i > 0)
 			{
@@ -857,9 +1498,9 @@ public partial class CareerPage : Control
 				SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			};
 			cell.AddThemeConstantOverride("separation", -1);
-			cell.AddChild(MakeText(stop.Year.ToString(), _bold, 14, current ? Gold : TextPrimary, HorizontalAlignment.Left));
-			cell.AddChild(MakeText(stop.Title.ToUpperInvariant(), _semibold, 12, TextPrimary, HorizontalAlignment.Left));
-			cell.AddChild(MakeText(stop.Note, _medium, 11, TextMuted, HorizontalAlignment.Left));
+			cell.AddChild(MakeText(stint.YearsLabel, _bold, 14, current ? Gold : TextPrimary, HorizontalAlignment.Left));
+			cell.AddChild(MakeText(stint.SchoolName.ToUpperInvariant(), _semibold, 12, TextPrimary, HorizontalAlignment.Left));
+			cell.AddChild(MakeText(note, _medium, 11, TextMuted, HorizontalAlignment.Left));
 			row.AddChild(cell);
 		}
 
@@ -1024,22 +1665,19 @@ public partial class CareerPage : Control
 		return pill;
 	}
 
-	private void ApplyToJob(string jobId)
+	private void ApplyToJob(string jobId, string? schoolName = null, string? note = null)
 	{
-		if (_applied.Contains(jobId))
-		{
-			return;
-		}
-
-		CareerJob? job = CareerDesk.FindJob(jobId);
-		if (job == null)
+		if (string.IsNullOrEmpty(jobId) || _applied.Contains(jobId))
 		{
 			return;
 		}
 
 		_applied.Add(jobId);
-		_mail.Insert(0, CareerDesk.ConfirmationFor(job));
-		ShowMode(DeskMode.Desk);
+		CareerJob? job = CareerDesk.FindJob(jobId);
+		_mail.Insert(0, job != null
+			? CareerDesk.ConfirmationFor(job)
+			: CareerDesk.ConfirmationFor(schoolName ?? "that program", note ?? "Application received."));
+		ShowMode(DeskMode.Email);
 		SelectMail(0);
 	}
 

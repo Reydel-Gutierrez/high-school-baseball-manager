@@ -11,8 +11,9 @@ public static class ClubhouseCalendar
 {
 	public static IReadOnlyList<CalendarContest> Contests { get; } = Build();
 
-	public static IReadOnlyList<CalendarContest> On(DateOnly date)
+	public static IReadOnlyList<CalendarContest> On(DateOnly date, TryoutCamp? tryouts = null)
 	{
+		_ = tryouts;
 		var matches = new List<CalendarContest>();
 		foreach (CalendarContest contest in Contests)
 		{
@@ -25,8 +26,9 @@ public static class ClubhouseCalendar
 		return matches;
 	}
 
-	public static IReadOnlyList<CalendarContest> InMonth(int year, int month)
+	public static IReadOnlyList<CalendarContest> InMonth(int year, int month, TryoutCamp? tryouts = null)
 	{
+		_ = tryouts;
 		var matches = new List<CalendarContest>();
 		foreach (CalendarContest contest in Contests)
 		{
@@ -39,8 +41,74 @@ public static class ClubhouseCalendar
 		return matches;
 	}
 
+	public static CalendarContest FromTryout(TryoutGame game) =>
+		new(
+			game.Date,
+			TryoutGame.WhiteId,
+			true,
+			TeamLevel.Varsity,
+			TryoutGame.Time,
+			true,
+			game.BlueRuns,
+			game.WhiteRuns,
+			CalendarContestKind.Tryout,
+			game.Number);
+
+	public static CalendarContest FromScheduled(ScheduledGame game, string userTeamId, GameWorld world)
+	{
+		bool home = game.HomeTeamId == userTeamId;
+		string opponentTeam = home ? game.AwayTeamId : game.HomeTeamId;
+		string opponentOrg = CareerCalendar.OrganizationIdForTeam(world, opponentTeam);
+		int? us = home ? game.HomeScore : game.AwayScore;
+		int? them = home ? game.AwayScore : game.HomeScore;
+		bool complete = game.Status == GameStatus.Completed;
+		return new(
+			game.Date,
+			opponentOrg,
+			home,
+			game.TeamLevel,
+			CareerCalendar.GameTime(game.Date, game.TeamLevel),
+			game.GameType.IsExhibition(),
+			complete ? us : null,
+			complete ? them : null,
+			CalendarContestKind.Regular,
+			0,
+			game.Id,
+			game.GameType);
+	}
+
+	private static void AppendTryouts(
+		List<CalendarContest> matches,
+		TryoutCamp? tryouts,
+		Func<CalendarContest, bool> include)
+	{
+		if (tryouts == null)
+		{
+			return;
+		}
+
+		foreach (TryoutGame game in tryouts.Games)
+		{
+			CalendarContest contest = FromTryout(game);
+			if (include(contest))
+			{
+				matches.Add(contest);
+			}
+		}
+	}
+
 	public static string OpponentMark(string opponentId)
 	{
+		if (opponentId == TryoutGame.WhiteId)
+		{
+			return "WHT";
+		}
+
+		if (opponentId == TryoutGame.BlueId)
+		{
+			return "BLU";
+		}
+
 		HubTeam team = DistrictHubData.GetTeam(opponentId);
 		string[] parts = team.Name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
 		if (parts.Length >= 2)
@@ -130,6 +198,12 @@ public static class ClubhouseCalendar
 	}
 }
 
+public enum CalendarContestKind
+{
+	Regular = 0,
+	Tryout = 1,
+}
+
 public sealed record CalendarContest(
 	DateOnly Date,
 	string OpponentId,
@@ -138,18 +212,31 @@ public sealed record CalendarContest(
 	string Time,
 	bool Exhibition,
 	int? TeamScore,
-	int? OpponentScore)
+	int? OpponentScore,
+	CalendarContestKind Kind = CalendarContestKind.Regular,
+	int TryoutNumber = 0,
+	Guid GameId = default,
+	GameType GameType = GameType.NonDistrict)
 {
 	public bool Completed => TeamScore.HasValue && OpponentScore.HasValue;
 
+	public bool IsTryout => Kind == CalendarContestKind.Tryout;
+
 	public bool Won => Completed && TeamScore > OpponentScore;
 
-	public string VenueLabel => Home ? "HOME" : "AWAY";
+	public string VenueLabel => IsTryout ? "CAMP" : Home ? "HOME" : "AWAY";
+
+	public string Headline => IsTryout ? $"TRYOUT GAME {TryoutNumber} OF {TryoutGame.GameCount}" : string.Empty;
 
 	public string ResultLabel
 	{
 		get
 		{
+			if (IsTryout)
+			{
+				return Completed ? $"TRYOUT {TeamScore}-{OpponentScore}" : "TRYOUT";
+			}
+
 			if (!Completed)
 			{
 				return Exhibition ? "EXH" : "SCHED";

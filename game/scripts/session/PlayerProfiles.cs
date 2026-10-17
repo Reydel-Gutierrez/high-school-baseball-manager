@@ -22,6 +22,16 @@ public static class PlayerProfiles
 			return null;
 		}
 
+		GameWorld? world = GameSession.Current?.World;
+		if (world != null)
+		{
+			Player? live = GameSession.Current.FindWorldPlayer(teamId, name, level);
+			if (live != null)
+			{
+				return FromWorld(live, world);
+			}
+		}
+
 		string id = string.IsNullOrWhiteSpace(teamId) ? string.Empty : SchoolProfiles.NormalizeId(teamId);
 		if (id.Length > 0)
 		{
@@ -52,8 +62,22 @@ public static class PlayerProfiles
 		return null;
 	}
 
-	public static PlayerProfileSnapshot From(HubSquadPlayer player, bool captain = false) =>
-		From(
+	public static PlayerProfileSnapshot From(HubSquadPlayer player, bool captain = false)
+	{
+		GameWorld? world = GameSession.Current?.World;
+		if (world != null)
+		{
+			TeamLevel level = TeamLevel.Varsity.MatchesSquad(player.Squad)
+				? TeamLevel.Varsity
+				: TeamLevel.JuniorVarsity;
+			Player? live = GameSession.Current.FindWorldPlayer(player.TeamId, player.Name, level);
+			if (live != null)
+			{
+				return FromWorld(live, world, captain);
+			}
+		}
+
+		return From(
 			player.FirstName,
 			player.LastName,
 			player.Jersey,
@@ -73,6 +97,83 @@ public static class PlayerProfiles
 			player.Squad,
 			player.Seasons,
 			captain);
+	}
+
+	public static PlayerProfileSnapshot FromWorld(
+		Player player,
+		GameWorld world,
+		bool captain = false,
+		PlayerAgreementSnapshot? agreement = null,
+		bool fogged = false)
+	{
+		string teamShort = TeamShortFor(world, player);
+		string squad = player.IsUnsigned
+			? "Unsigned"
+			: player.TeamLevel == TeamLevel.Varsity ? "Varsity" : "JV";
+		PlayerRatings ratings = player.Ratings;
+		bool pitcher = player.IsPitcher;
+		int seed = player.Id.GetHashCode();
+		string bats = player.Bats.ToAbbrev();
+		int contactR = SplitContact(ratings.Contact, bats, true, seed);
+		int contactL = SplitContact(ratings.Contact, bats, false, seed);
+		IReadOnlyList<HubPlayerSeason> seasons = SeasonsFromWorld(player, world);
+		string health = fogged ? "?" : "Healthy";
+		int strength = player.Physical.Strength > 0
+			? player.Physical.Strength
+			: Clamp(((ratings.Power + ratings.ArmStrength) / 2) + ((seed >> 2) % 7) - 3);
+		int reaction = Clamp(((ratings.Fielding + ratings.Speed) / 2) + ((seed >> 5) % 7) - 3);
+
+		return new PlayerProfileSnapshot(
+			player.FirstName,
+			player.LastName,
+			player.JerseyNumber,
+			player.DisplayPosition,
+			player.Grade.ToAbbrev(),
+			YearLabel(player.Grade.ToAbbrev()),
+			player.Bats.ToBatsThrowsLabel(player.Throws),
+			fogged || player.Physical.HeightInches <= 0 ? "?" : player.Physical.HeightLabel,
+			fogged ? 0 : player.Physical.WeightLbs,
+			player.Overall,
+			player.Potential,
+			player.Personality.Label(),
+			DevelopmentFor(player.Grade.ToAbbrev(), player.Overall, player.Potential, seed),
+			health,
+			null,
+			player.OrganizationId,
+			teamShort,
+			squad,
+			pitcher,
+			captain,
+			fogged
+				? new PlayerHittingAttributes(0, 0, 0, 0)
+				: new PlayerHittingAttributes(contactR, contactL, ratings.Power, ratings.PlateDiscipline),
+			fogged
+				? new PlayerFieldingAttributes(0, 0, 0)
+				: new PlayerFieldingAttributes(ratings.Fielding, ratings.ArmStrength, reaction),
+			fogged
+				? new PlayerPhysicalAttributes(0, 0)
+				: new PlayerPhysicalAttributes(ratings.Speed, strength),
+			pitcher
+				? (fogged
+					? new PlayerPitchingAttributes(0, 0, 0, 0)
+					: new PlayerPitchingAttributes(ratings.Stuff, ratings.Control, ratings.Movement, ratings.Stamina))
+				: null,
+			seasons,
+			BuildHistory(player.FirstName, player.LastName, player.Grade.ToAbbrev(), seasons, captain, health, seed),
+			BuildScoutReport(
+				player.FirstName,
+				player.LastName,
+				player.DisplayPosition,
+				player.Grade.ToAbbrev(),
+				player.Overall,
+				player.Potential,
+				pitcher,
+				seed),
+			Fogged: fogged,
+			RecruitingHook: player.Priorities.Hook,
+			Agreement: agreement,
+			Appearance: player.Appearance);
+	}
 
 	public static PlayerProfileSnapshot From(
 		string firstName,
@@ -150,10 +251,11 @@ public static class PlayerProfiles
 		DistrictOpenPlay openPlay,
 		DateOnly today,
 		string teamShort,
-		PlayerAgreementSnapshot? agreement = null)
+		PlayerAgreementSnapshot? agreement = null,
+		string? schoolInterest = null)
 	{
-		int looks = Math.Max(1, openPlay.LooksOn(today));
-		OpenPlayLine? line = openPlay.LineFor(player.Id);
+		int looks = Math.Max(0, openPlay.LooksOn(today));
+		OpenPlayLine? line = openPlay.VisibleLine(player.Id, today);
 		bool pitcher = player.IsPitcher;
 		var seasons = new List<HubPlayerSeason>();
 		if (line != null && looks > 0 && (line.Hitting.AtBats > 0 || (line.Pitching != null && line.Pitching.Outs > 0)))
@@ -166,6 +268,41 @@ public static class PlayerProfiles
 		}
 
 		bool committed = agreement != null;
+		GameWorld? world = GameSession.Current?.World;
+		if (world != null)
+		{
+			PlayerProfileSnapshot live = FromWorld(player, world, agreement: agreement, fogged: !committed);
+			if (seasons.Count > 0)
+			{
+				return live with
+				{
+					Seasons = seasons,
+					StatsHeader = "OPEN PLAY",
+					OverallLabel = committed ? null : TryoutScouting.FormatOverall(player.Overall, looks, player.Id.GetHashCode()),
+					PotentialLabel = committed
+						? null
+						: TryoutScouting.FormatPotential(player.Overall, player.Potential, looks, player.Id.GetHashCode()),
+					TeamShort = string.IsNullOrEmpty(teamShort) ? live.TeamShort : teamShort,
+					Squad = committed ? live.Squad : "Unsigned",
+					RecruitingHook = player.Priorities.Hook,
+					SchoolInterest = schoolInterest,
+				};
+			}
+
+			return live with
+			{
+				StatsHeader = "OPEN PLAY",
+				OverallLabel = committed ? null : TryoutScouting.FormatOverall(player.Overall, Math.Max(1, looks), player.Id.GetHashCode()),
+				PotentialLabel = committed
+					? null
+					: TryoutScouting.FormatPotential(player.Overall, player.Potential, Math.Max(1, looks), player.Id.GetHashCode()),
+				TeamShort = string.IsNullOrEmpty(teamShort) ? live.TeamShort : teamShort,
+				Squad = committed ? live.Squad : "Unsigned",
+				RecruitingHook = player.Priorities.Hook,
+				SchoolInterest = schoolInterest,
+			};
+		}
+
 		return new PlayerProfileSnapshot(
 			player.FirstName,
 			player.LastName,
@@ -200,10 +337,11 @@ public static class PlayerProfiles
 				"?",
 				looks),
 			Fogged: !committed,
-			OverallLabel: TryoutScouting.FormatOverall(player.Overall, looks, player.Id.GetHashCode()),
-			PotentialLabel: TryoutScouting.FormatPotential(player.Overall, player.Potential, looks, player.Id.GetHashCode()),
+			OverallLabel: TryoutScouting.FormatOverall(player.Overall, Math.Max(1, looks), player.Id.GetHashCode()),
+			PotentialLabel: TryoutScouting.FormatPotential(player.Overall, player.Potential, Math.Max(1, looks), player.Id.GetHashCode()),
 			StatsHeader: "OPEN PLAY",
 			RecruitingHook: player.Priorities.Hook,
+			SchoolInterest: schoolInterest,
 			Agreement: agreement);
 	}
 
@@ -361,6 +499,116 @@ public static class PlayerProfiles
 			PotentialLabel: TryoutScouting.FormatPotential(player.TrueOverall, player.TruePotential, 3, player.Id.GetHashCode()),
 			StatsHeader: "OPEN POOL");
 	}
+
+	private static string TeamShortFor(GameWorld world, Player player)
+	{
+		if (player.IsUnsigned)
+		{
+			return "Open Play";
+		}
+
+		foreach (OrganizationState org in world.Organizations)
+		{
+			if (org.Id == player.OrganizationId)
+			{
+				return org.ShortName;
+			}
+		}
+
+		return player.OrganizationId;
+	}
+
+	public static List<HubPlayerSeason> SeasonsFromWorld(Player player, GameWorld world)
+	{
+		var seasons = new List<HubPlayerSeason>();
+		foreach (BattingSeasonStats hitting in world.BattingStats)
+		{
+			if (hitting.PlayerId != player.Id || hitting.AtBats <= 0)
+			{
+				continue;
+			}
+
+			PitchingSeasonStats? pitching = null;
+			foreach (PitchingSeasonStats arm in world.PitchingStats)
+			{
+				if (arm.PlayerId == player.Id && arm.SeasonYear == hitting.SeasonYear && arm.OutsRecorded > 0)
+				{
+					pitching = arm;
+					break;
+				}
+			}
+
+			seasons.Add(new HubPlayerSeason(
+				hitting.SeasonYear,
+				TeamShortFor(world, player),
+				new HubSeasonHitting(
+					hitting.Games,
+					hitting.AtBats,
+					hitting.Runs,
+					hitting.Hits,
+					hitting.Doubles,
+					hitting.Triples,
+					hitting.HomeRuns,
+					hitting.RunsBattedIn,
+					hitting.Walks,
+					hitting.Strikeouts,
+					hitting.StolenBases,
+					(float)hitting.Average,
+					(float)hitting.OnBasePercentage,
+					(float)hitting.Slugging),
+				player.IsPitcher && pitching != null ? ToHubPitching(pitching) : null));
+		}
+
+		if (player.IsPitcher)
+		{
+			foreach (PitchingSeasonStats arm in world.PitchingStats)
+			{
+				if (arm.PlayerId != player.Id || arm.OutsRecorded <= 0)
+				{
+					continue;
+				}
+
+				bool exists = false;
+				foreach (HubPlayerSeason season in seasons)
+				{
+					if (season.Year == arm.SeasonYear)
+					{
+						exists = true;
+						break;
+					}
+				}
+
+				if (!exists)
+				{
+					seasons.Add(new HubPlayerSeason(
+						arm.SeasonYear,
+						TeamShortFor(world, player),
+						null,
+						ToHubPitching(arm)));
+				}
+			}
+		}
+
+		seasons.Sort((a, b) => a.Year.CompareTo(b.Year));
+		return seasons;
+	}
+
+	private static HubSeasonPitching ToHubPitching(PitchingSeasonStats arm) =>
+		new(
+			arm.Games,
+			arm.GamesStarted,
+			arm.Wins,
+			arm.Losses,
+			arm.Saves,
+			(float)arm.InningsPitched,
+			arm.HitsAllowed,
+			arm.RunsAllowed,
+			arm.EarnedRuns,
+			arm.Walks,
+			arm.Strikeouts,
+			arm.HomeRunsAllowed,
+			(float)arm.Era,
+			(float)arm.Whip);
 
 	private static HubSeasonHitting ToHitting(TryoutHittingLine line) =>
 		new(
@@ -672,7 +920,9 @@ public sealed record PlayerProfileSnapshot(
 	string? PotentialLabel = null,
 	string? StatsHeader = null,
 	string? RecruitingHook = null,
-	PlayerAgreementSnapshot? Agreement = null)
+	string? SchoolInterest = null,
+	PlayerAgreementSnapshot? Agreement = null,
+	PersonAppearance? Appearance = null)
 {
 	public string FullName => $"{FirstName} {LastName}";
 

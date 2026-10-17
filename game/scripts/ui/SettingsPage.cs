@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using HSBM.Domain;
 
 /// <summary>
-/// Machine preferences opened from the top-bar wrench. Audio is live;
-/// other menus are stubbed so the structure is in place for later work.
+/// Machine preferences opened from the top-bar wrench. Audio, visual,
+/// and autosave are live; controls and accessibility stay stubbed.
 /// </summary>
 public partial class SettingsPage : Control
 {
 	private enum SettingsMenu
 	{
+		FileManagement,
 		Audio,
 		Visual,
 		Gameplay,
@@ -39,6 +41,11 @@ public partial class SettingsPage : Control
 	private readonly Dictionary<SettingsMenu, Control> _panels = new();
 	private SettingsMenu _menu = SettingsMenu.Audio;
 	private bool _syncing;
+	private FileManagementPanel _fileManagement = null!;
+
+	public event Action? SavedAndExited;
+
+	public event Action? ExitGameRequested;
 
 	private Button _muteButton = null!;
 	private Button _shuffleButton = null!;
@@ -47,6 +54,15 @@ public partial class SettingsPage : Control
 	private Label _trackMeta = null!;
 	private readonly Dictionary<AudioChannel, HSlider> _sliders = new();
 	private readonly Dictionary<AudioChannel, Label> _percents = new();
+	private Button _autosaveMaster = null!;
+	private readonly Dictionary<string, Button> _autosaveToggles = new();
+	private Button _simRecapToggle = null!;
+	private OptionButton _windowModeChoice = null!;
+	private OptionButton _resolutionChoice = null!;
+	private OptionButton _scaleChoice = null!;
+	private Label _resolutionHint = null!;
+	private HSlider _uiScaleSlider = null!;
+	private Label _uiScalePercent = null!;
 
 	public override void _Ready()
 	{
@@ -59,6 +75,7 @@ public partial class SettingsPage : Control
 
 		BuildPage();
 		AudioManager.Current.SoundtrackChanged += OnSoundtrackChanged;
+		SetInGame(false);
 		ShowMenu(SettingsMenu.Audio);
 		RefreshAudio();
 	}
@@ -75,6 +92,19 @@ public partial class SettingsPage : Control
 	{
 		ShowMenu(SettingsMenu.Audio);
 		RefreshAudio();
+	}
+
+	public void SetInGame(bool inGame)
+	{
+		if (_menuButtons.TryGetValue(SettingsMenu.FileManagement, out Button? button))
+		{
+			button.Visible = inGame;
+		}
+
+		if (!inGame && _menu == SettingsMenu.FileManagement)
+		{
+			ShowMenu(SettingsMenu.Audio);
+		}
 	}
 
 	private void OnSoundtrackChanged() => RefreshNowPlaying();
@@ -123,7 +153,7 @@ public partial class SettingsPage : Control
 		identity.AddChild(MakeText("MACHINE  ·  PREFERENCES", _medium, 10, Accent, HorizontalAlignment.Left));
 		identity.AddChild(MakeText("SETTINGS", _bold, 22, TextPrimary, HorizontalAlignment.Left));
 		identity.AddChild(MakeText(
-			"Audio, visual, and gameplay options for this install.",
+			"Audio, files, visual, and gameplay options for this install.",
 			_medium,
 			11,
 			new Color(0.72f, 0.76f, 0.82f),
@@ -136,7 +166,7 @@ public partial class SettingsPage : Control
 	{
 		var card = new PanelContainer
 		{
-			CustomMinimumSize = new Vector2(210, 0),
+			CustomMinimumSize = new Vector2(230, 0),
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 			ClipContents = true,
 		};
@@ -176,9 +206,10 @@ public partial class SettingsPage : Control
 		listMargin.AddChild(list);
 		layout.AddChild(listMargin);
 
+		list.AddChild(MakeMenuButton(SettingsMenu.FileManagement, "FILE MANAGEMENT", "Save, save as, load, return to menu, or exit"));
 		list.AddChild(MakeMenuButton(SettingsMenu.Audio, "AUDIO", "Music, system sounds, and SFX"));
 		list.AddChild(MakeMenuButton(SettingsMenu.Visual, "VISUAL", "Display, scale, and lighting"));
-		list.AddChild(MakeMenuButton(SettingsMenu.Gameplay, "GAMEPLAY", "Simulation and season flow"));
+		list.AddChild(MakeMenuButton(SettingsMenu.Gameplay, "GAMEPLAY", "Autosave and simulation recap"));
 		list.AddChild(MakeMenuButton(SettingsMenu.Controls, "CONTROLS", "Keyboard and pointer"));
 		list.AddChild(MakeMenuButton(SettingsMenu.Accessibility, "ACCESSIBILITY", "Readability and motion"));
 		return card;
@@ -213,13 +244,13 @@ public partial class SettingsPage : Control
 			ClipContents = true,
 		};
 
+		_fileManagement = new FileManagementPanel();
+		_fileManagement.SavedAndExited += () => SavedAndExited?.Invoke();
+		_fileManagement.ExitGameRequested += () => ExitGameRequested?.Invoke();
+		_panels[SettingsMenu.FileManagement] = _fileManagement;
 		_panels[SettingsMenu.Audio] = BuildAudioPanel();
-		_panels[SettingsMenu.Visual] = BuildComingSoonPanel(
-			"VISUAL",
-			"Display options will land here: window mode, resolution, UI scale, and stadium lighting.");
-		_panels[SettingsMenu.Gameplay] = BuildComingSoonPanel(
-			"GAMEPLAY",
-			"Season flow options will land here: auto-advance day, simulation speed, and injury presentation.");
+		_panels[SettingsMenu.Visual] = BuildVisualPanel();
+		_panels[SettingsMenu.Gameplay] = BuildGameplayPanel();
 		_panels[SettingsMenu.Controls] = BuildComingSoonPanel(
 			"CONTROLS",
 			"Keyboard shortcuts and pointer behavior will land here once the sim screens need them.");
@@ -470,6 +501,486 @@ public partial class SettingsPage : Control
 		return row;
 	}
 
+	private Control BuildGameplayPanel()
+	{
+		var card = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
+
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 0);
+		card.AddChild(layout);
+		layout.AddChild(BuildPanelHeading(
+			"GAMEPLAY",
+			"Autosave after simulation events, and whether day advances show a recap."));
+
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+		};
+		layout.AddChild(scroll);
+
+		var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		body.AddThemeConstantOverride("separation", 10);
+		var bodyMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		bodyMargin.AddThemeConstantOverride("margin_left", 14);
+		bodyMargin.AddThemeConstantOverride("margin_top", 12);
+		bodyMargin.AddThemeConstantOverride("margin_right", 14);
+		bodyMargin.AddThemeConstantOverride("margin_bottom", 14);
+		bodyMargin.AddChild(body);
+		scroll.AddChild(bodyMargin);
+
+		body.AddChild(BuildAutosaveMasterRow());
+		body.AddChild(BuildAutosaveTriggerRow(
+			"game",
+			"AFTER A GAME",
+			"Lock the seat when a simulated contest finishes."));
+		body.AddChild(BuildAutosaveTriggerRow(
+			"transaction",
+			"AFTER A MAJOR TRANSACTION",
+			"Trades, releases, and open-pool signings."));
+		body.AddChild(BuildAutosaveTriggerRow(
+			"week",
+			"AFTER A WEEK ADVANCE",
+			"When Simulate Week moves the calendar."));
+		body.AddChild(BuildAutosaveTriggerRow(
+			"postseason",
+			"AFTER A POSTSEASON ROUND",
+			"Playoff games and championship acknowledgements."));
+		body.AddChild(BuildAutosaveTriggerRow(
+			"offseason",
+			"AFTER THE OFFSEASON TRANSITION",
+			"When board review closes the season."));
+		body.AddChild(BuildSimRecapRow());
+		return card;
+	}
+
+	private Control BuildSimRecapRow()
+	{
+		var row = MakeInnerCard();
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 12);
+		row.AddChild(columns);
+
+		var copy = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		copy.AddThemeConstantOverride("separation", -2);
+		copy.AddChild(MakeText("SIMULATION RECAP", _semibold, 14, TextPrimary, HorizontalAlignment.Left));
+		copy.AddChild(MakeText(
+			"After Simulate Day or Week, list the games, injuries, and signings that just posted.",
+			_medium,
+			11,
+			TextMuted,
+			HorizontalAlignment.Left));
+		columns.AddChild(copy);
+
+		_simRecapToggle = MakeActionButton("ON", ToggleSimulationRecap);
+		_simRecapToggle.CustomMinimumSize = new Vector2(92, 32);
+		columns.AddChild(_simRecapToggle);
+		return row;
+	}
+
+	private void ToggleSimulationRecap()
+	{
+		GameSettings.ShowSimulationRecap = !GameSettings.ShowSimulationRecap;
+		RefreshGameplay();
+	}
+
+	private Control BuildAutosaveMasterRow()
+	{
+		var row = MakeInnerCard();
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 12);
+		row.AddChild(columns);
+
+		var copy = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		copy.AddThemeConstantOverride("separation", -2);
+		copy.AddChild(MakeText("AUTOSAVE", _semibold, 14, TextPrimary, HorizontalAlignment.Left));
+		copy.AddChild(MakeText(
+			"Write the active career after the events below. Manual Save Career still always works.",
+			_medium,
+			11,
+			TextMuted,
+			HorizontalAlignment.Left));
+		columns.AddChild(copy);
+
+		_autosaveMaster = MakeActionButton("ON", ToggleAutosaveMaster);
+		_autosaveMaster.CustomMinimumSize = new Vector2(92, 32);
+		columns.AddChild(_autosaveMaster);
+		return row;
+	}
+
+	private Control BuildAutosaveTriggerRow(string key, string title, string hint)
+	{
+		var row = MakeInnerCard();
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 12);
+		row.AddChild(columns);
+
+		var copy = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		copy.AddThemeConstantOverride("separation", -2);
+		copy.AddChild(MakeText(title, _semibold, 14, TextPrimary, HorizontalAlignment.Left));
+		copy.AddChild(MakeText(hint, _medium, 11, TextMuted, HorizontalAlignment.Left));
+		columns.AddChild(copy);
+
+		Button button = MakeActionButton("ON", () => ToggleAutosaveTrigger(key));
+		button.CustomMinimumSize = new Vector2(92, 32);
+		_autosaveToggles[key] = button;
+		columns.AddChild(button);
+		return row;
+	}
+
+	private void ToggleAutosaveMaster()
+	{
+		GameSettings.Autosave.Enabled = !GameSettings.Autosave.Enabled;
+		GameSettings.SaveAutosave();
+		RefreshGameplay();
+	}
+
+	private void ToggleAutosaveTrigger(string key)
+	{
+		AutosavePreferences prefs = GameSettings.Autosave;
+		switch (key)
+		{
+			case "game":
+				prefs.AfterGame = !prefs.AfterGame;
+				break;
+			case "transaction":
+				prefs.AfterMajorTransaction = !prefs.AfterMajorTransaction;
+				break;
+			case "week":
+				prefs.AfterWeekAdvance = !prefs.AfterWeekAdvance;
+				break;
+			case "postseason":
+				prefs.AfterPostseasonRound = !prefs.AfterPostseasonRound;
+				break;
+			case "offseason":
+				prefs.AfterOffseasonTransition = !prefs.AfterOffseasonTransition;
+				break;
+		}
+
+		GameSettings.SaveAutosave();
+		RefreshGameplay();
+	}
+
+	private void RefreshGameplay()
+	{
+		AutosavePreferences prefs = GameSettings.Autosave;
+		_autosaveMaster.Text = prefs.Enabled ? "ON" : "OFF";
+		ApplyToggleStyle(_autosaveMaster, prefs.Enabled);
+		SetAutosaveToggle("game", prefs.AfterGame);
+		SetAutosaveToggle("transaction", prefs.AfterMajorTransaction);
+		SetAutosaveToggle("week", prefs.AfterWeekAdvance);
+		SetAutosaveToggle("postseason", prefs.AfterPostseasonRound);
+		SetAutosaveToggle("offseason", prefs.AfterOffseasonTransition);
+		if (_simRecapToggle != null)
+		{
+			_simRecapToggle.Text = GameSettings.ShowSimulationRecap ? "ON" : "OFF";
+			ApplyToggleStyle(_simRecapToggle, GameSettings.ShowSimulationRecap);
+		}
+	}
+
+	private void SetAutosaveToggle(string key, bool on)
+	{
+		if (!_autosaveToggles.TryGetValue(key, out Button? button))
+		{
+			return;
+		}
+
+		button.Text = on ? "ON" : "OFF";
+		ApplyToggleStyle(button, on);
+	}
+
+	private Control BuildVisualPanel()
+	{
+		var card = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		card.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
+
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 0);
+		card.AddChild(layout);
+		layout.AddChild(BuildPanelHeading(
+			"VISUAL",
+			"Window mode, resolution, and how the clubhouse fills the monitor."));
+
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+		};
+		layout.AddChild(scroll);
+
+		var body = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		body.AddThemeConstantOverride("separation", 10);
+		var bodyMargin = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		bodyMargin.AddThemeConstantOverride("margin_left", 14);
+		bodyMargin.AddThemeConstantOverride("margin_top", 12);
+		bodyMargin.AddThemeConstantOverride("margin_right", 14);
+		bodyMargin.AddThemeConstantOverride("margin_bottom", 14);
+		bodyMargin.AddChild(body);
+		scroll.AddChild(bodyMargin);
+
+		_windowModeChoice = MakeChoice();
+		_windowModeChoice.AddItem("Windowed", (int)DisplayWindowMode.Windowed);
+		_windowModeChoice.AddItem("Borderless Fullscreen", (int)DisplayWindowMode.Borderless);
+		_windowModeChoice.AddItem("Exclusive Fullscreen", (int)DisplayWindowMode.Exclusive);
+		_windowModeChoice.ItemSelected += OnWindowModeSelected;
+		body.AddChild(BuildChoiceRow(
+			"WINDOW MODE",
+			"Borderless uses the whole monitor. Exclusive can change the display mode.",
+			_windowModeChoice));
+
+		_resolutionChoice = MakeChoice();
+		_resolutionChoice.ItemSelected += OnResolutionSelected;
+		body.AddChild(BuildChoiceRow(
+			"RESOLUTION",
+			"Windowed and exclusive fullscreen. Borderless always uses the native monitor.",
+			_resolutionChoice));
+		_resolutionHint = MakeText("", _medium, 11, TextMuted, HorizontalAlignment.Left);
+		_resolutionHint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		body.AddChild(_resolutionHint);
+
+		_scaleChoice = MakeChoice();
+		_scaleChoice.AddItem("Fill without stretching", (int)DisplayScaleMode.Expand);
+		_scaleChoice.AddItem("Stretch to Fit", (int)DisplayScaleMode.Stretch);
+		_scaleChoice.ItemSelected += OnScaleModeSelected;
+		body.AddChild(BuildChoiceRow(
+			"SCALING",
+			"Fill keeps proportions and uses extra ultrawide space. Stretch fills the monitor and may look a bit wider.",
+			_scaleChoice));
+		body.AddChild(BuildUiScaleRow());
+		return card;
+	}
+
+	private Control BuildUiScaleRow()
+	{
+		var row = MakeInnerCard();
+		var layout = new VBoxContainer();
+		layout.AddThemeConstantOverride("separation", 6);
+		row.AddChild(layout);
+
+		var header = new HBoxContainer();
+		header.AddThemeConstantOverride("separation", 8);
+		header.AddChild(MakeText("UI SCALE", _semibold, 14, TextPrimary, HorizontalAlignment.Left));
+		_uiScalePercent = MakeText("100%", _bold, 16, Accent, HorizontalAlignment.Right);
+		_uiScalePercent.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		header.AddChild(_uiScalePercent);
+		layout.AddChild(header);
+		layout.AddChild(MakeText(
+			"Size of menus and type. 100% is the original clubhouse scale.",
+			_medium,
+			11,
+			TextMuted,
+			HorizontalAlignment.Left));
+
+		_uiScaleSlider = MakeVolumeSlider();
+		_uiScaleSlider.MinValue = 85;
+		_uiScaleSlider.MaxValue = 125;
+		_uiScaleSlider.Step = 5;
+		_uiScaleSlider.ValueChanged += OnUiScaleChanged;
+		layout.AddChild(_uiScaleSlider);
+		return row;
+	}
+
+	private Control BuildChoiceRow(string title, string hint, OptionButton choice)
+	{
+		var row = MakeInnerCard();
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 12);
+		row.AddChild(columns);
+
+		var copy = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		copy.AddThemeConstantOverride("separation", -2);
+		copy.AddChild(MakeText(title, _semibold, 14, TextPrimary, HorizontalAlignment.Left));
+		var hintLabel = MakeText(hint, _medium, 11, TextMuted, HorizontalAlignment.Left);
+		hintLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		copy.AddChild(hintLabel);
+		columns.AddChild(copy);
+
+		choice.CustomMinimumSize = new Vector2(220, 32);
+		choice.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+		columns.AddChild(choice);
+		return row;
+	}
+
+	private OptionButton MakeChoice()
+	{
+		var button = new OptionButton
+		{
+			Flat = false,
+			CustomMinimumSize = new Vector2(220, 32),
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			FitToLongestItem = false,
+		};
+		button.AddThemeFontOverride("font", _semibold);
+		button.AddThemeFontSizeOverride("font_size", 13);
+		button.AddThemeColorOverride("font_color", TextPrimary);
+		button.AddThemeColorOverride("font_hover_color", Colors.White);
+		button.AddThemeColorOverride("font_pressed_color", TextPrimary);
+		button.AddThemeColorOverride("font_focus_color", Colors.White);
+		button.AddThemeStyleboxOverride("normal", MakePill(TrackBg, 10, 6));
+		button.AddThemeStyleboxOverride("hover", MakePill(HoverBg, 10, 6));
+		button.AddThemeStyleboxOverride("pressed", MakePill(HoverBg, 10, 6));
+		button.AddThemeStyleboxOverride("focus", MakePill(HoverBg, 10, 6, 1));
+		return button;
+	}
+
+	private void OnWindowModeSelected(long index)
+	{
+		if (_syncing)
+		{
+			return;
+		}
+
+		GameSettings.WindowMode = (DisplayWindowMode)_windowModeChoice.GetItemId((int)index);
+		RefreshVisual();
+	}
+
+	private void OnResolutionSelected(long index)
+	{
+		if (_syncing)
+		{
+			return;
+		}
+
+		GameSettings.Resolution = _resolutionChoice.GetItemMetadata((int)index).AsVector2I();
+		RefreshVisual();
+	}
+
+	private void OnScaleModeSelected(long index)
+	{
+		if (_syncing)
+		{
+			return;
+		}
+
+		GameSettings.ScaleMode = (DisplayScaleMode)_scaleChoice.GetItemId((int)index);
+	}
+
+	private void OnUiScaleChanged(double value)
+	{
+		if (_uiScalePercent != null)
+		{
+			_uiScalePercent.Text = $"{value:0}%";
+		}
+
+		if (_syncing)
+		{
+			return;
+		}
+
+		GameSettings.UiScale = (float)value / 100f;
+	}
+
+	private void RefreshVisual()
+	{
+		if (_windowModeChoice == null)
+		{
+			return;
+		}
+
+		_syncing = true;
+		SelectChoiceId(_windowModeChoice, (int)GameSettings.WindowMode);
+		SelectChoiceId(_scaleChoice, (int)(GameSettings.ScaleMode == DisplayScaleMode.Stretch
+			? DisplayScaleMode.Stretch
+			: DisplayScaleMode.Expand));
+		RebuildResolutionChoices();
+		bool locked = GameSettings.ResolutionLocked;
+		_resolutionChoice.Disabled = locked;
+		_resolutionHint.Text = locked
+			? "Borderless fullscreen stays on the native monitor size."
+			: "Pick a size that fits this monitor. Scaling and UI scale control how large the clubhouse looks.";
+		if (_uiScaleSlider != null)
+		{
+			_uiScaleSlider.Value = Mathf.Round(GameSettings.UiScale * 100f);
+			_uiScalePercent.Text = $"{_uiScaleSlider.Value:0}%";
+		}
+
+		_syncing = false;
+	}
+
+	private void RebuildResolutionChoices()
+	{
+		_resolutionChoice.Clear();
+		IReadOnlyList<Vector2I> sizes = GameSettings.AvailableResolutions();
+		Vector2I current = GameSettings.Resolution;
+		int selected = 0;
+		for (int i = 0; i < sizes.Count; i++)
+		{
+			Vector2I size = sizes[i];
+			_resolutionChoice.AddItem(GameSettings.ResolutionLabel(size));
+			_resolutionChoice.SetItemMetadata(i, size);
+			if (size == current)
+			{
+				selected = i;
+			}
+		}
+
+		if (!ContainsResolution(sizes, current))
+		{
+			int extra = sizes.Count;
+			_resolutionChoice.AddItem(GameSettings.ResolutionLabel(current));
+			_resolutionChoice.SetItemMetadata(extra, current);
+			selected = extra;
+		}
+
+		_resolutionChoice.Selected = selected;
+	}
+
+	private static bool ContainsResolution(IReadOnlyList<Vector2I> sizes, Vector2I current)
+	{
+		foreach (Vector2I size in sizes)
+		{
+			if (size == current)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static void SelectChoiceId(OptionButton button, int id)
+	{
+		for (int i = 0; i < button.ItemCount; i++)
+		{
+			if (button.GetItemId(i) == id)
+			{
+				button.Selected = i;
+				return;
+			}
+		}
+	}
+
 	private Control BuildComingSoonPanel(string title, string body)
 	{
 		var card = new PanelContainer
@@ -563,6 +1074,21 @@ public partial class SettingsPage : Control
 		if (menu == SettingsMenu.Audio)
 		{
 			RefreshAudio();
+		}
+
+		if (menu == SettingsMenu.FileManagement)
+		{
+			_fileManagement.Refresh();
+		}
+
+		if (menu == SettingsMenu.Gameplay)
+		{
+			RefreshGameplay();
+		}
+
+		if (menu == SettingsMenu.Visual)
+		{
+			RefreshVisual();
 		}
 	}
 

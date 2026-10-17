@@ -10,7 +10,6 @@ using HSBM.Domain;
 /// </summary>
 public partial class HomePage : Control
 {
-	private const int CurrentSeasonYear = 2026;
 	private const int TickerVisibleLines = 2;
 	private const float TickerLineHeight = 22f;
 	private const float TickerDwellSeconds = 2.6f;
@@ -36,9 +35,6 @@ public partial class HomePage : Control
 	private FontFile _medium = null!;
 	private ShaderMaterial _circleMaterial = null!;
 	private Texture2D _cascadeLogo = null!;
-	private Texture2D _lakesLogo = null!;
-	private Texture2D _marini = null!;
-	private Texture2D _tony = null!;
 	private Texture2D _iconOff = null!;
 	private Texture2D _iconPractice = null!;
 	private Texture2D _iconStar = null!;
@@ -48,6 +44,7 @@ public partial class HomePage : Control
 
 	private Label _title = null!;
 	private Label _subtitle = null!;
+	private Label _seasonKicker = null!;
 	private Label _recordValue = null!;
 	private Label _districtValue = null!;
 	private Label _boardValue = null!;
@@ -58,6 +55,11 @@ public partial class HomePage : Control
 	private BoxScoreOverlay _boxScoreOverlay = null!;
 	private JobOfferOverlay _jobOfferOverlay = null!;
 	private SimulationStoppedOverlay _simulationOverlay = null!;
+	private SimulationRecapOverlay _recapOverlay = null!;
+	private TextureRect _programMark = null!;
+	private Label _weekRangeLabel = null!;
+	private Label _milestoneLabel = null!;
+	private HBoxContainer _weekDaysHost = null!;
 	private Control _jobOfferBanner = null!;
 	private Control _newsTickerSlot = null!;
 	private Control _newsTicker = null!;
@@ -92,9 +94,6 @@ public partial class HomePage : Control
 			Shader = GD.Load<Shader>("res://assets/ui/circle_crop.gdshader"),
 		};
 		_cascadeLogo = TeamLogos.Load(TeamLogos.CascadeId)!;
-		_lakesLogo = TeamLogos.Load(TeamLogos.GreatLakesId)!;
-		_marini = GD.Load<Texture2D>("res://assets/teams/01_Cascade_Regional_High_School/Players/Cascade_player_01_Marini.png");
-		_tony = GD.Load<Texture2D>("res://assets/teams/02_Great_Lakes_High_School/Players/Great_lakes_player_tony.png");
 		_iconOff = UiSvg.Load("res://assets/ui/icon_off_day.svg");
 		_iconPractice = UiSvg.Load("res://assets/ui/icon_practice.svg");
 		_iconStar = UiSvg.Load("res://assets/ui/icon_schedule_star.svg");
@@ -131,6 +130,11 @@ public partial class HomePage : Control
 			_simulationOverlay.GoToRequested -= OpenInterrupt;
 		}
 
+		if (_recapOverlay != null)
+		{
+			_recapOverlay.Closed -= PresentPendingCelebration;
+		}
+
 		StopNewsTicker();
 	}
 
@@ -143,8 +147,7 @@ public partial class HomePage : Control
 	{
 		if (IsVisibleInTree())
 		{
-			RefreshNewsBanner();
-			CallDeferred(nameof(PresentPendingCelebration));
+			ApplyActiveTeam();
 		}
 		else
 		{
@@ -181,16 +184,26 @@ public partial class HomePage : Control
 	private void ApplyActiveTeam()
 	{
 		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
+		_seasonKicker.Text = $"HOME  ·  {GameSession.SeasonYear}  ·  {_session.SeasonStatus.ToUpperInvariant()}";
 		_title.Text = _session.Organization.Name.ToUpperInvariant();
 		_subtitle.Text = varsity
-			? $"VARSITY  ·  ESTABLISHED PROGRAM  ·  GREAT LAKES DISTRICT  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
-			: $"JV  ·  ESTABLISHED PROGRAM  ·  GREAT LAKES DISTRICT  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
-		_recordValue.Text = varsity ? _session.RecordLabel : "12–8";
-		_districtValue.Text = varsity ? "1ST" : "4TH";
-		_districtValue.AddThemeColorOverride("font_color", varsity ? Green : Accent);
+			? $"VARSITY  ·  {_session.SeasonStatus.ToUpperInvariant()}  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
+			: $"JV  ·  {_session.SeasonStatus.ToUpperInvariant()}  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
+		SchoolSnapshot school = SchoolProfiles.For(
+			_session.CatalogOrganizationId,
+			varsity ? TeamLevel.Varsity : TeamLevel.JuniorVarsity,
+			_session);
+		_recordValue.Text = school.RecordLabel;
+		_districtValue.Text = Ordinal.Format(school.DistrictPlace).ToUpperInvariant();
+		_districtValue.AddThemeColorOverride("font_color", school.DistrictPlace <= 2 ? Green : school.DistrictPlace <= 4 ? Accent : Urgent);
 		_boardValue.Text = _session.BoardSatisfactionScore.ToString(CultureInfo.InvariantCulture);
 		_boardValue.AddThemeColorOverride("font_color", BoardSatisfactionColor(_session.BoardSatisfaction));
-		RefreshWeekCards();
+		if (_programMark != null)
+		{
+			_programMark.Texture = TeamLogos.Load(_session.CatalogOrganizationId) ?? _cascadeLogo;
+		}
+
+		RebuildWeek();
 		RefreshAdvanceButton();
 		BindContest(varsity);
 		RefreshJobOfferBanner();
@@ -217,6 +230,9 @@ public partial class HomePage : Control
 		_simulationOverlay = new SimulationStoppedOverlay();
 		_simulationOverlay.GoToRequested += OpenInterrupt;
 		AddChild(_simulationOverlay);
+		_recapOverlay = new SimulationRecapOverlay();
+		_recapOverlay.Closed += PresentPendingCelebration;
+		AddChild(_recapOverlay);
 
 		var layout = new VBoxContainer();
 		layout.AddThemeConstantOverride("separation", 8);
@@ -254,7 +270,8 @@ public partial class HomePage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 
-		header.AddChild(TeamLogos.MakeHeaderMark(_cascadeLogo));
+		_programMark = TeamLogos.MakeHeaderMark(TeamLogos.Load(_session.CatalogOrganizationId) ?? _cascadeLogo);
+		header.AddChild(_programMark);
 		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
 
 		var identity = new VBoxContainer
@@ -264,7 +281,8 @@ public partial class HomePage : Control
 		};
 		identity.AddThemeConstantOverride("separation", -2);
 
-		identity.AddChild(MakeText($"HOME  ·  {CurrentSeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
+		_seasonKicker = MakeText($"HOME  ·  {GameSession.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left);
+		identity.AddChild(_seasonKicker);
 		_title = MakeText("CASCADE REGIONAL HIGH SCHOOL", _bold, 26, TextPrimary, HorizontalAlignment.Left);
 		identity.AddChild(_title);
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
@@ -332,15 +350,9 @@ public partial class HomePage : Control
 			SizeFlagsStretchRatio = 1f,
 		};
 		titles.AddThemeConstantOverride("separation", -2);
-		DateOnly sunday = WeekStart(_session.CurrentDate);
-		DateOnly saturday = sunday.AddDays(6);
 		titles.AddChild(MakeText("THIS WEEK", _semibold, 12, TextPrimary, HorizontalAlignment.Left));
-		titles.AddChild(MakeText(
-			$"{sunday.ToString("MMMM d", CultureInfo.InvariantCulture)}  –  {saturday.ToString("MMMM d", CultureInfo.InvariantCulture)}".ToUpperInvariant(),
-			_medium,
-			11,
-			TextMuted,
-			HorizontalAlignment.Left));
+		_weekRangeLabel = MakeText("", _medium, 11, TextMuted, HorizontalAlignment.Left);
+		titles.AddChild(_weekRangeLabel);
 		header.AddChild(titles);
 
 		(string name, string when, Color color) milestone = NextMilestone();
@@ -353,7 +365,8 @@ public partial class HomePage : Control
 		};
 		next.AddThemeConstantOverride("separation", -2);
 		next.AddChild(MakeText("NEXT MILESTONE", _medium, 10, Accent, HorizontalAlignment.Center));
-		next.AddChild(MakeText($"{milestone.name}  ·  {milestone.when}", _semibold, 12, milestone.color, HorizontalAlignment.Center));
+		_milestoneLabel = MakeText($"{milestone.name}  ·  {milestone.when}", _semibold, 12, milestone.color, HorizontalAlignment.Center);
+		next.AddChild(_milestoneLabel);
 		header.AddChild(next);
 
 		var actions = new HBoxContainer
@@ -395,15 +408,44 @@ public partial class HomePage : Control
 		};
 		days.AddThemeConstantOverride("separation", 4);
 		gridWrap.AddChild(days);
-
-		_weekBinds.Clear();
-		for (int i = 0; i < 7; i++)
-		{
-			days.AddChild(BuildDayColumn(sunday.AddDays(i)));
-		}
+		_weekDaysHost = days;
+		RebuildWeekDays();
 
 		layout.AddChild(BuildActions());
 		return card;
+	}
+
+	private void RebuildWeek()
+	{
+		if (_weekDaysHost == null)
+		{
+			return;
+		}
+
+		DateOnly sunday = WeekStart(_session.CurrentDate);
+		DateOnly saturday = sunday.AddDays(6);
+		_weekRangeLabel.Text =
+			$"{sunday.ToString("MMMM d", CultureInfo.InvariantCulture)}  –  {saturday.ToString("MMMM d", CultureInfo.InvariantCulture)}".ToUpperInvariant();
+		(string name, string when, Color color) milestone = NextMilestone();
+		_milestoneLabel.Text = $"{milestone.name}  ·  {milestone.when}";
+		_milestoneLabel.AddThemeColorOverride("font_color", milestone.color);
+		RebuildWeekDays();
+	}
+
+	private void RebuildWeekDays()
+	{
+		foreach (Node child in _weekDaysHost.GetChildren())
+		{
+			_weekDaysHost.RemoveChild(child);
+			child.QueueFree();
+		}
+
+		_weekBinds.Clear();
+		DateOnly sunday = WeekStart(_session.CurrentDate);
+		for (int i = 0; i < 7; i++)
+		{
+			_weekDaysHost.AddChild(BuildDayColumn(sunday.AddDays(i)));
+		}
 	}
 
 	private Control BuildDayColumn(DateOnly date)
@@ -608,6 +650,7 @@ public partial class HomePage : Control
 		row.AddChild(_advanceButton);
 		row.AddChild(MakeAction("SIMULATE DAY", false, 1f, () => OnSimulatePressed(1)));
 		row.AddChild(MakeAction("SIMULATE WEEK", false, 1f, () => OnSimulatePressed(7)));
+		row.AddChild(MakeAction("SIMULATE UNTIL", false, 1.15f, OnSimulateUntilPressed));
 		RefreshAdvanceButton();
 		return row;
 	}
@@ -641,6 +684,12 @@ public partial class HomePage : Control
 		if (HallOfFameDesk.PendingOn(_session))
 		{
 			_advanceButton.Text = "HALL OF FAME";
+			return;
+		}
+
+		if (SeasonRolloverDesk.PendingOn(_session))
+		{
+			_advanceButton.Text = "NEW YEAR";
 			return;
 		}
 
@@ -691,6 +740,12 @@ public partial class HomePage : Control
 		{
 			UiSounds.Play(UiSound.Back);
 			_simulationOverlay.Close();
+			GetViewport().SetInputAsHandled();
+		}
+		else if (_recapOverlay != null && _recapOverlay.Visible && ev.IsActionPressed("ui_cancel"))
+		{
+			UiSounds.Play(UiSound.Back);
+			_recapOverlay.Close();
 			GetViewport().SetInputAsHandled();
 		}
 	}
@@ -1281,6 +1336,14 @@ public partial class HomePage : Control
 			box.AddChild(MakeEventLink("VIEW HALL OF FAME", OpenHallOfFame));
 		}
 
+		if (item.Id is "new-year" or "winter-break-open")
+		{
+			if (SeasonRolloverDesk.PendingOn(_session))
+			{
+				box.AddChild(MakeEventLink("VIEW YEAR IN REVIEW", OpenSeasonRollover));
+			}
+		}
+
 		if (item.Id == "coaching-carousel")
 		{
 			if (JobOfferDesk.HasPending(_session))
@@ -1345,6 +1408,14 @@ public partial class HomePage : Control
 		if (GetTree().CurrentScene is AppNavigator navigator)
 		{
 			navigator.ShowAwardsCeremony(scope);
+		}
+	}
+
+	private void OpenSeasonRollover()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowSeasonRollover();
 		}
 	}
 
@@ -1714,7 +1785,8 @@ public partial class HomePage : Control
 	{
 		if (!IsVisibleInTree()
 			|| (_jobOfferOverlay != null && _jobOfferOverlay.Visible)
-			|| (_simulationOverlay != null && _simulationOverlay.Visible))
+			|| (_simulationOverlay != null && _simulationOverlay.Visible)
+			|| (_recapOverlay != null && _recapOverlay.Visible))
 		{
 			return;
 		}
@@ -1742,6 +1814,12 @@ public partial class HomePage : Control
 		if (HallOfFameDesk.PendingOn(_session))
 		{
 			OpenHallOfFameInduction();
+			return;
+		}
+
+		if (SeasonRolloverDesk.PendingOn(_session))
+		{
+			OpenSeasonRollover();
 			return;
 		}
 
@@ -1819,22 +1897,18 @@ public partial class HomePage : Control
 	private (string Name, string When, Color Color) NextMilestone()
 	{
 		DateOnly today = _session.CurrentDate;
-		foreach (SeasonEvent item in SeasonCalendar.ForSeason(GameSession.SeasonYear))
+		SeasonEvent? next = CareerCalendar.NextImportant(GameSession.SeasonYear, today);
+		if (next == null)
 		{
-			if (item.End < today)
-			{
-				continue;
-			}
-
-			int days = Math.Max(0, item.Start.DayNumber - today.DayNumber);
-			string when = item.OccursOn(today)
-				? item.Start == item.End ? "TODAY" : "IN PROGRESS"
-				: days == 1 ? "1 DAY" : $"{days} DAYS";
-			Color color = days < 8 ? Urgent : TextPrimary;
-			return (item.Name.ToUpperInvariant(), when, color);
+			return ("NONE", string.Empty, TextMuted);
 		}
 
-		return ("NONE", string.Empty, TextMuted);
+		int days = Math.Max(0, next.Start.DayNumber - today.DayNumber);
+		string when = next.OccursOn(today)
+			? next.Start == next.End ? "TODAY" : "IN PROGRESS"
+			: days == 1 ? "1 DAY" : $"{days} DAYS";
+		Color color = days < 8 ? Urgent : TextPrimary;
+		return (next.Name.ToUpperInvariant(), when, color);
 	}
 
 	private Button MakeMonthlyCalendarButton()
@@ -1947,6 +2021,12 @@ public partial class HomePage : Control
 			return;
 		}
 
+		if (SeasonRolloverDesk.PendingOn(_session))
+		{
+			OpenSeasonRollover();
+			return;
+		}
+
 		if (JobOfferDesk.HasPending(_session))
 		{
 			ShowJobOffer();
@@ -1979,6 +2059,29 @@ public partial class HomePage : Control
 	private void OnSimulatePressed(int days)
 	{
 		SimulationRun run = _session.SimulateDays(days);
+		PresentSimulationRun(run);
+	}
+
+	private void OnSimulateUntilPressed()
+	{
+		SimulationRun run = _session.SimulateUntilNextEvent();
+		PresentSimulationRun(run);
+		if (run.Interrupt != null)
+		{
+			return;
+		}
+
+		CalendarContest? game = PrimaryGame(_session.ContestsOn(_session.CurrentDate));
+		if (game != null && !game.Completed)
+		{
+			OpenGamePreview(game);
+		}
+	}
+
+	public void ApplySimulationRun(SimulationRun run) => PresentSimulationRun(run);
+
+	private void PresentSimulationRun(SimulationRun run)
+	{
 		_selectedDate = _session.CurrentDate;
 		ApplyActiveTeam();
 		if (run.Interrupt != null)
@@ -1990,6 +2093,11 @@ public partial class HomePage : Control
 		if (run.DaysAdvanced > 0)
 		{
 			UiSounds.Play(UiSound.AdvanceDay);
+		}
+
+		if (GameSettings.ShowSimulationRecap && run.HasRecap && !SimulationDesk.HasCeremony(_session))
+		{
+			_recapOverlay.Present(run.Recap!);
 		}
 	}
 
@@ -2063,7 +2171,7 @@ public partial class HomePage : Control
 			return today;
 		}
 
-		foreach (CalendarContest game in ClubhouseCalendar.Contests)
+		foreach (CalendarContest game in _session.SeasonContests(_session.ActiveTeam.Level))
 		{
 			if (game.Level == _session.ActiveTeam.Level && !game.Completed && game.Date >= _session.CurrentDate)
 			{
@@ -2156,43 +2264,131 @@ public partial class HomePage : Control
 			return;
 		}
 
-		_contestHost.AddChild(varsity ? BuildVarsityContest() : BuildJvContest());
+		_contestHost.AddChild(BuildUpcomingContest());
+	}
+
+	private Control BuildUpcomingContest()
+	{
+		CalendarContest? game = PreviewContest();
+		if (game == null)
+		{
+			return BuildEmptyContest();
+		}
+
+		GamePreviewSheet sheet = GamePreviewDesk.For(game, _session);
+		string userId = _session.CatalogOrganizationId;
+		bool userHome = game.Home;
+		string userName = userHome ? sheet.HomeName : sheet.AwayName;
+		string userRecord = userHome ? sheet.HomeRecord : sheet.AwayRecord;
+		Texture2D? userLogo = TeamLogos.Load(userId) ?? _cascadeLogo;
+		string oppId = game.OpponentId;
+		string oppName = userHome ? sheet.AwayName : sheet.HomeName;
+		string oppRecord = userHome ? sheet.AwayRecord : sheet.HomeRecord;
+		Texture2D? oppLogo = TeamLogos.Load(oppId);
+		GamePreviewStarter userArm = userHome ? sheet.HomeStarter : sheet.AwayStarter;
+		GamePreviewStarter oppArm = userHome ? sheet.AwayStarter : sheet.HomeStarter;
+		string when = $"{game.Date.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}  ·  {game.Time}";
+		string venue = game.Home
+			? $"{_session.Organization.ShortName.ToUpperInvariant()} FIELD"
+			: $"{DistrictHubData.GetTeam(oppId).ShortName.ToUpperInvariant()} FIELD";
+		return BuildContestCard(
+			ContestKicker(game),
+			when,
+			venue,
+			game.Home ? "HOME" : "AWAY",
+			userName,
+			userRecord,
+			userLogo,
+			oppName,
+			oppRecord,
+			oppLogo,
+			ClubhouseCalendar.OpponentMark(oppId),
+			ToPitcher(userArm, Accent, userId),
+			ToPitcher(oppArm, LakesBlue, oppId),
+			oppId);
+	}
+
+	private Control BuildEmptyContest()
+	{
+		var card = MakeCard();
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		var layout = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+		layout.AddThemeConstantOverride("separation", 8);
+		card.AddChild(layout);
+		layout.AddChild(MakeText("SCHEDULE", _medium, 10, Accent, HorizontalAlignment.Left));
+		layout.AddChild(MakeText("NO CONTEST SCHEDULED", _semibold, 16, TextPrimary, HorizontalAlignment.Left));
+		layout.AddChild(MakeAccentLine());
+		var body = MakeText(
+			"Nothing on the books for this squad yet. Check the season schedule or advance the calendar.",
+			_medium,
+			14,
+			new Color(0.78f, 0.81f, 0.86f),
+			HorizontalAlignment.Left);
+		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		layout.AddChild(body);
+		return card;
+	}
+
+	private static string ContestKicker(CalendarContest game)
+	{
+		if (game.Completed)
+		{
+			return "LAST CONTEST";
+		}
+
+		DateOnly today = GameSession.Current.CurrentDate;
+		if (game.Date == today)
+		{
+			return game.Level == TeamLevel.JuniorVarsity ? "JV TODAY" : "TODAY";
+		}
+
+		if (game.Date == today.AddDays(1))
+		{
+			return game.Level == TeamLevel.JuniorVarsity ? "JV TOMORROW" : "TOMORROW";
+		}
+
+		return game.Level == TeamLevel.JuniorVarsity ? "NEXT JV CONTEST" : "NEXT CONTEST";
+	}
+
+	private PitcherCard ToPitcher(GamePreviewStarter starter, Color accent, string teamId)
+	{
+		string[] parts = starter.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		string last = parts.Length == 0 ? "TBD" : parts[^1];
+		string first = parts.Length <= 1 ? starter.Name : string.Join(" ", parts[..^1]);
+		Texture2D? portrait = null;
+		if (!string.IsNullOrEmpty(starter.PortraitPath) && ResourceLoader.Exists(starter.PortraitPath))
+		{
+			portrait = GD.Load<Texture2D>(starter.PortraitPath);
+		}
+
+		string strikeouts = "0";
+		HubSquadPlayer? player = DistrictHubSquads.FindPlayer(teamId, starter.Name, _session.ActiveTeam.Level);
+		if (player?.CurrentPitching != null)
+		{
+			strikeouts = player.CurrentPitching.Strikeouts.ToString(CultureInfo.InvariantCulture);
+		}
+
+		return new PitcherCard(
+			last.ToUpperInvariant(),
+			first,
+			starter.Hand,
+			starter.Record,
+			starter.Era,
+			strikeouts,
+			portrait,
+			accent,
+			teamId,
+			starter.Name);
 	}
 
 	private Control BuildVarsityContest()
 	{
-		return BuildContestCard(
-			"TOMORROW NIGHT",
-			"FRIDAY, APRIL 25  ·  7:00 PM",
-			"CASCADE FIELD",
-			"HOME",
-			"CASCADE",
-			"18-4 (8-2)",
-			_cascadeLogo,
-			"GREAT LAKES",
-			"14-8 (6-4)",
-			_lakesLogo,
-			"GL",
-			new PitcherCard("MARINI", "Luca", "RHP", "5-0", "1.95", "28", _marini, Accent, DistrictHubData.UserTeamId, "Luca Marini"),
-			new PitcherCard("TONY", "Great Lakes", "RHP", "2-2", "3.14", "22", _tony, LakesBlue, "great-lakes", "Tony Romano"));
+		return BuildUpcomingContest();
 	}
 
 	private Control BuildJvContest()
 	{
-		return BuildContestCard(
-			"NEXT JV CONTEST",
-			"SATURDAY, APRIL 26  ·  11:00 AM",
-			"CASCADE FIELD",
-			"HOME",
-			"CASCADE JV",
-			"12-8 (5-5)",
-			_cascadeLogo,
-			"GREAT LAKES JV",
-			"11-9 (4-6)",
-			_lakesLogo,
-			"GL",
-			new PitcherCard("GRANT", "Miles", "RHP", "1-2", "5.06", "12", null, Accent, DistrictHubData.UserTeamId, "Miles Grant"),
-			new PitcherCard("HALE", "Great Lakes", "LHP", "2-1", "3.80", "16", null, LakesBlue, "great-lakes", "Gavin Hale"));
+		return BuildUpcomingContest();
 	}
 
 	private Control BuildContestCard(
@@ -2208,8 +2404,11 @@ public partial class HomePage : Control
 		Texture2D? awayLogo,
 		string awayInitial,
 		PitcherCard homePitcher,
-		PitcherCard awayPitcher)
+		PitcherCard awayPitcher,
+		string? opponentId = null)
 	{
+		string userId = _session.CatalogOrganizationId;
+		string awayId = opponentId ?? "great-lakes";
 		var card = MakeCard();
 		card.SizeFlagsVertical = SizeFlags.ExpandFill;
 		var layout = new VBoxContainer
@@ -2235,11 +2434,11 @@ public partial class HomePage : Control
 			SizeFlagsStretchRatio = 1.7f,
 		};
 		matchup.AddThemeConstantOverride("separation", 10);
-		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, null, Accent, DistrictHubData.UserTeamId));
+		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, null, Accent, userId));
 		var vs = MakeText("VS", _bold, 16, TextMuted, HorizontalAlignment.Center);
 		vs.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 		matchup.AddChild(vs);
-		matchup.AddChild(BuildTeamBlock(awayName, awayRecord, awayLogo, awayInitial, LakesBlue, "great-lakes"));
+		matchup.AddChild(BuildTeamBlock(awayName, awayRecord, awayLogo, awayInitial, LakesBlue, awayId));
 		layout.AddChild(matchup);
 
 		layout.AddChild(BuildMetaRow(_iconClock, when));

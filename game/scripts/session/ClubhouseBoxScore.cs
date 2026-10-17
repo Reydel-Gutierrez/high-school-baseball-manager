@@ -11,8 +11,35 @@ public static class ClubhouseBoxScore
 {
 	public const int Innings = 7;
 
-	public static BoxScore For(CalendarContest game)
+	public static BoxScore For(CalendarContest game, TryoutCamp? tryouts = null)
 	{
+		if (game.IsTryout)
+		{
+			TryoutGame? tryout = tryouts?.GameNumber(game.TryoutNumber);
+			if (tryout != null)
+			{
+				return ForTryout(tryout, game);
+			}
+		}
+
+		if (game.GameId != Guid.Empty)
+		{
+			BoxScore? live = ForWorld(game);
+			if (live != null)
+			{
+				return live;
+			}
+		}
+
+		if (game.GameId != Guid.Empty)
+		{
+			BoxScore? live = ForWorld(game);
+			if (live != null)
+			{
+				return live;
+			}
+		}
+
 		HubTeam us = DistrictHubData.GetTeam(DistrictHubData.UserTeamId);
 		HubTeam them = DistrictHubData.GetTeam(game.OpponentId);
 		int usRuns = game.TeamScore ?? 0;
@@ -48,6 +75,80 @@ public static class ClubhouseBoxScore
 			loser.Name,
 			save?.Name,
 			FieldingPlays(homeWon ? home : away, rng));
+	}
+
+	public static BoxScore ForTryout(TryoutGame tryout, CalendarContest? contest = null)
+	{
+		CalendarContest game = contest ?? ClubhouseCalendar.FromTryout(tryout);
+		BoxScoreSide away = new(
+			TryoutGame.BlueId,
+			TryoutGame.BlueName,
+			"BLUE",
+			tryout.BlueInningRuns,
+			tryout.BlueRuns,
+			tryout.BlueHits,
+			tryout.BlueErrors,
+			false,
+			ToBatters(tryout.BlueBatters),
+			ToPitchers(tryout.BluePitchers));
+		bool skippedLast = tryout.WhiteRuns > tryout.BlueRuns
+			&& tryout.WhiteInningRuns.Length == Innings
+			&& tryout.WhiteInningRuns[Innings - 1] == 0;
+		BoxScoreSide home = new(
+			TryoutGame.WhiteId,
+			TryoutGame.WhiteName,
+			"WHITE",
+			tryout.WhiteInningRuns,
+			tryout.WhiteRuns,
+			tryout.WhiteHits,
+			tryout.WhiteErrors,
+			skippedLast,
+			ToBatters(tryout.WhiteBatters),
+			ToPitchers(tryout.WhitePitchers));
+		return new BoxScore(
+			game,
+			away,
+			home,
+			tryout.WinningPitcher,
+			tryout.LosingPitcher,
+			tryout.Save,
+			tryout.FieldingPlays);
+	}
+
+	private static List<BoxScoreBatter> ToBatters(IReadOnlyList<TryoutGameBatter> source)
+	{
+		var batters = new List<BoxScoreBatter>(source.Count);
+		foreach (TryoutGameBatter batter in source)
+		{
+			batters.Add(new BoxScoreBatter(
+				batter.Name,
+				batter.LastName,
+				batter.Position,
+				batter.AtBats,
+				batter.Runs,
+				batter.Hits,
+				batter.HomeRuns,
+				batter.Rbi));
+		}
+
+		return batters;
+	}
+
+	private static List<BoxScorePitcher> ToPitchers(IReadOnlyList<TryoutGamePitcher> source)
+	{
+		var pitchers = new List<BoxScorePitcher>(source.Count);
+		foreach (TryoutGamePitcher pitcher in source)
+		{
+			pitchers.Add(new BoxScorePitcher(
+				pitcher.Name,
+				pitcher.LastName,
+				pitcher.Innings,
+				pitcher.Hits,
+				pitcher.Walks,
+				pitcher.Strikeouts));
+		}
+
+		return pitchers;
 	}
 
 	private static BoxScoreSide BuildSide(HubTeam team, int runs, TeamLevel level, Random rng, bool isHome)
@@ -280,6 +381,127 @@ public static class ClubhouseBoxScore
 		}
 
 		return total;
+	}
+
+	private static BoxScore? ForWorld(CalendarContest contest)
+	{
+		GameWorld? world = GameSession.Current?.World;
+		if (world == null)
+		{
+			return null;
+		}
+
+		GameBoxScore? sheet = null;
+		foreach (GameBoxScore candidate in world.BoxScores)
+		{
+			if (candidate.GameId == contest.GameId)
+			{
+				sheet = candidate;
+				break;
+			}
+		}
+
+		if (sheet == null)
+		{
+			return null;
+		}
+
+		ScheduledGame? scheduled = null;
+		foreach (ScheduledGame game in world.Games)
+		{
+			if (game.Id == contest.GameId)
+			{
+				scheduled = game;
+				break;
+			}
+		}
+
+		HubTeam awayTeam = DistrictHubData.GetTeam(CareerCalendar.OrganizationIdForTeam(world, scheduled?.AwayTeamId ?? ""));
+		HubTeam homeTeam = DistrictHubData.GetTeam(CareerCalendar.OrganizationIdForTeam(world, scheduled?.HomeTeamId ?? ""));
+		BoxScoreSide away = new(
+			awayTeam.Id,
+			awayTeam.Name,
+			awayTeam.ShortName,
+			sheet.AwayInningRuns,
+			Sum(sheet.AwayInningRuns, sheet.AwayInningRuns.Length),
+			sheet.AwayHits,
+			sheet.AwayErrors,
+			false,
+			MapBatters(sheet.AwayBatting),
+			MapPitchers(sheet.AwayPitching));
+		BoxScoreSide home = new(
+			homeTeam.Id,
+			homeTeam.Name,
+			homeTeam.ShortName,
+			sheet.HomeInningRuns,
+			Sum(sheet.HomeInningRuns, sheet.HomeInningRuns.Length),
+			sheet.HomeHits,
+			sheet.HomeErrors,
+			sheet.HomeSkippedLast,
+			MapBatters(sheet.HomeBatting),
+			MapPitchers(sheet.HomePitching));
+		return new BoxScore(
+			contest,
+			away,
+			home,
+			PitcherName(world, scheduled?.WinningPitcherId),
+			PitcherName(world, scheduled?.LosingPitcherId),
+			sheet.SavePitcherId.HasValue ? PitcherName(world, sheet.SavePitcherId) : null,
+			sheet.FieldingPlays);
+	}
+
+	private static List<BoxScoreBatter> MapBatters(IReadOnlyList<BoxScoreBattingLine> source)
+	{
+		var batters = new List<BoxScoreBatter>(source.Count);
+		foreach (BoxScoreBattingLine line in source)
+		{
+			batters.Add(new BoxScoreBatter(
+				line.Name,
+				line.LastName,
+				line.Position,
+				line.AtBats,
+				line.Runs,
+				line.Hits,
+				line.HomeRuns,
+				line.RunsBattedIn));
+		}
+
+		return batters;
+	}
+
+	private static List<BoxScorePitcher> MapPitchers(IReadOnlyList<BoxScorePitchingLine> source)
+	{
+		var pitchers = new List<BoxScorePitcher>(source.Count);
+		foreach (BoxScorePitchingLine line in source)
+		{
+			pitchers.Add(new BoxScorePitcher(
+				line.Name,
+				line.LastName,
+				line.InningsDisplay,
+				line.Hits,
+				line.Walks,
+				line.Strikeouts));
+		}
+
+		return pitchers;
+	}
+
+	private static string PitcherName(GameWorld world, Guid? playerId)
+	{
+		if (!playerId.HasValue)
+		{
+			return "";
+		}
+
+		foreach (Player player in world.Players)
+		{
+			if (player.Id == playerId.Value)
+			{
+				return player.LastName.ToUpperInvariant();
+			}
+		}
+
+		return "";
 	}
 
 	private static int Seed(CalendarContest game)

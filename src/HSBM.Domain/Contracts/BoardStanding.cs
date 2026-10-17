@@ -2,7 +2,7 @@ namespace HSBM.Domain;
 
 /// <summary>
 /// Athletic board's view of the current manager. Starts in the middle of
-/// the scale and moves as contract goals are met or missed.
+/// the scale and moves as board goals are met or missed.
 /// </summary>
 public enum BoardSatisfaction
 {
@@ -44,4 +44,28 @@ public static class BoardSatisfactionExtensions
 		JobSecurity.Secured => "Secured",
 		_ => "Average",
 	};
+
+	/// <summary>
+	/// A first-year miss is a warning. A second Poor season, or a miss
+	/// after the board has already given a full year, costs the seat.
+	/// </summary>
+	public static bool ShouldDismiss(
+		BoardSatisfaction closing,
+		bool requiredMet,
+		int poorStreakBefore,
+		int seasonsAtSchool)
+	{
+		if (closing != BoardSatisfaction.Poor)
+		{
+			return false;
+		}
+
+		int streak = poorStreakBefore + 1;
+		if (requiredMet)
+		{
+			return streak >= 2;
+		}
+
+		return seasonsAtSchool >= 2 || streak >= 2;
+	}
 }

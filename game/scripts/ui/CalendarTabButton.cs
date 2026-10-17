@@ -53,6 +53,11 @@ public partial class CalendarTabButton : Button
 
 		BindDate();
 
+		if (GameSession.Current != null)
+		{
+			GameSession.Current.CareerChanged += OnCareerChanged;
+		}
+
 		MouseEntered += () =>
 		{
 			_hover = true;
@@ -73,6 +78,20 @@ public partial class CalendarTabButton : Button
 			_focus = false;
 			QueueRedraw();
 		};
+	}
+
+	public override void _ExitTree()
+	{
+		if (GameSession.Current != null)
+		{
+			GameSession.Current.CareerChanged -= OnCareerChanged;
+		}
+	}
+
+	private void OnCareerChanged()
+	{
+		BindDate();
+		QueueRedraw();
 	}
 
 	public void SetActive(bool active)

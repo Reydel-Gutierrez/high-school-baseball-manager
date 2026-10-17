@@ -16,18 +16,33 @@
 [ext_resource type="PackedScene" uid="uid://bc5m0wv5k6nb5" path="res://scenes/pages/trades.tscn" id="32_trades"]
 [ext_resource type="PackedScene" uid="uid://c8txnpage0001" path="res://scenes/pages/transactions.tscn" id="33_txn"]
 [ext_resource type="PackedScene" uid="uid://x2nacspq5ab5" path="res://scenes/pages/goals.tscn" id="34_goals"]
+[ext_resource type="PackedScene" uid="uid://c7la8kg7i53ia" path="res://scenes/pages/graduation.tscn" id="34_graduation"]
+[ext_resource type="PackedScene" uid="uid://dahdkco1gs1ba" path="res://scenes/pages/incoming_class.tscn" id="34_incoming"]
+[ext_resource type="PackedScene" uid="uid://bc6ddew5k6nb5" path="res://scenes/pages/tryouts.tscn" id="34_tryouts"]
 [ext_resource type="PackedScene" uid="uid://3v02es800oo5" path="res://scenes/pages/lineups.tscn" id="35_lineups"]
+[ext_resource type="PackedScene" uid="uid://cuhbracl2bhyg" path="res://scenes/pages/injuries.tscn" id="36_injuries"]
 [ext_resource type="PackedScene" uid="uid://ba26xdl4ygpb5" path="res://scenes/pages/rotation.tscn" id="36_rotation"]
+[ext_resource type="PackedScene" uid="uid://3rm4eh5k6nb5" path="res://scenes/pages/league.tscn" id="37_league"]
+[ext_resource type="PackedScene" uid="uid://ban071qv4gpb5" path="res://scenes/pages/rankings.tscn" id="37_rankings"]
 [ext_resource type="PackedScene" uid="uid://bfyhlbgh2ggb5" path="res://scenes/pages/standings.tscn" id="37_standings"]
 [ext_resource type="PackedScene" uid="uid://3rm08dvprab5" path="res://scenes/pages/leaders.tscn" id="38_leaders"]
 [ext_resource type="PackedScene" uid="uid://sbnfvv5k6nb5" path="res://scenes/pages/awards.tscn" id="39_awards"]
 [ext_resource type="PackedScene" uid="uid://bb7nicspq5ab5" path="res://scenes/pages/statistics.tscn" id="40_stats"]
+[ext_resource type="PackedScene" uid="uid://c8messages001" path="res://scenes/pages/messages.tscn" id="41_messages"]
 [ext_resource type="PackedScene" uid="uid://5sbg8dvprab5" path="res://scenes/pages/news.tscn" id="41_news"]
 [ext_resource type="PackedScene" uid="uid://bbrnfuk5k6nb5" path="res://scenes/pages/player_search.tscn" id="42_search"]
+[ext_resource type="PackedScene" uid="uid://s8p3ww5k6nb5" path="res://scenes/pages/budget.tscn" id="43_budget"]
+[ext_resource type="PackedScene" uid="uid://cch7m0nkw1iwu" path="res://scenes/pages/pool.tscn" id="43_pool"]
+[ext_resource type="PackedScene" uid="uid://bb32ccr74gpb5" path="res://scenes/pages/sponsors.tscn" id="43_sponsors"]
 [ext_resource type="PackedScene" uid="uid://bcn43ww800oo5" path="res://scenes/pages/targets.tscn" id="43_targets"]
 [ext_resource type="PackedScene" uid="uid://c8careerpage1" path="res://scenes/pages/career.tscn" id="44_career"]
 [ext_resource type="PackedScene" uid="uid://c8calendar001" path="res://scenes/pages/calendar.tscn" id="45_calendar"]
 [ext_resource type="PackedScene" uid="uid://c8settings001" path="res://scenes/pages/settings.tscn" id="46_settings"]
+[ext_resource type="PackedScene" uid="uid://doftxarlurhyv" path="res://scenes/pages/game_preview.tscn" id="47_preview"]
+[ext_resource type="PackedScene" uid="uid://c8schedule001" path="res://scenes/pages/schedule.tscn" id="48_schedule"]
+[ext_resource type="PackedScene" uid="uid://jlxa48nq08y7" path="res://scenes/pages/championship_celebration.tscn" id="49_champ"]
+[ext_resource type="PackedScene" uid="uid://br6oplw1u0d8g" path="res://scenes/pages/season_review.tscn" id="50_review"]
+[ext_resource type="PackedScene" uid="uid://brqmhoqkqewgn" path="res://scenes/pages/hall_of_fame_induction.tscn" id="51_hof"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
 bg_color = Color(0.07058824, 0.078431375, 0.09411765, 1)
@@ -120,11 +135,11 @@ theme_override_constants/margin_bottom = 8
 
 [node name="HBoxContainer" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin" unique_id=687947371]
 layout_mode = 2
-theme_override_constants/separation = 28
-alignment = 1
+theme_override_constants/separation = 16
 
 [node name="BrandMark" type="VBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=1001]
 layout_mode = 2
+size_flags_horizontal = 0
 size_flags_vertical = 4
 theme_override_constants/separation = -2
 alignment = 1
@@ -172,7 +187,7 @@ size_flags_vertical = 4
 tooltip_text = "Inbox"
 script = ExtResource("9_msgtab")
 
-[node name="MessagesCalendarGap" type="Control" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow"]
+[node name="MessagesCalendarGap" type="Control" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=108505786]
 custom_minimum_size = Vector2(10, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -182,7 +197,7 @@ mouse_filter = 2
 custom_minimum_size = Vector2(42, 38)
 layout_mode = 2
 size_flags_vertical = 4
-tooltip_text = "Season calendar"
+tooltip_text = "Season calendar and schedule"
 script = ExtResource("9_caltab")
 
 [node name="CalendarRule" type="ColorRect" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2004]
@@ -215,15 +230,21 @@ theme_override_font_sizes/font_size = 13
 text = "ORGANIZATION ▼"
 flat = false
 switch_on_hover = true
-item_count = 4
+item_count = 7
 popup/item_0/text = "ROSTER"
 popup/item_0/id = 100
-popup/item_1/text = "TRADES"
-popup/item_1/id = 101
-popup/item_2/text = "TRANSACTIONS"
-popup/item_2/id = 102
-popup/item_3/text = "GOALS & SATISFACTION"
-popup/item_3/id = 103
+popup/item_1/text = "OPEN PLAY"
+popup/item_1/id = 104
+popup/item_2/text = "INCOMING CLASS"
+popup/item_2/id = 105
+popup/item_3/text = "GRADUATION"
+popup/item_3/id = 106
+popup/item_4/text = "TRADES"
+popup/item_4/id = 101
+popup/item_5/text = "TRANSACTIONS"
+popup/item_5/id = 102
+popup/item_6/text = "BOARD & GOALS"
+popup/item_6/id = 103
 script = ExtResource("1_hyk8p")
 
 [node name="ClubhouseMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=907681812]
@@ -234,11 +255,13 @@ theme_override_font_sizes/font_size = 13
 text = "CLUBHOUSE ▼"
 flat = false
 switch_on_hover = true
-item_count = 2
+item_count = 3
 popup/item_0/text = "LINEUPS"
 popup/item_0/id = 200
 popup/item_1/text = "PITCHING ROTATION"
 popup/item_1/id = 201
+popup/item_2/text = "INJURIES"
+popup/item_2/id = 202
 script = ExtResource("1_hyk8p")
 
 [node name="DistrictHubMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=147765320]
@@ -246,20 +269,26 @@ layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
 theme_override_font_sizes/font_size = 13
-text = "DISTRICT HUB ▼"
+text = "LEAGUE ▼"
 flat = false
 switch_on_hover = true
-item_count = 5
-popup/item_0/text = "STANDINGS"
-popup/item_0/id = 300
-popup/item_1/text = "LEADERS"
-popup/item_1/id = 301
-popup/item_2/text = "AWARDS"
-popup/item_2/id = 302
-popup/item_3/text = "STATISTICS"
-popup/item_3/id = 303
-popup/item_4/text = "NEWS"
-popup/item_4/id = 304
+item_count = 8
+popup/item_0/text = "WORLD"
+popup/item_0/id = 306
+popup/item_1/text = "STANDINGS"
+popup/item_1/id = 300
+popup/item_2/text = "RANKINGS"
+popup/item_2/id = 305
+popup/item_3/text = "LEADERS"
+popup/item_3/id = 301
+popup/item_4/text = "STATISTICS"
+popup/item_4/id = 303
+popup/item_5/text = "AWARDS"
+popup/item_5/id = 302
+popup/item_6/text = "PLAYOFFS"
+popup/item_6/id = 307
+popup/item_7/text = "NEWS"
+popup/item_7/id = 304
 script = ExtResource("1_hyk8p")
 
 [node name="FinancesMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1363254465]
@@ -270,13 +299,11 @@ theme_override_font_sizes/font_size = 13
 text = "FINANCES ▼"
 flat = false
 switch_on_hover = true
-item_count = 3
+item_count = 2
 popup/item_0/text = "BUDGET"
 popup/item_0/id = 400
 popup/item_1/text = "SPONSORS"
 popup/item_1/id = 401
-popup/item_2/text = "CONTRACTS"
-popup/item_2/id = 402
 script = ExtResource("1_hyk8p")
 
 [node name="ScoutingMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1964727536]
@@ -287,13 +314,15 @@ theme_override_font_sizes/font_size = 13
 text = "SCOUTING ▼"
 flat = false
 switch_on_hover = true
-item_count = 3
+item_count = 4
 popup/item_0/text = "PLAYER SEARCH"
 popup/item_0/id = 500
 popup/item_1/text = "TRADES"
 popup/item_1/id = 501
 popup/item_2/text = "MY TARGETS"
 popup/item_2/id = 502
+popup/item_3/text = "OPEN POOL"
+popup/item_3/id = 503
 script = ExtResource("1_hyk8p")
 
 [node name="CareerButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1692429108]
@@ -305,6 +334,7 @@ text = "MY CAREER"
 
 [node name="RightCluster" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=2001]
 layout_mode = 2
+size_flags_horizontal = 0
 size_flags_vertical = 4
 theme_override_constants/separation = 8
 alignment = 1
@@ -360,6 +390,24 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
+[node name="TryoutsView" parent="AppLayout/ContentArea" unique_id=1577318290 instance=ExtResource("34_tryouts")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="IncomingClassView" parent="AppLayout/ContentArea" unique_id=1577318291 instance=ExtResource("34_incoming")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GraduationView" parent="AppLayout/ContentArea" unique_id=1577318292 instance=ExtResource("34_graduation")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
 [node name="LineupsView" parent="AppLayout/ContentArea" unique_id=1577318267 instance=ExtResource("35_lineups")]
 visible = false
 layout_mode = 2
@@ -372,7 +420,25 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
+[node name="InjuriesView" parent="AppLayout/ContentArea" unique_id=1577318294 instance=ExtResource("36_injuries")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeagueOverviewView" parent="AppLayout/ContentArea" unique_id=1577318312 instance=ExtResource("37_league")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
 [node name="StandingsView" parent="AppLayout/ContentArea" unique_id=1577318269 instance=ExtResource("37_standings")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RankingsView" parent="AppLayout/ContentArea" unique_id=1577318310 instance=ExtResource("37_rankings")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
@@ -402,6 +468,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
+[node name="MessagesView" parent="AppLayout/ContentArea" unique_id=1577318510 instance=ExtResource("41_messages")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
 [node name="PlayerSearchView" parent="AppLayout/ContentArea" unique_id=1577318274 instance=ExtResource("42_search")]
 visible = false
 layout_mode = 2
@@ -409,6 +481,24 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="TargetsView" parent="AppLayout/ContentArea" unique_id=1577318275 instance=ExtResource("43_targets")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OpenPoolView" parent="AppLayout/ContentArea" unique_id=1889873566 instance=ExtResource("43_pool")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BudgetView" parent="AppLayout/ContentArea" unique_id=1577318400 instance=ExtResource("43_budget")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SponsorsView" parent="AppLayout/ContentArea" unique_id=1577318401 instance=ExtResource("43_sponsors")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
@@ -426,7 +516,37 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
+[node name="ScheduleView" parent="AppLayout/ContentArea" unique_id=1577318299 instance=ExtResource("48_schedule")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
 [node name="SettingsView" parent="AppLayout/ContentArea" unique_id=1577318278 instance=ExtResource("46_settings")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GamePreviewView" parent="AppLayout/ContentArea" unique_id=1577318298 instance=ExtResource("47_preview")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ChampionshipView" parent="AppLayout/ContentArea" unique_id=1577318300 instance=ExtResource("49_champ")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SeasonReviewView" parent="AppLayout/ContentArea" unique_id=1577318301 instance=ExtResource("50_review")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HallOfFameView" parent="AppLayout/ContentArea" unique_id=1577318302 instance=ExtResource("51_hof")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3

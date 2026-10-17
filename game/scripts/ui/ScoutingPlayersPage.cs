@@ -45,6 +45,7 @@ public partial class ScoutingPlayersPage : Control
 	private readonly Dictionary<string, PanelContainer> _rowByKey = new();
 	private readonly Dictionary<int, Button> _seasonYearButtons = new();
 	private readonly List<HubSquadPlayer> _results = new();
+	private readonly List<Player> _targetProspects = new();
 
 	private Label _subtitle = null!;
 	private Label _countValue = null!;
@@ -68,6 +69,7 @@ public partial class ScoutingPlayersPage : Control
 
 	private HubSquadPlayer? _profilePlayer;
 	private string? _selectedKey;
+	private bool _showSchoolProfile;
 	private int _selectedSeasonYear = DistrictHubData.SeasonYear;
 	private bool _hasSearched;
 	private int _appliedYear;
@@ -97,6 +99,7 @@ public partial class ScoutingPlayersPage : Control
 		BuildActionOverlay();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
 		_session.ScoutTargetsChanged += OnScoutTargetsChanged;
+		_session.TryoutsChanged += OnScoutTargetsChanged;
 		Refresh();
 	}
 
@@ -106,6 +109,7 @@ public partial class ScoutingPlayersPage : Control
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
 			_session.ScoutTargetsChanged -= OnScoutTargetsChanged;
+			_session.TryoutsChanged -= OnScoutTargetsChanged;
 		}
 	}
 
@@ -456,8 +460,8 @@ public partial class ScoutingPlayersPage : Control
 		if (BoardMode == ScoutingBoardMode.Targets)
 		{
 			RebuildTargetResults();
-			_subtitle.Text = $"{level}  ·  PLAYERS YOU HAVE MARKED";
-			_tableTitle.Text = "WATCH LIST";
+			_subtitle.Text = $"{level}  ·  RECRUITING BOARD AND WATCH LIST";
+			_tableTitle.Text = "MY TARGETS";
 			_countLabel.Text = "TARGETS";
 		}
 		else if (_hasSearched)
@@ -476,7 +480,9 @@ public partial class ScoutingPlayersPage : Control
 			_countLabel.Text = "PLAYERS";
 		}
 
-		_countValue.Text = $"{_results.Count}";
+		_countValue.Text = BoardMode == ScoutingBoardMode.Targets
+			? $"{_targetProspects.Count + _results.Count}"
+			: $"{_results.Count}";
 		RebuildRows();
 		BindProfile();
 	}
@@ -500,9 +506,21 @@ public partial class ScoutingPlayersPage : Control
 	private void RebuildTargetResults()
 	{
 		_results.Clear();
+		_targetProspects.Clear();
 		TeamLevel level = _session.ActiveTeam.Level;
 		foreach (ScoutTarget target in _session.ScoutTargets)
 		{
+			if (target.PlayerId != Guid.Empty)
+			{
+				Player? prospect = _session.FindProspect(target.PlayerId);
+				if (prospect != null)
+				{
+					_targetProspects.Add(prospect);
+				}
+
+				continue;
+			}
+
 			HubSquadPlayer? player = DistrictHubSquads.FindPlayer(target.TeamId, target.PlayerName, level);
 			if (player != null)
 			{
@@ -515,16 +533,21 @@ public partial class ScoutingPlayersPage : Control
 
 	private void EnsureSelection()
 	{
-		if (_results.Count == 0)
+		if (_results.Count == 0 && _targetProspects.Count == 0)
 		{
 			_selectedKey = null;
 			return;
 		}
 
-		if (_selectedKey == null || FindResult(_selectedKey) == null)
+		if (_selectedKey != null
+			&& (FindResult(_selectedKey) != null || FindProspect(_selectedKey) != null))
 		{
-			_selectedKey = PlayerKey(_results[0]);
+			return;
 		}
+
+		_selectedKey = _targetProspects.Count > 0
+			? ProspectKey(_targetProspects[0])
+			: PlayerKey(_results[0]);
 	}
 
 	private bool MatchesSearch(HubSquadPlayer player)
@@ -616,15 +639,22 @@ public partial class ScoutingPlayersPage : Control
 		}
 
 		_rowByKey.Clear();
-		if (_results.Count == 0)
+		if (_results.Count == 0 && _targetProspects.Count == 0)
 		{
 			_rowsHost.AddChild(MakeEmptyRow());
 			return;
 		}
 
+		int index = 0;
+		foreach (Player prospect in _targetProspects)
+		{
+			_rowsHost.AddChild(BuildProspectRow(prospect, index));
+			index++;
+		}
+
 		for (int i = 0; i < _results.Count; i++)
 		{
-			_rowsHost.AddChild(BuildPlayerRow(_results[i], i));
+			_rowsHost.AddChild(BuildPlayerRow(_results[i], index + i));
 		}
 	}
 
@@ -633,7 +663,7 @@ public partial class ScoutingPlayersPage : Control
 		var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		panel.AddThemeStyleboxOverride("panel", MakePlayerRowStyle(false, true));
 		string message = BoardMode == ScoutingBoardMode.Targets
-			? "No targets yet. Open Player Search, pick a player from another program, and use Add Target."
+			? "No targets yet. Open District Open Play, pin a prospect, and he lands here."
 			: _hasSearched
 				? "No players match those filters."
 				: "Set year, average, overall, and the rest, then click Search.";
@@ -708,9 +738,50 @@ public partial class ScoutingPlayersPage : Control
 		return box;
 	}
 
+	private Control BuildProspectRow(Player player, int index)
+	{
+		string key = ProspectKey(player);
+		bool selected = key == _selectedKey;
+		var row = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			MouseFilter = MouseFilterEnum.Stop,
+		};
+		row.SetMeta("row_index", index);
+		row.AddThemeStyleboxOverride("panel", MakePlayerRowStyle(selected, index % 2 == 0));
+		row.GuiInput += (InputEvent evt) =>
+		{
+			if (evt is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
+			{
+				string selectedKey = key;
+				Callable.From(() => SelectPlayer(selectedKey)).CallDeferred();
+			}
+		};
+
+		int looks = Math.Max(1, _session.OpenPlay.LooksOn(_session.CurrentDate));
+		string ovr = TryoutScouting.FormatOverall(player.Overall, looks, player.Id.GetHashCode());
+		int interest = _session.RecruitingMarket.InterestFor(player.Id).Count;
+		var columns = new HBoxContainer();
+		columns.AddThemeConstantOverride("separation", 8);
+		columns.MouseFilter = MouseFilterEnum.Ignore;
+		columns.AddChild(MakeFixed("—", 28, _bold, 13, TextMuted, HorizontalAlignment.Center));
+		columns.AddChild(MakeFixed("", 28, _medium, 10, TextMuted, HorizontalAlignment.Center));
+		columns.AddChild(BuildNameCell(player.FirstName, player.LastName));
+		columns.AddChild(MakeFixed(player.DisplayPosition, 36, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
+		columns.AddChild(MakeFixed(player.Grade.ToAbbrev(), 28, _semibold, 12, TextMuted, HorizontalAlignment.Center));
+		columns.AddChild(MakeFixed("OPEN PLAY", 72, _semibold, 11, Accent, HorizontalAlignment.Left));
+		columns.AddChild(MakeFixed(ovr, 56, _bold, 13, Accent, HorizontalAlignment.Center));
+		columns.AddChild(MakeFixed(interest == 0 ? "—" : $"{interest} ON", 56, _bold, 13, interest > 0 ? Accent : TextMuted, HorizontalAlignment.Right));
+		row.AddChild(columns);
+		_rowByKey[key] = row;
+		return row;
+	}
+
 	private void SelectPlayer(string key)
 	{
 		_selectedKey = key;
+		_showSchoolProfile = false;
 		foreach (KeyValuePair<string, PanelContainer> pair in _rowByKey)
 		{
 			int index = (int)pair.Value.GetMeta("row_index");
@@ -720,24 +791,50 @@ public partial class ScoutingPlayersPage : Control
 		BindProfile();
 	}
 
+	public bool TryShowPlayer(string teamId, string playerName)
+	{
+		string id = string.IsNullOrWhiteSpace(teamId) ? string.Empty : SchoolProfiles.NormalizeId(teamId);
+		foreach (HubSquadPlayer player in _results)
+		{
+			if ((id.Length == 0 || player.TeamId == id) && PlayerProfiles.NamesMatch(player, playerName))
+			{
+				SelectPlayer(PlayerKey(player));
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private void SelectAdjacent(int delta)
 	{
-		if (_results.Count == 0)
+		var keys = new List<string>();
+		foreach (Player prospect in _targetProspects)
+		{
+			keys.Add(ProspectKey(prospect));
+		}
+
+		foreach (HubSquadPlayer player in _results)
+		{
+			keys.Add(PlayerKey(player));
+		}
+
+		if (keys.Count == 0)
 		{
 			return;
 		}
 
-		int index = _results.FindIndex(player => PlayerKey(player) == _selectedKey);
+		int index = string.IsNullOrEmpty(_selectedKey) ? 0 : keys.IndexOf(_selectedKey);
 		if (index < 0)
 		{
 			index = 0;
 		}
 		else
 		{
-			index = Mathf.Clamp(index + delta, 0, _results.Count - 1);
+			index = Mathf.Clamp(index + delta, 0, keys.Count - 1);
 		}
 
-		SelectPlayer(PlayerKey(_results[index]));
+		SelectPlayer(keys[index]);
 	}
 
 	private void BindProfile()
@@ -749,12 +846,20 @@ public partial class ScoutingPlayersPage : Control
 		}
 
 		_profilePlayer = _selectedKey == null ? null : FindResult(_selectedKey);
-		if (_profilePlayer == null)
+		Player? prospect = _selectedKey == null ? null : FindProspect(_selectedKey);
+		if (_profilePlayer == null && prospect == null)
 		{
 			_detailHost.AddChild(MakeEmptyProfile());
 			return;
 		}
 
+		if (prospect != null)
+		{
+			BindProspectProfile(prospect);
+			return;
+		}
+
+		HubSquadPlayer hub = _profilePlayer!;
 		var margin = new MarginContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -774,10 +879,116 @@ public partial class ScoutingPlayersPage : Control
 		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildProfileHeader(_profilePlayer));
-		layout.AddChild(BuildRatingsRow(_profilePlayer));
-		layout.AddChild(MakeAccentLine());
-		layout.AddChild(BuildSeasonStats(_profilePlayer));
+		layout.AddChild(SchoolLinks.MakeModeToggle(_semibold, _showSchoolProfile, school =>
+		{
+			_showSchoolProfile = school;
+			BindProfile();
+		}));
+		if (_showSchoolProfile)
+		{
+			var schoolCard = new SchoolProfileCard
+			{
+				FrameVisible = false,
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			layout.AddChild(schoolCard);
+			schoolCard.Bind(hub.TeamId, _session.ActiveTeam.Level);
+			return;
+		}
+
+		var card = new PlayerProfileCard
+		{
+			FrameVisible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		if (hub.TeamId != DistrictHubData.UserTeamId)
+		{
+			card.SetAction("ACTIONS", OpenPlayerActions);
+		}
+
+		layout.AddChild(card);
+		card.Bind(PlayerProfiles.From(hub));
+	}
+
+	private void BindProspectProfile(Player player)
+	{
+		var margin = new MarginContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		margin.AddThemeConstantOverride("margin_left", 10);
+		margin.AddThemeConstantOverride("margin_top", 10);
+		margin.AddThemeConstantOverride("margin_right", 10);
+		margin.AddThemeConstantOverride("margin_bottom", 10);
+		_detailHost.AddChild(margin);
+
+		var layout = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		layout.AddThemeConstantOverride("separation", 8);
+		margin.AddChild(layout);
+
+		var card = new PlayerProfileCard
+		{
+			FrameVisible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		card.SetAction(_session.IsScoutTarget(player.Id) ? "REMOVE TARGET" : "ADD TARGET", () =>
+		{
+			_session.ToggleScoutTarget(player);
+			Refresh();
+		});
+		layout.AddChild(card);
+
+		PlayerAgreement? agreement = _session.RecruitingMarket.AgreementFor(player.Id);
+		PlayerAgreementSnapshot? snapshot = null;
+		if (agreement != null)
+		{
+			OrganizationState? school = _session.RecruitingSchool(agreement.OrganizationId);
+			snapshot = new PlayerAgreementSnapshot(
+				school?.DisplayName ?? agreement.OrganizationId,
+				agreement.StartSeasonYear,
+				agreement.YearsRemaining,
+				agreement.TermYears,
+				agreement.AnnualSponsorship,
+				agreement.TotalCommitment);
+		}
+
+		string teamShort = agreement == null
+			? "Open Play"
+			: (_session.RecruitingSchool(agreement.OrganizationId)?.ShortName ?? "Signed");
+		card.Bind(PlayerProfiles.FromOpenPlay(
+			player,
+			_session.OpenPlay,
+			_session.CurrentDate,
+			teamShort,
+			snapshot,
+			_session.InterestCopy(player.Id)));
+
+		layout.AddChild(MakeText(player.Priorities.Hook, _medium, 13, TextMuted, HorizontalAlignment.Left));
+		layout.AddChild(MakeText(_session.InterestCopy(player.Id), _medium, 13, TextPrimary, HorizontalAlignment.Left));
+		bool signing = SeasonCalendar.SigningWeek(GameSession.SeasonYear).OccursOn(_session.CurrentDate)
+			|| _session.CurrentDate == SeasonCalendar.SigningDeadline(GameSession.SeasonYear);
+		if (signing && agreement == null)
+		{
+			var offer = new Button
+			{
+				Text = "MAKE $450 OFFER",
+				MouseDefaultCursorShape = CursorShape.PointingHand,
+			};
+			offer.Pressed += () =>
+			{
+				_session.TryPlaceRecruitingOffer(player.Id, 450);
+				Refresh();
+			};
+			layout.AddChild(offer);
+		}
 	}
 
 	private Control MakeEmptyProfile()
@@ -1409,6 +1620,21 @@ public partial class ScoutingPlayersPage : Control
 		return null;
 	}
 
+	private Player? FindProspect(string key)
+	{
+		foreach (Player player in _targetProspects)
+		{
+			if (ProspectKey(player) == key)
+			{
+				return player;
+			}
+		}
+
+		return null;
+	}
+
+	private static string ProspectKey(Player player) => $"prospect:{player.Id:N}";
+
 	private static string PlayerKey(HubSquadPlayer player) => $"{player.TeamId}|{player.Name}";
 
 	private static string LineStat(HubSquadPlayer player)
@@ -1460,7 +1686,7 @@ public partial class ScoutingPlayersPage : Control
 	{
 		var mark = new HBoxContainer
 		{
-			MouseFilter = MouseFilterEnum.Ignore,
+			MouseFilter = MouseFilterEnum.Stop,
 		};
 		mark.AddThemeConstantOverride("separation", 6);
 		mark.CustomMinimumSize = new Vector2(92, 0);
@@ -1476,6 +1702,7 @@ public partial class ScoutingPlayersPage : Control
 		label.ClipText = true;
 		label.MouseFilter = MouseFilterEnum.Ignore;
 		mark.AddChild(label);
+		SchoolLinks.MakeClickable(mark, teamId);
 		return mark;
 	}
 

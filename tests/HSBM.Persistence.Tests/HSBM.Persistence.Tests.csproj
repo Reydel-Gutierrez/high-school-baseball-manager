@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1707;CA2000</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\HSBM.Persistence\HSBM.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\HSBM.Application\HSBM.Application.csproj" />
+    <ProjectReference Include="..\..\src\HSBM.Simulation\HSBM.Simulation.csproj" />
   </ItemGroup>
 
 </Project>

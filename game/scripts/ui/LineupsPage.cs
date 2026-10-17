@@ -529,6 +529,7 @@ public partial class LineupsPage : Control
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 			Alignment = BoxContainer.AlignmentMode.Center,
+			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		columns.AddThemeConstantOverride("separation", 6);
 		row.AddChild(columns);
@@ -606,7 +607,7 @@ public partial class LineupsPage : Control
 			}
 		};
 
-		var columns = new HBoxContainer();
+		var columns = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		columns.AddThemeConstantOverride("separation", 6);
 		row.AddChild(columns);
 
@@ -657,6 +658,7 @@ public partial class LineupsPage : Control
 
 			ClearSelection();
 			RefreshAll();
+			ClubhouseBoard.Commit(_session.ActiveTeam);
 			return;
 		}
 
@@ -683,6 +685,7 @@ public partial class LineupsPage : Control
 			ClubhouseBoard.GetLineup(_session.ActiveTeam).SwapDefense(_gloveSlot, slotIndex);
 			_gloveSlot = -1;
 			RefreshAll();
+			ClubhouseBoard.Commit(_session.ActiveTeam);
 			return;
 		}
 
@@ -709,6 +712,7 @@ public partial class LineupsPage : Control
 		ClearSelection();
 		_selectedSlot = slotIndex;
 		RefreshAll();
+		ClubhouseBoard.Commit(_session.ActiveTeam);
 	}
 
 	private void SendSelectedToBench()
@@ -721,6 +725,7 @@ public partial class LineupsPage : Control
 		ClubhouseBoard.GetLineup(_session.ActiveTeam).Bench(_selectedSlot);
 		ClearSelection();
 		RefreshAll();
+		ClubhouseBoard.Commit(_session.ActiveTeam);
 	}
 
 	private void BindDetail()
@@ -959,6 +964,7 @@ public partial class LineupsPage : Control
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			Alignment = BoxContainer.AlignmentMode.Center,
+			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		box.AddThemeConstantOverride("separation", -2);
 		box.AddChild(MakeText(player.DisplayLast, _semibold, 12, TextPrimary, HorizontalAlignment.Left));

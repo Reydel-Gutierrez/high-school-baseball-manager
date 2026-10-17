@@ -5,7 +5,7 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// District Hub statistics: pick a district, open a team, then click a
+/// League statistics: pick a district, open a team, then click a
 /// player to open a roster-style profile card on the right.
 /// </summary>
 public partial class StatisticsPage : Control
@@ -64,6 +64,7 @@ public partial class StatisticsPage : Control
 	private string _activeStat = StatBatting;
 	private string? _activeTeamId;
 	private string? _selectedPlayerName;
+	private bool _showSchoolProfile;
 
 	public override void _Ready()
 	{
@@ -79,6 +80,7 @@ public partial class StatisticsPage : Control
 
 		BuildPage();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
+		_session.CareerChanged += Refresh;
 		Refresh();
 	}
 
@@ -87,6 +89,7 @@ public partial class StatisticsPage : Control
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
+			_session.CareerChanged -= Refresh;
 		}
 	}
 
@@ -139,7 +142,7 @@ public partial class StatisticsPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"DISTRICT HUB  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
 		identity.AddChild(MakeText("STATISTICS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
@@ -392,6 +395,7 @@ public partial class StatisticsPage : Control
 	private void SelectPlayer(string name)
 	{
 		_selectedPlayerName = name;
+		_showSchoolProfile = false;
 		foreach (KeyValuePair<string, PanelContainer> pair in _rowByName)
 		{
 			int index = (int)pair.Value.GetMeta("row_index");
@@ -400,6 +404,24 @@ public partial class StatisticsPage : Control
 		}
 
 		BindProfile();
+	}
+
+	public bool TryShowPlayer(string teamId, string playerName)
+	{
+		string id = SchoolProfiles.NormalizeId(teamId);
+		if (_activeTeamId == null || _activeTeamId != id)
+		{
+			return false;
+		}
+
+		HubSquadPlayer? match = DistrictHubSquads.FindPlayer(id, playerName, _session.ActiveTeam.Level);
+		if (match == null)
+		{
+			return false;
+		}
+
+		SelectPlayer(match.Name);
+		return true;
 	}
 
 	private Control BuildTeamHeader() =>
@@ -618,10 +640,32 @@ public partial class StatisticsPage : Control
 		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildProfileHeader(_profilePlayer));
-		layout.AddChild(BuildRatingsRow(_profilePlayer));
-		layout.AddChild(MakeAccentLine());
-		layout.AddChild(BuildSeasonStats(_profilePlayer));
+		layout.AddChild(SchoolLinks.MakeModeToggle(_semibold, _showSchoolProfile, school =>
+		{
+			_showSchoolProfile = school;
+			BindProfile();
+		}));
+		if (_showSchoolProfile && _activeTeamId != null)
+		{
+			var schoolCard = new SchoolProfileCard
+			{
+				FrameVisible = false,
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				SizeFlagsVertical = SizeFlags.ExpandFill,
+			};
+			layout.AddChild(schoolCard);
+			schoolCard.Bind(_activeTeamId, _session.ActiveTeam.Level);
+			return;
+		}
+
+		var card = new PlayerProfileCard
+		{
+			FrameVisible = false,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		layout.AddChild(card);
+		card.Bind(PlayerProfiles.From(_profilePlayer));
 	}
 
 	private Control BuildProfileHeader(HubSquadPlayer player)

@@ -250,6 +250,15 @@ public partial class TradesPage : Control
 
 		popup.IdPressed += OnPartnerPicked;
 		layout.AddChild(_partnerButton);
+		var schoolButton = new Button
+		{
+			Text = "VIEW SCHOOL PROFILE",
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+		};
+		schoolButton.AddThemeFontOverride("font", _semibold);
+		schoolButton.AddThemeFontSizeOverride("font_size", 12);
+		schoolButton.Pressed += () => SchoolLinks.Open(this, _partners[_partnerIndex].Id);
+		layout.AddChild(schoolButton);
 		layout.AddChild(MakeAccentLine());
 
 		var scroll = new ScrollContainer
@@ -526,6 +535,7 @@ public partial class TradesPage : Control
 			Alignment = BoxContainer.AlignmentMode.Center,
 		};
 		box.AddThemeConstantOverride("separation", -2);
+		PlayerLinks.MakeClickable(box, string.Empty, $"{player.FirstName} {player.LastName}");
 		box.AddChild(MakeText(player.LastName.ToUpperInvariant(), _semibold, 13, TextPrimary, HorizontalAlignment.Left));
 		string sub = locked ? $"{player.FirstName}  ·  PENDING" : player.FirstName;
 		box.AddChild(MakeText(sub, _medium, 10, locked ? Accent : TextMuted, HorizontalAlignment.Left));
