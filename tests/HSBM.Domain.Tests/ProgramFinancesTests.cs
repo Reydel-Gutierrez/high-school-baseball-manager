@@ -54,7 +54,9 @@ public class ProgramFinancesTests
 		Assert.Equal(ProgramBudget.Available(program.Profile, deals, "cascade", salary), sheet.Available);
 		Assert.Equal(900, sheet.RecruitingCommitted);
 		Assert.Equal(salary, sheet.CoachSalary);
-		Assert.Equal(40_000, sheet.AllocatedTotal);
+		// Head coach salary is carved out before the operating allocations.
+		Assert.Equal(40_000 - salary, sheet.AllocatedTotal);
+		Assert.Equal(sheet.BaseballBudget, sheet.AllocatedTotal + sheet.CoachSalary);
 	}
 
 	[Fact]
