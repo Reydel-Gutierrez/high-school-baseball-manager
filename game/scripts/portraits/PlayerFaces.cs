@@ -37,7 +37,40 @@ public static class PlayerFaces
 			return null;
 		}
 
-		return For(session.FindWorldPlayer(teamId, name, level), width, height, circle);
+		Player? player = session.FindWorldPlayer(teamId, name, level);
+		return player != null
+			? For(player, width, height, circle)
+			: Generated(teamId, name, width, height, circle);
+	}
+
+	/// <summary>
+	/// A stable face for someone outside the simulated world (legacy preview
+	/// data, imported box scores): seeded from name and school so they look
+	/// the same every time they appear.
+	/// </summary>
+	public static PersonPortrait Generated(string teamId, string name, float width, float height, bool circle = false, int age = 17)
+	{
+		int seed = 17;
+		unchecked
+		{
+			foreach (char ch in $"{teamId}|{name}")
+			{
+				seed = seed * 31 + ch;
+			}
+		}
+
+		(Color jersey, Color trim) = TeamColors.For(teamId);
+		var portrait = new PersonPortrait
+		{
+			CustomMinimumSize = new Vector2(width, height),
+			Circle = circle,
+			BackdropColor = jersey.Darkened(0.55f),
+			Age = age,
+			Jersey = jersey,
+			Trim = trim,
+		};
+		portrait.SetAppearance(HSBM.Simulation.PersonAppearanceGenerator.GeneratePlayer(seed, (BodyBuild)(System.Math.Abs(seed >> 7) % 4)));
+		return portrait;
 	}
 
 	/// <summary>Look a player up by id.</summary>
