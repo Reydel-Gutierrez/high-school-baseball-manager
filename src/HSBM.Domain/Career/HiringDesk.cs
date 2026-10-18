@@ -107,13 +107,14 @@ public static class HiringDesk
 		double fit,
 		bool firstHeadJob)
 	{
-		double reputationEdge = (CoachReputation.Clamp(coachReputation) - programReputation) / 30.0;
+		double reputationEdge = (CoachReputation.Clamp(coachReputation) - programReputation) / 40.0;
 		int games = careerWins + careerLosses;
 		double record = games == 0 ? 0 : ((double)careerWins / games - 0.5) * 0.5;
 		double chance = 0.45 + reputationEdge + record + (fit - 0.5) * 0.6;
 		if (firstHeadJob)
 		{
-			chance = Math.Max(chance, 0.35);
+			// Nobody has a résumé yet: the interview carries a rookie.
+			chance = Math.Max(chance, 0.25 + 0.35 * fit);
 		}
 
 		return Math.Clamp(chance, 0.05, 0.95);

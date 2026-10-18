@@ -275,7 +275,9 @@ public partial class JobMarketBoard : Control
 		row.AddChild(Columns(
 			school,
 			MakeText(job.Reputation.ToString(), _bold, 14, RepColor(job.Reputation), HorizontalAlignment.Right),
-			MakeText(JobListing.OpenStatus, _semibold, 11, Green, HorizontalAlignment.Right)));
+			_session.WasPassedOver(job.OrganizationId)
+				? MakeText("PASSED", _semibold, 11, TextMuted, HorizontalAlignment.Right)
+				: MakeText(JobListing.OpenStatus, _semibold, 11, Green, HorizontalAlignment.Right)));
 		return row;
 	}
 
