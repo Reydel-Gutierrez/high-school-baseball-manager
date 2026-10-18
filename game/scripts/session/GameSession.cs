@@ -839,6 +839,68 @@ public partial class GameSession : Node
 		return true;
 	}
 
+	private readonly HashSet<string> _passedOver = new(StringComparer.Ordinal);
+	private int _passedOverSeason;
+
+	/// <summary>True if this school already turned the coach down during the current hiring cycle.</summary>
+	public bool WasPassedOver(string organizationId)
+	{
+		if (_passedOverSeason != SeasonYear)
+		{
+			_passedOver.Clear();
+			_passedOverSeason = SeasonYear;
+		}
+
+		return _passedOver.Contains(organizationId);
+	}
+
+	public ProgramNeeds NeedsFor(JobListing job) =>
+		HiringDesk.NeedsFor(job.TargetExpectation, job.Reputation, job.RosterOutlook);
+
+	/// <summary>
+	/// Sit for the interview. The decision is deterministic for a given
+	/// world, school, season, and set of answers (no save-scumming).
+	/// A rejection closes that door until next year's carousel.
+	/// </summary>
+	public HiringDecision Interview(JobListing job, IReadOnlyList<CoachingPitch> pitches)
+	{
+		_ = WasPassedOver(job.OrganizationId);
+		bool firstHeadJob = !HasSignedContract && DisplayCareerGames == 0;
+		int othersOpen = 0;
+		foreach (JobListing other in AvailableJobs)
+		{
+			if (other.OrganizationId != job.OrganizationId && other.InReach && !_passedOver.Contains(other.OrganizationId))
+			{
+				othersOpen++;
+			}
+		}
+
+		int salt = 0;
+		foreach (char c in job.OrganizationId)
+		{
+			salt = unchecked(salt * 31 + c);
+		}
+
+		var rng = new SeededRandom(SeededRandom.Mix(WorldSeed, salt ^ (SeasonYear * 7919)));
+		HiringDecision decision = HiringDesk.Decide(
+			job.SchoolName,
+			CoachReputationScore,
+			job.Reputation,
+			DisplayCareerWins,
+			DisplayCareerLosses,
+			pitches,
+			NeedsFor(job),
+			firstHeadJob,
+			lastOpening: othersOpen == 0,
+			rng);
+		if (!decision.Hired)
+		{
+			_passedOver.Add(job.OrganizationId);
+		}
+
+		return decision;
+	}
+
 	public event Action? TrainingChanged;
 
 	/// <summary>The practice plan for one of the user's teams (balanced/normal if never set).</summary>

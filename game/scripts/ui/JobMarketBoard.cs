@@ -417,12 +417,23 @@ public partial class JobMarketBoard : Control
 	private void OnAction(string organizationId)
 	{
 		JobListing? job = FindJob(organizationId);
-		if (job == null || !job.InReach)
+		if (job == null || !job.InReach || _session.WasPassedOver(organizationId))
 		{
 			UiSounds.Play(UiSound.Error);
 			return;
 		}
 
+		// Applying means sitting for an interview; the school decides.
+		UiSounds.Play(UiSound.Confirm);
+		var interview = new InterviewOverlay();
+		GetTree().Root.AddChild(interview);
+		interview.Begin(_session, job);
+		interview.AcceptedOffer += OnOfferAccepted;
+		interview.TreeExited += () => CallDeferred(MethodName.RefreshAfterInterview);
+	}
+
+	private void OnOfferAccepted(string organizationId)
+	{
 		if (!_session.TryTakeJob(organizationId))
 		{
 			UiSounds.Play(UiSound.Error);
@@ -432,10 +443,19 @@ public partial class JobMarketBoard : Control
 		UiSounds.Play(UiSound.Confirm);
 	}
 
+	private void RefreshAfterInterview()
+	{
+		if (IsInsideTree() && _selectedId != null)
+		{
+			BindDetail(FindJob(_selectedId));
+		}
+	}
+
 	private Button MakeAccept(JobListing job)
 	{
-		bool blocked = !job.InReach;
-		string text = blocked ? "REPUTATION TOO LOW" : "APPLY";
+		bool passed = _session.WasPassedOver(job.OrganizationId);
+		bool blocked = !job.InReach || passed;
+		string text = passed ? "PASSED OVER THIS YEAR" : blocked ? "REPUTATION TOO LOW" : "APPLY & INTERVIEW";
 		var button = new Button
 		{
 			Text = text,
