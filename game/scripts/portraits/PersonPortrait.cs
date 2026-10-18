@@ -114,9 +114,12 @@ public partial class PersonPortrait : Control
 			DrawBackdrop(bounds);
 		}
 
-		// Cover-fit the 4:5 headshot, anchored to the top so heads never crop.
+		// Fit the 4:5 headshot to the frame height (wide frames show it centred
+		// on the backdrop); narrow frames crop the shoulders, never the head.
 		Vector2 tex = _photo.GetSize();
-		float scale = Mathf.Max(bounds.Size.X / tex.X, bounds.Size.Y / tex.Y);
+		float scale = bounds.Size.X / bounds.Size.Y > tex.X / tex.Y
+			? bounds.Size.Y / tex.Y
+			: Mathf.Max(bounds.Size.X / tex.X, bounds.Size.Y / tex.Y);
 		Vector2 drawn = tex * scale;
 		var dest = new Rect2(new Vector2((bounds.Size.X - drawn.X) / 2f, 0f), drawn);
 		DrawTextureRect(_photo, dest, false);

@@ -50,5 +50,5 @@ void fragment() {
 	col += vec3(pow(max(dot(n, h), 0.0), 400.0)) * 3.0;
 	col += vec3(pow(max(dot(n, normalize(vec3(-0.6, 0.2, 0.8) + v)), 0.0), 300.0)) * 0.6;
 	col = col / (col + vec3(0.6)) * 1.35;
-	ALBEDO = col;
+	ALBEDO = pow(max(col, vec3(0.0)), vec3(1.0 / 2.2));
 }

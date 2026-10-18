@@ -105,5 +105,5 @@ void fragment() {
 	float rim_t = pow(1.0 - max(dot(n, v), 0.0), 3.0) * clamp(dot(n, rim) + 0.4, 0.0, 1.0);
 	vec3 col = diffuse + spec + vec3(0.65, 0.75, 0.9) * rim_t * 0.35;
 	col = col / (col + vec3(0.55)) * 1.25;
-	ALBEDO = col;
+	ALBEDO = pow(max(col, vec3(0.0)), vec3(1.0 / 2.2));
 }
