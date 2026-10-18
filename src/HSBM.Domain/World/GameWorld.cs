@@ -24,6 +24,7 @@ public sealed class GameWorld
 	public List<FieldingSeasonStats> FieldingStats { get; set; } = [];
 	public List<TeamLineup> Lineups { get; set; } = [];
 	public List<TeamRotation> Rotations { get; set; } = [];
+	public List<TeamTraining> Training { get; set; } = [];
 	public List<GameBoxScore> BoxScores { get; set; } = [];
 	public List<DistrictOpenPlay> OpenPlay { get; set; } = [];
 	public List<RecruitingOffer> Offers { get; set; } = [];

@@ -64,6 +64,7 @@ public sealed class SqliteCareerStore : ICareerStore
 			Execute(tx, "DELETE FROM season_profile_commits;");
 			Execute(tx, "DELETE FROM team_lineups;");
 			Execute(tx, "DELETE FROM team_rotations;");
+			Execute(tx, "DELETE FROM team_training;");
 			Execute(tx, "DELETE FROM fielding_stats;");
 			Execute(tx, "DELETE FROM batting_stats;");
 			Execute(tx, "DELETE FROM pitching_stats;");
@@ -290,6 +291,11 @@ public sealed class SqliteCareerStore : ICareerStore
 				InsertRotation(tx, rotation);
 			}
 
+			foreach (TeamTraining plan in state.Training)
+			{
+				InsertTraining(tx, plan);
+			}
+
 			foreach (PlayerAgreement agreement in state.Agreements)
 			{
 				InsertAgreement(tx, agreement);
@@ -355,6 +361,7 @@ public sealed class SqliteCareerStore : ICareerStore
 			FieldingStats = ReadFielding(),
 			Lineups = ReadLineups(),
 			Rotations = ReadRotations(),
+			Training = ReadTraining(),
 			BoxScores = ReadBoxScores(),
 			Agreements = ReadAgreements(),
 			Offers = ReadOffers(),
@@ -431,6 +438,8 @@ public sealed class SqliteCareerStore : ICareerStore
 		AddColumnIfMissing("players", "college_id", "TEXT NOT NULL DEFAULT ''");
 		AddColumnIfMissing("players", "college_school", "TEXT NOT NULL DEFAULT ''");
 		AddColumnIfMissing("players", "college_path", "TEXT NOT NULL DEFAULT ''");
+		AddColumnIfMissing("players", "development_progress", "INTEGER NOT NULL DEFAULT 0");
+		AddColumnIfMissing("players", "season_start_overall", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "wins", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "losses", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "district_titles", "INTEGER NOT NULL DEFAULT 0");
@@ -484,13 +493,13 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path)
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_overall)
 			VALUES (
 				$id, $first, $last, $year, $bats, $throws, $pos, $sec, $grade, $age, $org, $team, $level, $jersey,
 				$contact, $power, $disc, $speed, $field, $arm, $stuff, $control, $move, $stam, $pot, $arch,
 				$appearance, $height, $weight, $strength, $personality,
 				$injuryKind, $injuryStart, $injuryUntil, $injuryDtd, $alumni,
-				$gradYear, $collegeId, $collegeSchool, $collegePath);
+				$gradYear, $collegeId, $collegeSchool, $collegePath, $devProgress, $seasonStart);
 			""";
 		command.Parameters.AddWithValue("$id", player.Id.ToString());
 		command.Parameters.AddWithValue("$first", player.FirstName);
@@ -540,6 +549,8 @@ public sealed class SqliteCareerStore : ICareerStore
 		command.Parameters.AddWithValue("$collegeId", player.CollegeId ?? "");
 		command.Parameters.AddWithValue("$collegeSchool", player.CollegeSchool ?? "");
 		command.Parameters.AddWithValue("$collegePath", player.CollegePath ?? "");
+		command.Parameters.AddWithValue("$devProgress", player.DevelopmentProgress);
+		command.Parameters.AddWithValue("$seasonStart", player.SeasonStartOverall);
 		command.ExecuteNonQuery();
 	}
 
@@ -782,7 +793,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_overall
 			FROM players ORDER BY id;
 			""";
 		using SqliteDataReader reader = command.ExecuteReader();
@@ -837,6 +848,8 @@ public sealed class SqliteCareerStore : ICareerStore
 				CollegeId = reader.FieldCount > 37 && !reader.IsDBNull(37) ? reader.GetString(37) : "",
 				CollegeSchool = reader.FieldCount > 38 && !reader.IsDBNull(38) ? reader.GetString(38) : "",
 				CollegePath = reader.FieldCount > 39 && !reader.IsDBNull(39) ? reader.GetString(39) : "",
+				DevelopmentProgress = reader.FieldCount > 40 && !reader.IsDBNull(40) ? reader.GetInt32(40) : 0,
+				SeasonStartOverall = reader.FieldCount > 41 && !reader.IsDBNull(41) ? reader.GetInt32(41) : 0,
 			});
 			Player restored = list[^1];
 			if (restored.Physical.HeightInches > 0)
@@ -1032,6 +1045,41 @@ public sealed class SqliteCareerStore : ICareerStore
 		}
 
 		return list;
+	}
+
+	private List<TeamTraining> ReadTraining()
+	{
+		var list = new List<TeamTraining>();
+		if (!TableExists("team_training"))
+		{
+			return list;
+		}
+
+		using SqliteCommand command = _connection.CreateCommand();
+		command.CommandText = "SELECT team_id, focus, intensity FROM team_training;";
+		using SqliteDataReader reader = command.ExecuteReader();
+		while (reader.Read())
+		{
+			list.Add(new TeamTraining
+			{
+				TeamId = reader.GetString(0),
+				Focus = (TrainingFocus)reader.GetInt32(1),
+				Intensity = (TrainingIntensity)reader.GetInt32(2),
+			});
+		}
+
+		return list;
+	}
+
+	private void InsertTraining(SqliteTransaction tx, TeamTraining plan)
+	{
+		using SqliteCommand command = _connection.CreateCommand();
+		command.Transaction = tx;
+		command.CommandText = "INSERT OR REPLACE INTO team_training(team_id, focus, intensity) VALUES ($team, $focus, $intensity);";
+		command.Parameters.AddWithValue("$team", plan.TeamId);
+		command.Parameters.AddWithValue("$focus", (int)plan.Focus);
+		command.Parameters.AddWithValue("$intensity", (int)plan.Intensity);
+		command.ExecuteNonQuery();
 	}
 
 	private List<TeamRotation> ReadRotations()

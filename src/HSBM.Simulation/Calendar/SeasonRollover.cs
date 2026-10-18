@@ -18,6 +18,7 @@ public static class SeasonRollover
 		state.World.CurrentSeasonYear = year;
 
 		PlayerGraduation.Apply(state.Players, previousYear);
+		DevelopmentDesk.Offseason(state, previousYear, rng.Derive(53));
 		AdvanceReturningPlayers(state);
 		TickAgreements(state);
 		state.Offers.Clear();

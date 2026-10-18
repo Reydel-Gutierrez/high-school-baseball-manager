@@ -83,6 +83,9 @@ public static class WorldDayProcessor
 
 		PostseasonDesk.Resolve(state, today);
 
+		ISeededRandom developmentRng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber ^ 0x0DE7));
+		posted.AddRange(DevelopmentDesk.Weekly(state, today, developmentRng));
+
 		RecruitingDayResult recruiting = RunRecruiting(state, today);
 		posted.AddRange(LogSignings(state, recruiting, today));
 		ISeededRandom deskRng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber ^ 91));

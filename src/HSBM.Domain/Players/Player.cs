@@ -29,6 +29,14 @@ public sealed class Player
 	public string CollegeSchool { get; set; } = "";
 	public string CollegePath { get; set; } = "";
 
+	/// <summary>Banked growth (hundredths of an overall point) not yet paid out as rating points.</summary>
+	public int DevelopmentProgress { get; set; }
+
+	/// <summary>Overall when the current baseball year began; 0 if unknown. Drives "this season" deltas.</summary>
+	public int SeasonStartOverall { get; set; }
+
+	public int SeasonGain => SeasonStartOverall > 0 ? Overall - SeasonStartOverall : 0;
+
 	public string FullName => $"{FirstName} {LastName}";
 
 	public int Overall => PlayerOverall.Calculate(PrimaryPosition, Ratings);

@@ -81,6 +81,12 @@ public sealed class CareerState
 		set => World.Rotations = value;
 	}
 
+	public List<TeamTraining> Training
+	{
+		get => World.Training;
+		set => World.Training = value;
+	}
+
 	public List<GameBoxScore> BoxScores
 	{
 		get => World.BoxScores;
@@ -289,6 +295,34 @@ public sealed class CareerState
 		}
 
 		return null;
+	}
+
+	/// <summary>The team's practice plan; teams without one train balanced at normal intensity.</summary>
+	public TeamTraining TrainingFor(string teamId)
+	{
+		foreach (TeamTraining plan in Training)
+		{
+			if (plan.TeamId == teamId)
+			{
+				return plan;
+			}
+		}
+
+		return new TeamTraining { TeamId = teamId };
+	}
+
+	public void UpsertTraining(TeamTraining plan)
+	{
+		for (int i = 0; i < Training.Count; i++)
+		{
+			if (Training[i].TeamId == plan.TeamId)
+			{
+				Training[i] = plan;
+				return;
+			}
+		}
+
+		Training.Add(plan);
 	}
 
 	public GameBoxScore? BoxScoreFor(Guid gameId)

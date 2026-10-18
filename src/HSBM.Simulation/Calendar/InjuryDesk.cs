@@ -99,6 +99,28 @@ public static class InjuryDesk
 		posted.Add(PlayerTransaction.Injured(player, school.ShortName, school.Id, game.Date, injury));
 	}
 
+	/// <summary>A practice-field injury (hard training raises the odds).</summary>
+	public static PlayerTransaction? FromPractice(CareerState state, Player player, DateOnly today, ISeededRandom rng)
+	{
+		if (player.Injury != null)
+		{
+			return null;
+		}
+
+		InjuryTable table = Pick(player.IsPitcher, rng);
+		int days = rng.Next(table.MinDays, table.MaxDays + 1);
+		var injury = new PlayerInjury
+		{
+			Kind = table.Kind,
+			Start = today,
+			AvailableOn = today.AddDays(days),
+			DayToDay = table.DayToDay || days <= 4,
+		};
+		player.Injury = injury;
+		OrganizationState school = state.OrganizationForTeam(player.TeamId);
+		return PlayerTransaction.Injured(player, school.ShortName, school.Id, today, injury);
+	}
+
 	private static InjuryTable Pick(bool pitcher, ISeededRandom rng)
 	{
 		double total = 0;

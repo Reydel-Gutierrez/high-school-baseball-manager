@@ -184,6 +184,16 @@ public sealed class CareerService : IDisposable
 		return ToAdvanceResult(tick);
 	}
 
+	public TeamTraining GetTraining(string teamId) => _store.Load().TrainingFor(teamId);
+
+	/// <summary>Set a team's practice plan. Takes effect at the next weekly practice.</summary>
+	public void SetTraining(string teamId, TrainingFocus focus, TrainingIntensity intensity)
+	{
+		CareerState state = _store.Load();
+		state.UpsertTraining(new TeamTraining { TeamId = teamId, Focus = focus, Intensity = intensity });
+		_store.ReplaceAll(state);
+	}
+
 	/// <summary>
 	/// Prepare one of today's scheduled games for live play. The returned
 	/// game is detached from storage; finish it, then pass its result to

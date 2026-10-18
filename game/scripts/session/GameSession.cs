@@ -839,6 +839,78 @@ public partial class GameSession : Node
 		return true;
 	}
 
+	public event Action? TrainingChanged;
+
+	/// <summary>The practice plan for one of the user's teams (balanced/normal if never set).</summary>
+	public TeamTraining TrainingFor(TeamLevel level)
+	{
+		string teamId = GetTeam(level).Id;
+		if (World != null)
+		{
+			foreach (TeamTraining plan in World.Training)
+			{
+				if (plan.TeamId == teamId)
+				{
+					return plan;
+				}
+			}
+		}
+
+		return new TeamTraining { TeamId = teamId };
+	}
+
+	public bool SetTraining(TeamLevel level, TrainingFocus focus, TrainingIntensity intensity)
+	{
+		if (!HasCareerDatabase || World == null)
+		{
+			return false;
+		}
+
+		string teamId = GetTeam(level).Id;
+		try
+		{
+			using SqliteCareerStore store = new(CareerDatabasePath(ActiveSaveId!));
+			using CareerService service = CareerService.Create(store);
+			service.SetTraining(teamId, focus, intensity);
+		}
+		catch (Exception ex)
+		{
+			GD.PushError($"Failed to save training plan: {ex.Message}");
+			return false;
+		}
+
+		var updated = new TeamTraining { TeamId = teamId, Focus = focus, Intensity = intensity };
+		int index = World.Training.FindIndex(plan => plan.TeamId == teamId);
+		if (index >= 0)
+		{
+			World.Training[index] = updated;
+		}
+		else
+		{
+			World.Training.Add(updated);
+		}
+
+		TrainingChanged?.Invoke();
+		return true;
+	}
+
+	/// <summary>Next Monday practice from today (or today if it is one).</summary>
+	public DateOnly NextPracticeDay()
+	{
+		DateOnly day = CurrentDate;
+		for (int i = 0; i < 400; i++)
+		{
+			if (DevelopmentDesk.IsTrainingDay(SeasonYear, day))
+			{
+				return day;
+			}
+
+			day = day.AddDays(1);
+		}
+
+		return CurrentDate;
+	}
+
 	private GameSimulationResult? _pendingLiveResult;
 
 	/// <summary>

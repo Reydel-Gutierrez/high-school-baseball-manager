@@ -26,6 +26,38 @@ public static class PlayerOverall
 			ratings.ArmStrength * arm);
 	}
 
+	/// <summary>
+	/// Weight of one attribute in this position's overall. Attribute order:
+	/// 0 Contact, 1 Power, 2 Discipline, 3 Speed, 4 Fielding, 5 Arm,
+	/// 6 Stuff, 7 Control, 8 Movement, 9 Stamina.
+	/// </summary>
+	public static double Weight(PlayerPosition position, int attribute)
+	{
+		if (position.IsPitcher())
+		{
+			return attribute switch
+			{
+				6 => 0.32,
+				7 => 0.28,
+				8 => 0.25,
+				9 => 0.15,
+				_ => 0,
+			};
+		}
+
+		var (contact, power, discipline, speed, fielding, arm) = HittingWeights(position);
+		return attribute switch
+		{
+			0 => contact,
+			1 => power,
+			2 => discipline,
+			3 => speed,
+			4 => fielding,
+			5 => arm,
+			_ => 0,
+		};
+	}
+
 	public static double OffensiveRating(PlayerRatings ratings) =>
 		ratings.Contact * 0.40 +
 		ratings.Power * 0.30 +

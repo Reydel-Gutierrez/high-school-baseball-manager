@@ -298,6 +298,12 @@ internal static class CareerSchema
 			FOREIGN KEY (team_id) REFERENCES teams(id)
 		);
 
+		CREATE TABLE IF NOT EXISTS team_training (
+			team_id TEXT PRIMARY KEY,
+			focus INTEGER NOT NULL DEFAULT 0,
+			intensity INTEGER NOT NULL DEFAULT 1
+		);
+
 		CREATE TABLE IF NOT EXISTS game_box_scores (
 			game_id TEXT PRIMARY KEY,
 			payload_json TEXT NOT NULL,

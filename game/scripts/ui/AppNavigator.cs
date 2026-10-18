@@ -40,6 +40,7 @@ public partial class AppNavigator : MarginContainer
 	public const string PlaceholderViewKey = "placeholder";
 	public const string GamePreviewViewKey = "game-preview";
 	public const string LiveGameViewKey = "live-game";
+	public const string TrainingViewKey = "training";
 	public const string ChampionshipViewKey = "championship";
 	public const string SeasonReviewViewKey = "season-review";
 	public const string HallOfFameViewKey = "hall-of-fame";
@@ -55,6 +56,7 @@ public partial class AppNavigator : MarginContainer
 	public const int ClubhouseLineupsId = 200;
 	public const int ClubhouseRotationId = 201;
 	public const int ClubhouseInjuriesId = 202;
+	public const int ClubhouseTrainingId = 203;
 	public const int LeagueStandingsId = 300;
 	public const int LeagueLeadersId = 301;
 	public const int LeagueAwardsId = 302;
@@ -105,6 +107,7 @@ public partial class AppNavigator : MarginContainer
 	private ProfileDock _profileDock = null!;
 	private GamePreviewPage _gamePreviewPage = null!;
 	private LiveGamePage _liveGamePage = null!;
+	private TrainingPage _trainingPage = null!;
 	private ChampionshipCelebrationPage _championshipPage = null!;
 	private SeasonReviewPage _seasonReviewPage = null!;
 	private HallOfFameInductionPage _hallOfFamePage = null!;
@@ -179,6 +182,15 @@ public partial class AppNavigator : MarginContainer
 		_gamePreviewPage.GetParent().AddChild(_liveGamePage);
 		_liveGamePage.Completed += OnLiveGameCompleted;
 
+		_trainingPage = new TrainingPage
+		{
+			Name = "TrainingView",
+			Visible = false,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+		};
+		_lineupsView.GetParent().AddChild(_trainingPage);
+
 		_championshipPage = GetNode<ChampionshipCelebrationPage>("AppLayout/ContentArea/ChampionshipView");
 		_championshipPage.Closed += ReturnFromFullscreenDesk;
 		_championshipPage.Continued += OnChampionshipContinued;
@@ -232,6 +244,7 @@ public partial class AppNavigator : MarginContainer
 		_views[PlaceholderViewKey] = _placeholderView;
 		_views[GamePreviewViewKey] = _gamePreviewPage;
 		_views[LiveGameViewKey] = _liveGamePage;
+		_views[TrainingViewKey] = _trainingPage;
 		_views[ChampionshipViewKey] = _championshipPage;
 		_views[SeasonReviewViewKey] = _seasonReviewPage;
 		_views[HallOfFameViewKey] = _hallOfFamePage;
@@ -575,6 +588,11 @@ public partial class AppNavigator : MarginContainer
 		ShowView(GraduationViewKey, TopBarNavigation.OrganizationKey);
 	}
 
+	public void ShowTraining()
+	{
+		ShowView(TrainingViewKey, TopBarNavigation.ClubhouseKey);
+	}
+
 	public void ShowLineups()
 	{
 		ShowView(LineupsViewKey, TopBarNavigation.ClubhouseKey);
@@ -898,6 +916,10 @@ public partial class AppNavigator : MarginContainer
 
 		MenuButton clubhouseMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/ClubhouseMenu");
 		clubhouseMenu.GetPopup().IdPressed += OnClubhouseItemPressed;
+		if (clubhouseMenu.GetPopup().GetItemIndex(ClubhouseTrainingId) < 0)
+		{
+			clubhouseMenu.GetPopup().AddItem("TRAINING", ClubhouseTrainingId);
+		}
 
 		MenuButton leagueMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/DistrictHubMenu");
 		leagueMenu.GetPopup().IdPressed += OnLeagueItemPressed;
@@ -991,6 +1013,9 @@ public partial class AppNavigator : MarginContainer
 				break;
 			case ClubhouseInjuriesId:
 				ShowInjuries();
+				break;
+			case ClubhouseTrainingId:
+				ShowTraining();
 				break;
 			default:
 				GD.PushWarning($"AppNavigator: unhandled clubhouse item id '{id}'.");
