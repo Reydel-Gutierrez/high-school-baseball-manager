@@ -92,7 +92,7 @@ public sealed class FaceRecipe
 	public Color Hair;
 	public Color Brow;
 	public Color Iris;
-	public Vector4 HairStyle;
+	public Vector4 HairShape;
 	public float HairLength;
 	public Vector4 Beard;
 	public Color Jersey;
@@ -220,12 +220,12 @@ public sealed class FaceRecipe
 		r.Hair = HairColorOf(appearance.HairColor, age);
 		r.Brow = HairColorOf(appearance.HairColor, Math.Min(age, 45)).Darkened(0.15f);
 		r.Iris = IrisColor(appearance.EyeColor);
-		(r.HairStyle, r.HairLength) = HairStyleOf(appearance.HairStyle);
+		(r.HairShape, r.HairLength) = HairStyleOf(appearance.HairStyle);
 		r.Beard = BeardOf(appearance.FacialHairStyle);
 		Color beardColor = HairColorOf(appearance.FacialHairColor, age);
 		if (r.Beard != Vector4.Zero)
 		{
-			r.Hair = r.HairStyle.Y <= 0.01f ? beardColor : r.Hair;
+			r.Hair = r.HairShape.Y <= 0.01f ? beardColor : r.Hair;
 		}
 
 		r.Jersey = jersey ?? (appearance.TeamPrimaryArgb != 0 ? Argb(appearance.TeamPrimaryArgb) : new Color(0.10f, 0.13f, 0.20f));
@@ -368,7 +368,7 @@ public sealed class FaceRecipe
 		}
 
 		sb.Append(r.Skin.ToHtml()).Append(r.Hair.ToHtml()).Append(r.Brow.ToHtml()).Append(r.Iris.ToHtml())
-			.Append(r.HairStyle).Append(r.HairLength.ToString(CultureInfo.InvariantCulture)).Append(r.Beard)
+			.Append(r.HairShape).Append(r.HairLength.ToString(CultureInfo.InvariantCulture)).Append(r.Beard)
 			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture));
 		ulong h = 1469598103934665603UL;
 		foreach (char c in sb.ToString())

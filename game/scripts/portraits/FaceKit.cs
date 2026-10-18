@@ -31,7 +31,7 @@ public sealed class FaceKit
 	{
 		get
 		{
-			if (_shared == null && FileAccess.FileExists(KitPath))
+			if (_shared == null && Godot.FileAccess.FileExists(KitPath))
 			{
 				try
 				{
@@ -51,7 +51,7 @@ public sealed class FaceKit
 
 	public static FaceKit Load(string path)
 	{
-		byte[] bytes = FileAccess.GetFileAsBytes(path);
+		byte[] bytes = Godot.FileAccess.GetFileAsBytes(path);
 		var kit = new FaceKit();
 		int o = 0;
 		string magic = Encoding.ASCII.GetString(bytes, 0, 8);

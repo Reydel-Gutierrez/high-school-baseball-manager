@@ -62,7 +62,7 @@ public partial class HeadshotStudio : Node
 		}
 
 		string path = $"{DiskDir}/{recipe.Key}.png";
-		if (FileAccess.FileExists(path))
+		if (Godot.FileAccess.FileExists(path))
 		{
 			Image? img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
 			if (img != null && !img.IsEmpty())
@@ -195,7 +195,7 @@ public partial class HeadshotStudio : Node
 		_skin.SetShaderParameter("skin_color", r.Skin);
 		_skin.SetShaderParameter("hair_color", r.Hair);
 		_skin.SetShaderParameter("brow_color", r.Brow);
-		_skin.SetShaderParameter("hair_style", r.HairStyle);
+		_skin.SetShaderParameter("hair_style", r.HairShape);
 		_skin.SetShaderParameter("hair_length", r.HairLength);
 		_skin.SetShaderParameter("beard", r.Beard);
 		_skin.SetShaderParameter("jersey_color", r.Jersey);
@@ -218,7 +218,7 @@ public partial class HeadshotStudio : Node
 
 	private static ImageTexture LoadMask(string name)
 	{
-		byte[] bytes = FileAccess.GetFileAsBytes($"res://assets/facekit/{name}.facetex");
+		byte[] bytes = Godot.FileAccess.GetFileAsBytes($"res://assets/facekit/{name}.facetex");
 		var image = new Image();
 		image.LoadPngFromBuffer(bytes);
 		image.GenerateMipmaps();
