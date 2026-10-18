@@ -4,13 +4,12 @@ public sealed record WorldGenerationProgress(string Label, int StepIndex, int St
 
 public static class WorldGenerationSteps
 {
-	public const int Count = 8;
+	public const int Count = 7;
 	public const string Histories = "Generating program histories...";
 	public const string Varsity = "Generating returning varsity rosters...";
 	public const string JuniorVarsity = "Generating returning JV rosters...";
 	public const string Identities = "Generating player identities...";
-	public const string OpenPlay = "Building District Open Play classes...";
-	public const string OpenPlayGames = "Simulating Open Play games...";
+	public const string Tryouts = "Posting tryout sign-up sheets...";
 	public const string Schedule = "Building season schedule...";
 
 	public static string Programs(int count) => $"Creating {count} programs...";

@@ -117,7 +117,7 @@ public class RosterGenerationTests
 			Assert.False(string.IsNullOrWhiteSpace(org.HeadCoach!.FullName));
 			Assert.InRange((int)org.Profile.BaseballResources, (int)LetterGrade.F, (int)LetterGrade.APlus);
 		});
-		GameWorld root = world.ToGameWorld(SeasonCalendar.OpenPlayStart(2026));
+		GameWorld root = world.ToGameWorld(SeasonCalendar.TryoutSignupDay(2026));
 		Assert.Equal(world.Seed, root.Seed);
 		Assert.Equal(world.Players.Count, root.Players.Count);
 		Assert.Equal(CompetitionLevel.HighSchool, root.CompetitionLevel);

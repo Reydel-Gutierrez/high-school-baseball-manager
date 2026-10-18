@@ -248,13 +248,11 @@ public partial class SchoolProfileCard : PanelContainer
 			content.AddChild(MakeSection("PROGRAM BUDGET"));
 			if (_snapshot.CoachSalary > 0)
 			{
-				content.AddChild(MakeStat("Head Coach Salary", PlayerAgreement.FormatMoney(_snapshot.CoachSalary), Accent));
+				content.AddChild(MakeStat("Head Coach Salary", Money.Format(_snapshot.CoachSalary), Accent));
 			}
 
-			content.AddChild(MakeStat("Annual Budget", PlayerAgreement.FormatMoney(_snapshot.BaseballBudget), TextPrimary));
-			content.AddChild(MakeStat("Recruiting", PlayerAgreement.FormatMoney(_snapshot.SponsorshipCommitted), TextPrimary));
-			content.AddChild(MakeStat("Available", PlayerAgreement.FormatMoney(_snapshot.BudgetAvailable), TextPrimary));
-			content.AddChild(MakeStat("Recruiting Pool", PlayerAgreement.FormatMoney(_snapshot.RecruitingAvailable), Accent));
+			content.AddChild(MakeStat("Annual Budget", Money.Format(_snapshot.BaseballBudget), TextPrimary));
+			content.AddChild(MakeStat("Available", Money.Format(_snapshot.BudgetAvailable), TextPrimary));
 		}
 
 		content.AddChild(MakeSection("TEAM STRENGTH"));

@@ -19,9 +19,7 @@ public partial class GameSession : Node
 {
 	public const int DefaultSeasonYear = 2026;
 
-	public DateOnly CurrentDate { get; private set; } = SeasonCalendar.OpenPlayStart(DefaultSeasonYear);
-
-	public string LastRecruitingError { get; private set; } = "";
+	public DateOnly CurrentDate { get; private set; } = SeasonCalendar.TryoutSignupDay(DefaultSeasonYear);
 
 	public string CurrentDateLabel =>
 		CurrentDate.ToString("MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
@@ -58,27 +56,11 @@ public partial class GameSession : Node
 
 	private readonly List<PlayerTransaction> _transactions = new();
 	private readonly List<ScoutTarget> _scoutTargets = new();
-	private TryoutCamp _tryouts = null!;
-	private FinalRosterBoard _rosterBoard = null!;
-	private OpenPlayerPool _openPool = null!;
-	private DistrictRecruitingSession _recruiting = null!;
 	private readonly List<OrganizationState> _leaguePrograms = new();
 
 	public IReadOnlyList<PlayerTransaction> Transactions => _transactions;
 
 	public IReadOnlyList<ScoutTarget> ScoutTargets => _scoutTargets;
-
-	public TryoutCamp Tryouts => _tryouts;
-
-	public FinalRosterBoard RosterBoard => _rosterBoard;
-
-	public OpenPlayerPool OpenPool => _openPool;
-
-	public DistrictRecruitingSession Recruiting => _recruiting;
-
-	public RecruitingMarket RecruitingMarket => _recruiting.Market;
-
-	public DistrictOpenPlay OpenPlay => _recruiting.OpenPlay;
 
 	public string CatalogOrganizationId =>
 		Organization.Id is "org-cascade-regional" or "cascade"
@@ -592,21 +574,7 @@ public partial class GameSession : Node
 
 		ActiveTeam = VarsityTeam;
 		SeedPrototypeTransactions();
-		_rosterBoard = ProgramRosterFactory.CreateReturningBoard();
-		_tryouts = TryoutCampGenerator.Generate(SeasonYear, new SeededRandom(SeasonYear * 37 + 19));
-		List<Player> userReturning = ProgramRosterFactory.ToPlayers(
-			_rosterBoard,
-			LeagueCatalog.DefaultUserOrganizationId,
-			VarsityTeam,
-			JuniorVarsityTeam);
-		_recruiting = DistrictRecruitingFactory.Create(
-			LeagueCatalog.Standard,
-			LeagueCatalog.DefaultUserOrganizationId,
-			SeasonYear,
-			new SeededRandom(SeasonYear * 37 + 41),
-			userReturning);
-		CurrentDate = SeasonCalendar.OpenPlayStart(SeasonYear);
-		_openPool = new OpenPlayerPool();
+		CurrentDate = SeasonCalendar.TryoutSignupDay(SeasonYear);
 		SeedLeaguePrograms(null);
 		ResetChampionshipFlags();
 		RefreshNews();
@@ -676,7 +644,7 @@ public partial class GameSession : Node
 
 		_seasonReviewAcknowledged = true;
 		_boardSatisfactionScore = sheet.SatisfactionAfter;
-		OrganizationState? school = RecruitingSchool(CatalogOrganizationId);
+		OrganizationState? school = SchoolState(CatalogOrganizationId);
 		if (school != null)
 		{
 			ProgramProfile profile = school.Profile;
@@ -765,54 +733,9 @@ public partial class GameSession : Node
 	private bool HasCareerDatabase =>
 		!string.IsNullOrEmpty(ActiveSaveId) && File.Exists(CareerDatabasePath(ActiveSaveId));
 
-	public bool TryPlaceRecruitingOffer(Guid playerId, int annualSponsorship, int? termYears = null)
+	public bool ContinueToTryoutWeek()
 	{
-		LastRecruitingError = "";
-		Player? player = FindProspect(playerId);
-		if (player == null)
-		{
-			LastRecruitingError = "That player is no longer available.";
-			return false;
-		}
-
-		int term = termYears ?? player.RemainingEligibility;
-		bool placed = _recruiting.Market.TryPlaceOffer(
-			CatalogOrganizationId,
-			playerId,
-			annualSponsorship,
-			term,
-			CurrentDate,
-			SeasonYear,
-			out string error);
-		if (!placed)
-		{
-			LastRecruitingError = error;
-			return false;
-		}
-
-		PersistRecruiting();
-		NotifyRosterChanged();
-		return true;
-	}
-
-	public bool TryWithdrawRecruitingOffer(Guid playerId)
-	{
-		LastRecruitingError = "";
-		bool withdrawn = _recruiting.Market.TryWithdraw(CatalogOrganizationId, playerId);
-		if (withdrawn)
-		{
-			PersistRecruiting();
-			NotifyRosterChanged();
-		}
-
-		return withdrawn;
-	}
-
-	public bool AdvanceSigningDay() => AdvanceClubhouseDay();
-
-	public bool ContinueToSigningWeek()
-	{
-		DateOnly signing = SeasonCalendar.SigningWeek(SeasonYear).Start;
+		DateOnly signing = SeasonCalendar.TryoutWeek(SeasonYear).Start;
 		if (CurrentDate >= signing)
 		{
 			return AdvanceClubhouseDay();
@@ -1191,30 +1114,6 @@ public partial class GameSession : Node
 				return AdvanceSavedDay(signals);
 			}
 
-			DateOnly deadline = SeasonCalendar.SigningDeadline(SeasonYear);
-			bool signing = SeasonCalendar.SigningWeek(SeasonYear).OccursOn(CurrentDate)
-				|| CurrentDate == deadline;
-			if (signing)
-			{
-				RecruitingDayResult result = _recruiting.Market.AdvanceDay(
-					CurrentDate,
-					SeasonYear,
-					CatalogOrganizationId,
-					new SeededRandom(SeasonYear * 37 + CurrentDate.DayNumber));
-				foreach (PlayerAgreement agreement in result.Signed)
-				{
-					OnPlayerSigned(agreement);
-				}
-			}
-
-			if (CurrentDate == deadline)
-			{
-				foreach (Player leftover in _recruiting.Market.ReleaseUnsignedToPool())
-				{
-					_openPool.TryAdd(OpenPoolPlayer.FromIncoming(leftover));
-				}
-			}
-
 			CurrentDate = CurrentDate.AddDays(1);
 			NotifyRosterChanged();
 			RefreshNews();
@@ -1231,7 +1130,6 @@ public partial class GameSession : Node
 	{
 		try
 		{
-			HashSet<Guid> signedBefore = UserSignedIds();
 			using SqliteCareerStore store = new(CareerDatabasePath(ActiveSaveId!));
 			using CareerService service = CareerService.Create(store);
 			GameSimulationResult? preplayed = _pendingLiveResult;
@@ -1239,27 +1137,12 @@ public partial class GameSession : Node
 			AdvanceDayResult advanced = preplayed != null ? service.AdvanceDay(preplayed) : service.AdvanceDay();
 			CareerState state = service.LoadCareer();
 			BindWorld(state);
-			BindRecruiting(state);
 			CurrentDate = state.Career.CurrentDate;
 			SyncChampionshipsFromWorld();
 			ApplyPlayedGames(advanced, signals);
-			foreach (PlayerAgreement agreement in _recruiting.Market.Agreements)
+			if (advanced.PreviousDate == SeasonCalendar.TryoutDecisionDay(SeasonYear))
 			{
-				if (agreement.OrganizationId == CatalogOrganizationId && signedBefore.Add(agreement.PlayerId))
-				{
-					OnPlayerSigned(agreement);
-				}
-			}
-
-			DateOnly deadline = SeasonCalendar.SigningDeadline(SeasonYear);
-			if (advanced.PreviousDate >= deadline)
-			{
-				foreach (Player leftover in _recruiting.Market.ReleaseUnsignedToPool())
-				{
-					_openPool.TryAdd(OpenPoolPlayer.FromIncoming(leftover));
-				}
-
-				service.ApplyRecruiting(_recruiting.Market, CurrentDate, ToRecruitingTargets());
+				TryoutsChanged?.Invoke();
 			}
 
 			if (signals != null)
@@ -1298,7 +1181,7 @@ public partial class GameSession : Node
 		}
 		catch (Exception ex)
 		{
-			GD.PushError($"Failed to advance recruiting day: {ex.Message}");
+			GD.PushError($"Failed to advance day: {ex.Message}");
 			return false;
 		}
 	}
@@ -1371,83 +1254,6 @@ public partial class GameSession : Node
 		Losses = varsity.Losses;
 	}
 
-	private HashSet<Guid> UserSignedIds()
-	{
-		var ids = new HashSet<Guid>();
-		foreach (PlayerAgreement agreement in _recruiting.Market.Agreements)
-		{
-			if (agreement.OrganizationId == CatalogOrganizationId)
-			{
-				ids.Add(agreement.PlayerId);
-			}
-		}
-
-		return ids;
-	}
-
-	private void PersistRecruiting()
-	{
-		if (!HasCareerDatabase)
-		{
-			return;
-		}
-
-		try
-		{
-			using SqliteCareerStore store = new(CareerDatabasePath(ActiveSaveId!));
-			using CareerService service = CareerService.Create(store);
-			service.ApplyRecruiting(_recruiting.Market, CurrentDate, ToRecruitingTargets());
-		}
-		catch (Exception ex)
-		{
-			GD.PushError($"Failed to persist recruiting: {ex.Message}");
-		}
-	}
-
-	private void BindRecruiting(CareerState state)
-	{
-		_recruiting = DistrictRecruitingFactory.FromCareer(state, state.Career.UserOrganizationId);
-		List<Player> returning = [];
-		foreach (Player player in state.ReturningFor(state.Career.UserOrganizationId))
-		{
-			if (!_recruiting.OpenPlay.Contains(player.Id))
-			{
-				returning.Add(player);
-			}
-		}
-
-		_rosterBoard = ProgramRosterFactory.FromPlayers(returning, _recruiting.Market, CatalogOrganizationId);
-		BindScoutTargets(state.RecruitingTargets);
-	}
-
-	private void OnPlayerSigned(PlayerAgreement agreement)
-	{
-		Player? player = FindProspect(agreement.PlayerId);
-		if (player == null)
-		{
-			return;
-		}
-
-		if (agreement.OrganizationId == CatalogOrganizationId)
-		{
-			RosterAssignment slot = player.TeamLevel == TeamLevel.Varsity
-				? RosterAssignment.Varsity
-				: RosterAssignment.JuniorVarsity;
-			_rosterBoard.TryAdd(ProgramRosterFactory.FromIncoming(player, slot), CurrentDate, SeasonYear);
-		}
-
-		if (!HasCareerDatabase)
-		{
-			RecordTransaction(
-				PlayerTransaction.FromSigning(
-					player,
-					TransactionSchoolName(agreement.OrganizationId),
-					agreement.OrganizationId,
-					CurrentDate),
-				persist: false);
-		}
-	}
-
 	private void BindTransactions(CareerState state)
 	{
 		_transactions.Clear();
@@ -1489,24 +1295,7 @@ public partial class GameSession : Node
 		return school != null ? school.ShortName : Organization.ShortName;
 	}
 
-	public Player? FindProspect(Guid playerId)
-	{
-		Player? world = FindWorldPlayer(playerId);
-		if (world != null)
-		{
-			return world;
-		}
-
-		foreach (Player player in _recruiting.Prospects)
-		{
-			if (player.Id == playerId)
-			{
-				return player;
-			}
-		}
-
-		return null;
-	}
+	public Player? FindProspect(Guid playerId) => FindWorldPlayer(playerId);
 
 	public Player? FindWorldPlayer(Guid playerId)
 	{
@@ -1669,14 +1458,69 @@ public partial class GameSession : Node
 		}
 	}
 
-	public OrganizationState? RecruitingSchool(string organizationId)
+	/// <summary>Students on the user's tryout list (empty outside tryout season).</summary>
+	public IReadOnlyList<Player> TryoutCandidates =>
+		World == null ? [] : TryoutDesk.CandidatesFor(World.Players, CatalogOrganizationId);
+
+	/// <summary>Tryout days the staff has watched (0 before tryout week, 6 after).</summary>
+	public int TryoutDaysSeen => TryoutEvaluation.DaysSeen(SeasonYear, CurrentDate);
+
+	public bool TryoutDecisionsPending => TryoutCandidates.Any(p => p.TryoutCall == TryoutCall.Pending);
+
+	public TryoutReport TryoutReportFor(Player player) => TryoutEvaluation.Report(player, TryoutDaysSeen);
+
+	public IReadOnlyDictionary<Guid, TryoutCall> TryoutRecommendations() =>
+		World == null
+			? new Dictionary<Guid, TryoutCall>()
+			: TryoutDesk.Recommend(World.Players, CatalogOrganizationId, TryoutDaysSeen);
+
+	/// <summary>Varsity / JV / Cut a candidate. Takes effect on Decision Day.</summary>
+	public bool SetTryoutCall(Guid playerId, TryoutCall call)
 	{
-		return FindProgram(organizationId, _recruiting?.Schools);
+		Player? player = FindWorldPlayer(playerId);
+		if (player == null || !player.IsTryoutCandidate || CurrentDate > SeasonCalendar.TryoutDecisionDay(SeasonYear))
+		{
+			return false;
+		}
+
+		player.TryoutCall = call;
+		PersistPlayers();
+		TryoutsChanged?.Invoke();
+		return true;
+	}
+
+	/// <summary>Let the assistant fill in every undecided candidate.</summary>
+	public int AcceptTryoutRecommendations()
+	{
+		IReadOnlyDictionary<Guid, TryoutCall> calls = TryoutRecommendations();
+		int changed = 0;
+		foreach (Player player in TryoutCandidates)
+		{
+			if (player.TryoutCall == TryoutCall.Pending && calls.TryGetValue(player.Id, out TryoutCall call))
+			{
+				player.TryoutCall = call;
+				changed++;
+			}
+		}
+
+		if (changed > 0)
+		{
+			PersistPlayers();
+			TryoutsChanged?.Invoke();
+		}
+
+		return changed;
+	}
+
+	/// <summary>Live program state for a school in the bound career world.</summary>
+	public OrganizationState? SchoolState(string organizationId)
+	{
+		return FindProgram(organizationId, World?.Organizations);
 	}
 
 	public OrganizationState? LeagueProgram(string organizationId)
 	{
-		return FindProgram(organizationId, _leaguePrograms) ?? RecruitingSchool(organizationId);
+		return SchoolState(organizationId) ?? FindProgram(organizationId, _leaguePrograms);
 	}
 
 	private static OrganizationState? FindProgram(string organizationId, IReadOnlyList<OrganizationState>? schools)
@@ -1698,252 +1542,58 @@ public partial class GameSession : Node
 		return null;
 	}
 
-	public bool TryOfferTryoutSpot(Guid prospectId)
+	public bool TryAssignRoster(Guid playerId, RosterAssignment assignment)
 	{
-		TryoutProspect? prospect = _tryouts.Find(prospectId);
-		if (prospect == null)
+		if (assignment is not (RosterAssignment.Varsity or RosterAssignment.JuniorVarsity) || World == null)
 		{
 			return false;
 		}
 
-		if (prospect.Decision != TryoutDecision.Offered
-			&& !_rosterBoard.CanAdd(CurrentDate, SeasonYear))
+		Player? worldPlayer = FindWorldPlayer(playerId);
+		if (worldPlayer == null)
 		{
 			return false;
 		}
 
-		if (!_tryouts.TryOffer(prospectId))
+		TeamIdentity dest = assignment == RosterAssignment.Varsity ? VarsityTeam : JuniorVarsityTeam;
+		TeamLevel previousLevel = worldPlayer.TeamLevel;
+		if (!RosterMovement.TryAssign(worldPlayer, dest, OrganizationRoster(), out _))
 		{
 			return false;
 		}
 
-		_openPool.TryRemove(prospectId);
-		_rosterBoard.TryAdd(
-			ProgramRosterFactory.FromProspect(prospect, RosterAssignment.Unassigned),
-			CurrentDate,
-			SeasonYear);
+		PersistPlayers();
+		if (assignment == RosterAssignment.Varsity && previousLevel != TeamLevel.Varsity)
+		{
+			RecordTransaction(PlayerTransaction.Promote(
+				worldPlayer.FullName,
+				worldPlayer.DisplayPosition,
+				worldPlayer.Grade.ToAbbrev(),
+				Organization.ShortName,
+				CurrentDateLabel));
+		}
+
 		NotifyRosterChanged();
 		return true;
 	}
 
-	public void CutTryoutProspect(Guid prospectId)
-	{
-		TryoutProspect? prospect = _tryouts.Find(prospectId);
-		_tryouts.Cut(prospectId);
-		if (_rosterBoard.TryRemove(prospectId, out FinalRosterPlayer? removed) && removed != null)
-		{
-			_openPool.TryAdd(OpenPoolPlayer.FromRoster(removed));
-			InsertReleaseLog(removed.FirstName, removed.LastName, removed.PositionLabel, removed.Year.ToAbbrev(), "Tryout");
-		}
-		else if (prospect != null)
-		{
-			_openPool.TryAdd(OpenPoolPlayer.FromProspect(prospect, OpenPoolSource.TryoutCut));
-		}
-
-		NotifyRosterChanged();
-	}
-
-	public void HoldTryoutProspect(Guid prospectId)
-	{
-		_tryouts.Hold(prospectId);
-		if (_rosterBoard.TryRemove(prospectId, out _))
-		{
-			_openPool.TryRemove(prospectId);
-		}
-
-		NotifyRosterChanged();
-	}
-
-	public bool TryAssignRoster(Guid playerId, RosterAssignment assignment)
-	{
-		if (assignment is RosterAssignment.Varsity or RosterAssignment.JuniorVarsity
-			&& World != null)
-		{
-			Player? worldPlayer = FindWorldPlayer(playerId);
-			if (worldPlayer != null)
-			{
-				TeamIdentity dest = assignment == RosterAssignment.Varsity ? VarsityTeam : JuniorVarsityTeam;
-				TeamLevel previousLevel = worldPlayer.TeamLevel;
-				if (!RosterMovement.TryAssign(worldPlayer, dest, OrganizationRoster(), out _))
-				{
-					return false;
-				}
-
-				_rosterBoard.TryAssign(playerId, assignment, CurrentDate, SeasonYear);
-				PersistPlayers();
-				if (assignment == RosterAssignment.Varsity && previousLevel != TeamLevel.Varsity)
-				{
-					RecordTransaction(PlayerTransaction.Promote(
-						worldPlayer.FullName,
-						worldPlayer.DisplayPosition,
-						worldPlayer.Grade.ToAbbrev(),
-						Organization.ShortName,
-						CurrentDateLabel));
-				}
-
-				NotifyRosterChanged();
-				return true;
-			}
-		}
-		if (_rosterBoard.Find(playerId) == null)
-		{
-			TryoutProspect? prospect = _tryouts.Find(playerId);
-			if (prospect == null || prospect.Decision == TryoutDecision.Cut)
-			{
-				return false;
-			}
-
-			if (!_rosterBoard.CanAdd(CurrentDate, SeasonYear)
-				|| !_rosterBoard.HasRoom(assignment, CurrentDate, SeasonYear))
-			{
-				return false;
-			}
-
-			if (!_tryouts.TryOffer(playerId))
-			{
-				return false;
-			}
-
-			_openPool.TryRemove(playerId);
-			if (!_rosterBoard.TryAdd(ProgramRosterFactory.FromProspect(prospect, assignment), CurrentDate, SeasonYear))
-			{
-				return false;
-			}
-
-			if (!_rosterBoard.TryAssign(playerId, assignment, CurrentDate, SeasonYear))
-			{
-				return false;
-			}
-
-			NotifyRosterChanged();
-			return true;
-		}
-
-		FinalRosterPlayer? existing = _rosterBoard.Find(playerId);
-		RosterAssignment before = existing?.Assignment ?? RosterAssignment.Unassigned;
-		bool assigned = _rosterBoard.TryAssign(playerId, assignment, CurrentDate, SeasonYear);
-		if (assigned)
-		{
-			if (assignment == RosterAssignment.Varsity && before != RosterAssignment.Varsity)
-			{
-				FinalRosterPlayer? promoted = _rosterBoard.Find(playerId);
-				if (promoted != null)
-				{
-					RecordTransaction(PlayerTransaction.Promote(
-						promoted.FullName,
-						promoted.PositionLabel,
-						promoted.Year.ToAbbrev(),
-						Organization.ShortName,
-						CurrentDateLabel));
-				}
-			}
-
-			NotifyRosterChanged();
-		}
-
-		return assigned;
-	}
-
 	public bool TryReleaseRoster(Guid playerId)
 	{
-		if (World != null)
-		{
-			Player? worldPlayer = FindWorldPlayer(playerId);
-			if (worldPlayer != null && !worldPlayer.IsUnsigned)
-			{
-				OrganizationState? school = LeagueProgram(worldPlayer.OrganizationId);
-				string district = school?.DistrictId ?? "";
-				if (district.Length > 0)
-				{
-					RosterMovement.ReleaseToPool(worldPlayer, district);
-					PersistPlayers();
-				}
-
-				_rosterBoard.TryRemove(playerId, out FinalRosterPlayer? boardPlayer);
-				if (boardPlayer != null)
-				{
-					_openPool.TryAdd(OpenPoolPlayer.FromRoster(boardPlayer));
-					InsertReleaseLog(
-						boardPlayer.FirstName,
-						boardPlayer.LastName,
-						boardPlayer.PositionLabel,
-						boardPlayer.Year.ToAbbrev(),
-						ProgramRosterRules.AssignmentLabel(boardPlayer.Assignment));
-				}
-				else
-				{
-					InsertReleaseLog(
-						worldPlayer.FirstName,
-						worldPlayer.LastName,
-						worldPlayer.DisplayPosition,
-						worldPlayer.Grade.ToAbbrev(),
-						worldPlayer.TeamLevel.ToLabel());
-				}
-
-				NotifyRosterChanged();
-				return true;
-			}
-		}
-		TryoutProspect? prospect = _tryouts.Find(playerId);
-		if (_rosterBoard.TryRemove(playerId, out FinalRosterPlayer? removed) && removed != null)
-		{
-			if (prospect != null)
-			{
-				_tryouts.Cut(playerId);
-			}
-
-			_openPool.TryAdd(OpenPoolPlayer.FromRoster(removed));
-			InsertReleaseLog(
-				removed.FirstName,
-				removed.LastName,
-				removed.PositionLabel,
-				removed.Year.ToAbbrev(),
-				ProgramRosterRules.AssignmentLabel(removed.Assignment));
-			NotifyRosterChanged();
-			return true;
-		}
-
-		if (prospect != null && prospect.Decision != TryoutDecision.Cut)
-		{
-			CutTryoutProspect(playerId);
-			return true;
-		}
-
-		return false;
-	}
-
-	public bool TryDraftFromPool(Guid playerId)
-	{
-		if (!_rosterBoard.CanAdd(CurrentDate, SeasonYear))
+		Player? worldPlayer = World == null ? null : FindWorldPlayer(playerId);
+		if (worldPlayer == null || worldPlayer.IsUnsigned)
 		{
 			return false;
 		}
 
-		OpenPoolPlayer? pooled = _openPool.Take(playerId);
-		if (pooled == null)
-		{
-			return false;
-		}
-
-		if (!_rosterBoard.TryAdd(pooled.ToUnassigned(), CurrentDate, SeasonYear))
-		{
-			_openPool.TryAdd(pooled);
-			return false;
-		}
-
-		TryoutProspect? prospect = _tryouts.Find(playerId);
-		if (prospect != null)
-		{
-			_tryouts.TryOffer(playerId);
-		}
-
-		RecordTransaction(PlayerTransaction.SignedFromOpenPool(
-			pooled.FullName,
-			pooled.PositionLabel,
-			pooled.Year.ToAbbrev(),
-			"Unassigned",
-			Organization.ShortName,
-			CurrentDateLabel));
+		string level = worldPlayer.TeamLevel.ToLabel();
+		RosterMovement.Release(worldPlayer);
+		PersistPlayers();
+		InsertReleaseLog(
+			worldPlayer.FirstName,
+			worldPlayer.LastName,
+			worldPlayer.DisplayPosition,
+			worldPlayer.Grade.ToAbbrev(),
+			level);
 		NotifyRosterChanged();
 		return true;
 	}
@@ -2293,15 +1943,12 @@ public partial class GameSession : Node
 		}
 
 		ProgramHistoryGenerator.Assign(organizations, rng.Derive(13), SeasonYear);
-		if (_recruiting != null)
+		for (int i = 0; i < organizations.Count; i++)
 		{
-			for (int i = 0; i < organizations.Count; i++)
+			OrganizationState? live = SchoolState(organizations[i].Id);
+			if (live != null)
 			{
-				OrganizationState? live = RecruitingSchool(organizations[i].Id);
-				if (live != null)
-				{
-					organizations[i] = live;
-				}
+				organizations[i] = live;
 			}
 		}
 
@@ -2331,10 +1978,6 @@ public partial class GameSession : Node
 			_jobMarketAcknowledged = false;
 			_jobOfferSeen = false;
 			SeedLeaguePrograms(state.Organizations);
-			if (state.Career.HasSignedContract)
-			{
-				BindRecruiting(state);
-			}
 		}
 		catch (Exception ex)
 		{
@@ -2365,7 +2008,6 @@ public partial class GameSession : Node
 		}
 
 		CurrentDate = state.Career.CurrentDate;
-		BindRecruiting(state);
 		SeedLeaguePrograms(state.Organizations);
 		BindTransactions(state);
 		NotifyRosterChanged();
@@ -2402,7 +2044,6 @@ public partial class GameSession : Node
 		}
 
 		_scoutTargets.Insert(0, new ScoutTarget(teamId, playerName));
-		PersistRecruiting();
 		ScoutTargetsChanged?.Invoke();
 	}
 
@@ -2415,7 +2056,6 @@ public partial class GameSession : Node
 		}
 
 		_scoutTargets.RemoveAt(index);
-		PersistRecruiting();
 		ScoutTargetsChanged?.Invoke();
 	}
 
@@ -2432,27 +2072,19 @@ public partial class GameSession : Node
 
 	public void RecordRelease(string firstName, string lastName, string position, string year, string squad)
 	{
-		FinalRosterPlayer? match = _rosterBoard.FindByName(firstName, lastName);
-		if (match != null)
+		if (World != null)
 		{
-			TryReleaseRoster(match.Id);
-			return;
+			foreach (Player player in OrganizationRoster())
+			{
+				if (string.Equals(player.FirstName, firstName, StringComparison.OrdinalIgnoreCase)
+					&& string.Equals(player.LastName, lastName, StringComparison.OrdinalIgnoreCase))
+				{
+					TryReleaseRoster(player.Id);
+					return;
+				}
+			}
 		}
 
-		HandednessExtensions.ParseBatsThrows("R/R", out BattingSide bats, out ThrowingHand throws);
-		_openPool.TryAdd(new OpenPoolPlayer
-		{
-			Id = ProgramRosterFactory.StableId(firstName, lastName),
-			FirstName = firstName,
-			LastName = lastName,
-			Position = PlayerPositionExtensions.ParseLabel(position),
-			Throws = throws,
-			Bats = bats,
-			Year = PlayerGradeExtensions.FromAbbrev(year),
-			TrueOverall = 55,
-			TruePotential = 62,
-			Source = OpenPoolSource.Release,
-		});
 		InsertReleaseLog(firstName, lastName, position, year, squad);
 		RosterBoardChanged?.Invoke();
 	}
@@ -2585,14 +2217,11 @@ public partial class GameSession : Node
 			PlayerTransaction.Trade("Cole Moss", "C", "FR", "JV", cascade, lakes, "APR 22"),
 			PlayerTransaction.Trade("Sam Keene", "CF", "FR", "JV", lakes, cascade, "APR 22"),
 			PlayerTransaction.Release("Cole Brennan", "OF", "JR", "Varsity", cascade, "APR 21"),
-			PlayerTransaction.SignedFromOpenPool("Mario Cruz", "C", "JR", "Varsity", cascade, "APR 20"),
 			PlayerTransaction.Release("Mario Cruz", "C", "JR", "Varsity", lakes, "APR 19"),
-			PlayerTransaction.SignedFromOpenPool("Jordan Hale", "SS", "SO", "JV", cascade, "APR 18"),
 			PlayerTransaction.Release("Jordan Hale", "SS", "SO", "JV", delaware, "APR 17"),
 			PlayerTransaction.Release("Marcus Webb", "LHP", "SO", "JV", cascade, "APR 14"),
 			PlayerTransaction.Trade("Ian Frost", "SS", "SO", "Varsity", cascade, harbor, "APR 9"),
 			PlayerTransaction.Trade("Ben Ortiz", "RHP", "JR", "Varsity", harbor, cascade, "APR 9"),
-			PlayerTransaction.SignedFromOpenPool("Andre Kim", "OF", "JR", "Varsity", cascade, "APR 6"),
 			PlayerTransaction.Release("Andre Kim", "OF", "JR", "Varsity", harbor, "APR 3"),
 			PlayerTransaction.Tryout("Chris Nolan", "2B", "FR", "JV", cascade, "MAR 28"),
 			PlayerTransaction.Tryout("Leo Hayes", "RHP", "FR", "JV", cascade, "MAR 28"),
@@ -2600,34 +2229,6 @@ public partial class GameSession : Node
 			PlayerTransaction.Tryout("Riley Fox", "C", "FR", "JV", cascade, "MAR 28"),
 			PlayerTransaction.Tryout("Jonah Parks", "3B", "FR", "JV", cascade, "MAR 27"),
 		]);
-	}
-
-	private IReadOnlyList<RecruitingTarget> ToRecruitingTargets()
-	{
-		var list = new List<RecruitingTarget>(_scoutTargets.Count);
-		foreach (ScoutTarget target in _scoutTargets)
-		{
-			list.Add(new RecruitingTarget
-			{
-				PlayerId = target.PlayerId,
-				TeamId = target.TeamId,
-				PlayerName = target.PlayerName,
-				SeasonYear = SeasonYear,
-			});
-		}
-
-		return list;
-	}
-
-	private void BindScoutTargets(IReadOnlyList<RecruitingTarget> saved)
-	{
-		_scoutTargets.Clear();
-		foreach (RecruitingTarget target in saved)
-		{
-			_scoutTargets.Add(new ScoutTarget(target.TeamId, target.PlayerName, target.PlayerId));
-		}
-
-		ScoutTargetsChanged?.Invoke();
 	}
 
 	public bool IsScoutTarget(Guid playerId)
@@ -2661,8 +2262,6 @@ public partial class GameSession : Node
 		}
 
 		_scoutTargets.Insert(0, new ScoutTarget(player.TeamId, player.FullName, player.Id));
-		_recruiting.Market.MarkInterest(CatalogOrganizationId, player.Id, CurrentDate, SeasonYear, 2);
-		PersistRecruiting();
 		ScoutTargetsChanged?.Invoke();
 		NotifyRosterChanged();
 	}
@@ -2676,7 +2275,6 @@ public partial class GameSession : Node
 		}
 
 		_scoutTargets.RemoveAt(index);
-		PersistRecruiting();
 		ScoutTargetsChanged?.Invoke();
 		NotifyRosterChanged();
 	}
@@ -2692,21 +2290,6 @@ public partial class GameSession : Node
 		AddScoutTarget(player);
 	}
 
-	public string InterestCopy(Guid playerId)
-	{
-		var names = new List<string>();
-		foreach (RecruitingInterest item in _recruiting.Market.InterestFor(playerId))
-		{
-			OrganizationState? school = RecruitingSchool(item.OrganizationId);
-			string name = school?.ShortName ?? item.OrganizationId;
-			if (!names.Contains(name, StringComparer.OrdinalIgnoreCase))
-			{
-				names.Add(name);
-			}
-		}
-
-		return RecruitingInterest.Format(names);
-	}
 }
 
 internal sealed class DayAdvanceSignals

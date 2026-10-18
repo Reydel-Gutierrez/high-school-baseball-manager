@@ -25,7 +25,6 @@ public sealed class WorldDayResult
 	public required SeasonPhase Phase { get; init; }
 	public List<SimulatedGame> GamesPlayed { get; init; } = [];
 	public List<PlayerTransaction> Transactions { get; init; } = [];
-	public List<PlayerAgreement> Signings { get; init; } = [];
 	public bool Graduated { get; init; }
 	public bool RolledOver { get; init; }
 }
@@ -42,6 +41,7 @@ public static class WorldDayProcessor
 		BaseballGameSimulator simulator)
 	{
 		int year = state.Career.CurrentSeasonYear;
+		TryoutDesk.Migrate(state, today);
 		var posted = new List<PlayerTransaction>();
 		posted.AddRange(InjuryDesk.Tick(state, today));
 		PostseasonDesk.Tick(state, today);
@@ -86,8 +86,11 @@ public static class WorldDayProcessor
 		ISeededRandom developmentRng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber ^ 0x0DE7));
 		posted.AddRange(DevelopmentDesk.Weekly(state, today, developmentRng));
 
-		RecruitingDayResult recruiting = RunRecruiting(state, today);
-		posted.AddRange(LogSignings(state, recruiting, today));
+		if (today == SeasonCalendar.TryoutDecisionDay(year))
+		{
+			posted.AddRange(TryoutDesk.Finalize(state, today));
+		}
+
 		ISeededRandom deskRng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber ^ 91));
 		posted.AddRange(AiProgramController.AdvanceDay(state, today, deskRng));
 
@@ -129,7 +132,6 @@ public static class WorldDayProcessor
 			Phase = CareerCalendar.PhaseOn(year, today),
 			GamesPlayed = played,
 			Transactions = posted,
-			Signings = recruiting.Signed.ToList(),
 			Graduated = graduated,
 		};
 	}
@@ -238,83 +240,6 @@ public static class WorldDayProcessor
 				AwayInningRuns = awayInn,
 			},
 		};
-	}
-
-	private static RecruitingDayResult RunRecruiting(CareerState state, DateOnly today)
-	{
-		RecruitingMarket market = new(
-			state.Organizations,
-			state.Players.Where(p => !p.IsUnsigned && state.AgreementFor(p.Id) == null).ToList(),
-			state.Players.Where(p => p.IsUnsigned || state.AgreementFor(p.Id) != null).ToList(),
-			state.Teams,
-			state.Offers,
-			state.Agreements,
-			state.RecruitingInterest);
-		ISeededRandom rng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber));
-		RecruitingDayResult result = market.AdvanceDay(
-			today,
-			state.Career.CurrentSeasonYear,
-			state.Career.UserOrganizationId,
-			rng);
-		foreach (Player prospect in market.Prospects)
-		{
-			Player? existing = state.PlayerById(prospect.Id);
-			if (existing == null)
-			{
-				continue;
-			}
-
-			existing.OrganizationId = prospect.OrganizationId;
-			existing.TeamId = prospect.TeamId;
-			existing.TeamLevel = prospect.TeamLevel;
-			existing.JerseyNumber = prospect.JerseyNumber;
-		}
-
-		state.Offers = market.Offers.ToList();
-		state.Agreements = market.Agreements.ToList();
-		state.RecruitingInterest = market.Interest.ToList();
-		return result;
-	}
-
-	private static List<PlayerTransaction> LogSignings(
-		CareerState state,
-		RecruitingDayResult recruiting,
-		DateOnly today)
-	{
-		var posted = new List<PlayerTransaction>();
-		if (recruiting.Signed.Count == 0)
-		{
-			return posted;
-		}
-
-		var seen = new HashSet<string>(StringComparer.Ordinal);
-		foreach (PlayerTransaction existing in state.Transactions)
-		{
-			if (!string.IsNullOrWhiteSpace(existing.DedupKey))
-			{
-				seen.Add(existing.DedupKey);
-			}
-		}
-
-		foreach (PlayerAgreement agreement in recruiting.Signed)
-		{
-			Player? player = state.PlayerById(agreement.PlayerId);
-			if (player == null)
-			{
-				continue;
-			}
-
-			OrganizationState school = state.OrganizationById(agreement.OrganizationId);
-			PlayerTransaction entry = PlayerTransaction.FromSigning(player, school.ShortName, school.Id, today);
-			if (string.IsNullOrWhiteSpace(entry.DedupKey) || !seen.Add(entry.DedupKey))
-			{
-				continue;
-			}
-
-			posted.Add(entry);
-		}
-
-		return posted;
 	}
 
 	private static bool GraduateSeniors(CareerState state) =>

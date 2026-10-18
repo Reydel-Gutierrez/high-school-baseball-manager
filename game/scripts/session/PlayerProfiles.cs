@@ -103,7 +103,6 @@ public static class PlayerProfiles
 		Player player,
 		GameWorld world,
 		bool captain = false,
-		PlayerAgreementSnapshot? agreement = null,
 		bool fogged = false)
 	{
 		string teamShort = TeamShortFor(world, player);
@@ -171,7 +170,6 @@ public static class PlayerProfiles
 				seed),
 			Fogged: fogged,
 			RecruitingHook: player.Priorities.Hook,
-			Agreement: agreement,
 			Appearance: player.Appearance);
 	}
 
@@ -194,8 +192,7 @@ public static class PlayerProfiles
 		string teamShort,
 		string squad,
 		IReadOnlyList<HubPlayerSeason> seasons,
-		bool captain = false,
-		PlayerAgreementSnapshot? agreement = null)
+		bool captain = false)
 	{
 		int seed = StableSeed($"{firstName}|{lastName}|{jersey}|{teamId}");
 		bool pitcher = IsPitcher(position);
@@ -242,262 +239,7 @@ public static class PlayerProfiles
 			pitching,
 			seasons,
 			BuildHistory(firstName, lastName, year, seasons, captain, status, seed),
-			BuildScoutReport(firstName, lastName, position, year, overall, potential, pitcher, seed),
-			Agreement: agreement);
-	}
-
-	public static PlayerProfileSnapshot FromOpenPlay(
-		Player player,
-		DistrictOpenPlay openPlay,
-		DateOnly today,
-		string teamShort,
-		PlayerAgreementSnapshot? agreement = null,
-		string? schoolInterest = null)
-	{
-		int looks = Math.Max(0, openPlay.LooksOn(today));
-		OpenPlayLine? line = openPlay.VisibleLine(player.Id, today);
-		bool pitcher = player.IsPitcher;
-		var seasons = new List<HubPlayerSeason>();
-		if (line != null && looks > 0 && (line.Hitting.AtBats > 0 || (line.Pitching != null && line.Pitching.Outs > 0)))
-		{
-			seasons.Add(new HubPlayerSeason(
-				openPlay.SeasonYear,
-				"District Open Play",
-				ToHitting(line.Hitting),
-				pitcher ? ToPitching(line.Pitching) : null));
-		}
-
-		bool committed = agreement != null;
-		GameWorld? world = GameSession.Current?.World;
-		if (world != null)
-		{
-			PlayerProfileSnapshot live = FromWorld(player, world, agreement: agreement, fogged: !committed);
-			if (seasons.Count > 0)
-			{
-				return live with
-				{
-					Seasons = seasons,
-					StatsHeader = "OPEN PLAY",
-					OverallLabel = committed ? null : TryoutScouting.FormatOverall(player.Overall, looks, player.Id.GetHashCode()),
-					PotentialLabel = committed
-						? null
-						: TryoutScouting.FormatPotential(player.Overall, player.Potential, looks, player.Id.GetHashCode()),
-					TeamShort = string.IsNullOrEmpty(teamShort) ? live.TeamShort : teamShort,
-					Squad = committed ? live.Squad : "Unsigned",
-					RecruitingHook = player.Priorities.Hook,
-					SchoolInterest = schoolInterest,
-				};
-			}
-
-			return live with
-			{
-				StatsHeader = "OPEN PLAY",
-				OverallLabel = committed ? null : TryoutScouting.FormatOverall(player.Overall, Math.Max(1, looks), player.Id.GetHashCode()),
-				PotentialLabel = committed
-					? null
-					: TryoutScouting.FormatPotential(player.Overall, player.Potential, Math.Max(1, looks), player.Id.GetHashCode()),
-				TeamShort = string.IsNullOrEmpty(teamShort) ? live.TeamShort : teamShort,
-				Squad = committed ? live.Squad : "Unsigned",
-				RecruitingHook = player.Priorities.Hook,
-				SchoolInterest = schoolInterest,
-			};
-		}
-
-		return new PlayerProfileSnapshot(
-			player.FirstName,
-			player.LastName,
-			player.JerseyNumber,
-			player.DisplayPosition,
-			player.Grade.ToAbbrev(),
-			YearLabel(player.Grade.ToAbbrev()),
-			player.Bats.ToBatsThrowsLabel(player.Throws),
-			committed ? HeightLabel(player.Id.GetHashCode()) : "?",
-			committed ? WeightLbs(player.Id.GetHashCode()) : 0,
-			player.Overall,
-			player.Potential,
-			player.Priorities.Label,
-			player.Priorities.Hook,
-			committed ? "Healthy" : "?",
-			null,
-			player.OrganizationId,
-			string.IsNullOrEmpty(teamShort) ? "Open Play" : teamShort,
-			committed ? (player.TeamLevel == TeamLevel.Varsity ? "Varsity" : "JV") : "Unsigned",
-			pitcher,
-			false,
-			new PlayerHittingAttributes(0, 0, 0, 0),
-			new PlayerFieldingAttributes(0, 0, 0),
-			new PlayerPhysicalAttributes(0, 0),
-			pitcher ? new PlayerPitchingAttributes(0, 0, 0, 0) : null,
-			seasons,
-			[],
-			new PlayerScoutReport(
-				player.Priorities.Label,
-				player.Priorities.Hook,
-				$"{player.FullName} is in the district Open Play pool. {player.Priorities.Hook}.",
-				"?",
-				looks),
-			Fogged: !committed,
-			OverallLabel: TryoutScouting.FormatOverall(player.Overall, Math.Max(1, looks), player.Id.GetHashCode()),
-			PotentialLabel: TryoutScouting.FormatPotential(player.Overall, player.Potential, Math.Max(1, looks), player.Id.GetHashCode()),
-			StatsHeader: "OPEN PLAY",
-			RecruitingHook: player.Priorities.Hook,
-			SchoolInterest: schoolInterest,
-			Agreement: agreement);
-	}
-
-	public static PlayerProfileSnapshot FromTryout(TryoutProspect prospect, TryoutDay day)
-	{
-		string year = prospect.Year.ToAbbrev();
-		bool pitcher = prospect.Position.IsPitcher();
-		TryoutHittingLine hitting = prospect.HittingOn(day);
-		TryoutPitchingLine? pitching = prospect.PitchingOn(day);
-		string period = day == TryoutDay.Final ? "Tryout Week" : $"Day {(int)day + 1}";
-		var seasons = new List<HubPlayerSeason>();
-		if (hitting.AtBats > 0 || (pitching != null && pitching.Outs > 0))
-		{
-			seasons.Add(new HubPlayerSeason(
-				DistrictHubData.SeasonYear,
-				period,
-				ToHitting(hitting),
-				pitcher ? ToPitching(pitching) : null));
-		}
-
-		return new PlayerProfileSnapshot(
-			prospect.FirstName,
-			prospect.LastName,
-			0,
-			prospect.Position.ToDisplayLabel(prospect.Throws),
-			year,
-			YearLabel(year),
-			prospect.Bats.ToBatsThrowsLabel(prospect.Throws),
-			"?",
-			0,
-			prospect.TrueOverall,
-			prospect.TruePotential,
-			"?",
-			"?",
-			"?",
-			null,
-			string.Empty,
-			"Tryout Camp",
-			"Varsity",
-			pitcher,
-			false,
-			new PlayerHittingAttributes(0, 0, 0, 0),
-			new PlayerFieldingAttributes(0, 0, 0),
-			new PlayerPhysicalAttributes(0, 0),
-			pitcher ? new PlayerPitchingAttributes(0, 0, 0, 0) : null,
-			seasons,
-			[],
-			new PlayerScoutReport(
-				"?",
-				"?",
-				"Camp file is still incomplete. Present tools stay behind a range until the staff has a longer look.",
-				"?",
-				0),
-			Fogged: true,
-			OverallLabel: TryoutScouting.FormatOverall(prospect, day),
-			PotentialLabel: TryoutScouting.FormatPotential(prospect, day),
-			StatsHeader: day == TryoutDay.Final ? "TRYOUT WEEK" : $"DAY {(int)day + 1}");
-	}
-
-	public static PlayerProfileSnapshot FromBoard(FinalRosterPlayer player, TryoutCamp camp)
-	{
-		if (player.FromTryout)
-		{
-			TryoutProspect? prospect = camp.Find(player.Id);
-			if (prospect != null)
-			{
-				return FromTryout(prospect, TryoutDay.Final) with
-				{
-					TeamShort = "Cascade",
-					Squad = ProgramRosterRules.AssignmentLabel(player.Assignment),
-				};
-			}
-		}
-
-		TeamLevel level = player.Assignment == RosterAssignment.JuniorVarsity
-			? TeamLevel.JuniorVarsity
-			: TeamLevel.Varsity;
-		HubSquadPlayer? hub = DistrictHubSquads.FindPlayer(DistrictHubData.UserTeamId, player.FullName, level);
-		if (hub != null)
-		{
-			return From(hub);
-		}
-
-		return From(
-			player.FirstName,
-			player.LastName,
-			player.Jersey,
-			player.PositionLabel,
-			player.Year.ToAbbrev(),
-			player.Bats.ToBatsThrowsLabel(player.Throws),
-			player.Overall,
-			50,
-			50,
-			50,
-			50,
-			50,
-			"Healthy",
-			null,
-			DistrictHubData.UserTeamId,
-			"Cascade",
-			ProgramRosterRules.AssignmentLabel(player.Assignment),
-			[]);
-	}
-
-	public static PlayerProfileSnapshot FromPool(OpenPoolPlayer player, TryoutCamp camp)
-	{
-		TryoutProspect? prospect = camp.Find(player.Id);
-		if (prospect != null)
-		{
-			return FromTryout(prospect, TryoutDay.Final) with
-			{
-				TeamId = string.Empty,
-				TeamShort = "Open Pool",
-				Squad = "Pool",
-			};
-		}
-
-		string year = player.Year.ToAbbrev();
-		bool pitcher = player.Position.IsPitcher();
-		return new PlayerProfileSnapshot(
-			player.FirstName,
-			player.LastName,
-			0,
-			player.PositionLabel,
-			year,
-			YearLabel(year),
-			player.Bats.ToBatsThrowsLabel(player.Throws),
-			"?",
-			0,
-			player.TrueOverall,
-			player.TruePotential,
-			"?",
-			"?",
-			"?",
-			null,
-			string.Empty,
-			"Open Pool",
-			"Pool",
-			pitcher,
-			false,
-			new PlayerHittingAttributes(0, 0, 0, 0),
-			new PlayerFieldingAttributes(0, 0, 0),
-			new PlayerPhysicalAttributes(0, 0),
-			pitcher ? new PlayerPitchingAttributes(0, 0, 0, 0) : null,
-			[],
-			[],
-			new PlayerScoutReport(
-				"?",
-				"?",
-				"Available from the District Open Pool. Any program can sign him if they have roster room.",
-				"?",
-				0),
-			Fogged: true,
-			OverallLabel: TryoutScouting.FormatOverall(player.TrueOverall, 3, player.Id.GetHashCode()),
-			PotentialLabel: TryoutScouting.FormatPotential(player.TrueOverall, player.TruePotential, 3, player.Id.GetHashCode()),
-			StatsHeader: "OPEN POOL");
+			BuildScoutReport(firstName, lastName, position, year, overall, potential, pitcher, seed));
 	}
 
 	private static string TeamShortFor(GameWorld world, Player player)
@@ -609,42 +351,6 @@ public static class PlayerProfiles
 			arm.HomeRunsAllowed,
 			(float)arm.Era,
 			(float)arm.Whip);
-
-	private static HubSeasonHitting ToHitting(TryoutHittingLine line) =>
-		new(
-			line.Games,
-			line.AtBats,
-			line.Runs,
-			line.Hits,
-			line.Doubles,
-			line.Triples,
-			line.HomeRuns,
-			line.Rbi,
-			line.Walks,
-			line.Strikeouts,
-			line.StolenBases,
-			line.Average,
-			line.OnBase,
-			line.Slugging);
-
-	private static HubSeasonPitching? ToPitching(TryoutPitchingLine? line) =>
-		line == null || line.Outs <= 0
-			? null
-			: new HubSeasonPitching(
-				line.Games,
-				line.GamesStarted,
-				line.Wins,
-				line.Losses,
-				line.Saves,
-				line.Innings,
-				line.Hits,
-				line.Runs,
-				line.EarnedRuns,
-				line.Walks,
-				line.Strikeouts,
-				line.HomeRuns,
-				line.Era,
-				line.Whip);
 
 	public static bool NamesMatch(HubSquadPlayer player, string query)
 	{
@@ -921,30 +627,11 @@ public sealed record PlayerProfileSnapshot(
 	string? StatsHeader = null,
 	string? RecruitingHook = null,
 	string? SchoolInterest = null,
-	PlayerAgreementSnapshot? Agreement = null,
 	PersonAppearance? Appearance = null)
 {
 	public string FullName => $"{FirstName} {LastName}";
 
 	public string DisplayName => FullName.ToUpperInvariant();
-}
-
-public sealed record PlayerAgreementSnapshot(
-	string School,
-	int StartSeasonYear,
-	int YearsRemaining,
-	int TermYears,
-	int AnnualSponsorship,
-	int TotalCommitment)
-{
-	public string AnnualLabel => PlayerAgreement.FormatMoney(AnnualSponsorship);
-
-	public string TotalLabel => PlayerAgreement.FormatMoney(TotalCommitment);
-
-	public string TermLabel =>
-		YearsRemaining <= 1
-			? $"{YearsRemaining} year remaining"
-			: $"{YearsRemaining} years remaining";
 }
 
 public sealed record PlayerHittingAttributes(int ContactRight, int ContactLeft, int Power, int PlateVision);

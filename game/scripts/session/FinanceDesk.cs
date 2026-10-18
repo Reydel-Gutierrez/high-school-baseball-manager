@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HSBM.Domain;
 
 /// <summary>
@@ -19,8 +18,6 @@ public static class FinanceDesk
 			return ProgramFinances.Empty;
 		}
 
-		IReadOnlyList<PlayerAgreement> agreements = session.RecruitingMarket.Agreements;
-		int salary = session.AnnualSalary;
-		return ProgramFinances.For(program, agreements, salary);
+		return ProgramFinances.For(program, session.AnnualSalary);
 	}
 }

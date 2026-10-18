@@ -25,14 +25,26 @@ public static class SimulationDesk
 	{
 		DateOnly today = session.CurrentDate;
 		int year = GameSession.SeasonYear;
-		RecruitingMarket market = session.RecruitingMarket;
-		string orgId = session.CatalogOrganizationId;
+		List<Player> roster = session.OrganizationRoster();
+		int varsity = 0;
+		int jv = 0;
+		foreach (Player player in roster)
+		{
+			if (player.TeamLevel == TeamLevel.Varsity)
+			{
+				varsity++;
+			}
+			else
+			{
+				jv++;
+			}
+		}
+
 		return new AdvanceDayGateState(
 			today,
 			year,
-			session.Tryouts.HasPendingDecisions,
-			session.RosterBoard.IsOverLimit(today, year),
-			market.PendingCount(orgId) > 0 || market.RemainingNeed(orgId) > 0,
+			session.TryoutDecisionsPending,
+			varsity > LeagueCatalog.TeamRosterCap || jv > LeagueCatalog.TeamRosterCap,
 			SeasonCalendar.IsPlayoffWindow(year, today) && StillPlaying(session, today),
 			JobOfferDesk.HasPending(session));
 	}

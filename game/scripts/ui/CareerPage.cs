@@ -578,7 +578,7 @@ public partial class CareerPage : Control
 			if (_session.AnnualSalary > 0)
 			{
 				layout.AddChild(MakeText(
-					$"{PlayerAgreement.FormatMoney(_session.AnnualSalary)} / year  ·  paid from the baseball budget",
+					$"{Money.Format(_session.AnnualSalary)} / year  ·  paid from the baseball budget",
 					_medium,
 					12,
 					mutedInk,

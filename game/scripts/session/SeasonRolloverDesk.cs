@@ -17,7 +17,7 @@ public static class SeasonRolloverDesk
 	{
 		int year = GameSession.SeasonYear;
 		SchoolSnapshot school = SchoolProfiles.For(session.CatalogOrganizationId, TeamLevel.Varsity, session);
-		OrganizationState? program = session.RecruitingSchool(session.CatalogOrganizationId);
+		OrganizationState? program = session.SchoolState(session.CatalogOrganizationId);
 		ProgramSeasonResult? archived = LatestSeason(program, year);
 		string record = archived?.RecordLabel ?? session.RecordLabelFor(TeamLevel.Varsity);
 		string place = archived != null

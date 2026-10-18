@@ -90,32 +90,50 @@ public static class RosterGenerator
 		return players;
 	}
 
-	public static Player CreateIncoming(
-		TeamIdentity unsignedTeam,
+	/// <summary>
+	/// A student signing up to try out for one school's team. Ratings scale
+	/// with the program's talent tier and the kid's grade (a freshman is
+	/// raw; a junior transfer is closer to finished).
+	/// </summary>
+	public static Player CreateTryoutCandidate(
+		TeamIdentity tryoutTeam,
+		ProgramTalentTier tier,
 		PlayerPosition position,
+		PlayerGrade grade,
 		int seasonYear,
 		ISeededRandom rng,
 		HashSet<string> usedNames)
 	{
-		bool pitcher = position.IsPitcher();
-		PlayerGrade year = rng.NextDouble() < 0.82 ? PlayerGrade.Freshman : PlayerGrade.Sophomore;
-		int overallMean = pitcher ? 54 : 56;
-		int modifier = TalentDistribution.RollRating(rng, overallMean, pitcher ? 9 : 10) - 55;
+		int gradeShift = grade switch
+		{
+			PlayerGrade.Freshman => -9,
+			PlayerGrade.Sophomore => -5,
+			PlayerGrade.Junior => -2,
+			_ => 0,
+		};
+		int modifier = tier.RatingModifier() + gradeShift;
 		var usedJerseys = new HashSet<int>();
 		Player player = CreatePlayer(
-			unsignedTeam,
+			tryoutTeam,
 			position,
 			modifier,
 			seasonYear,
 			rng,
 			usedJerseys,
 			returningOnly: false,
-			gradeOverride: year);
+			gradeOverride: grade);
 		player.OrganizationId = LeagueCatalog.UnsignedOrganizationId;
-		player.TeamId = unsignedTeam.Id;
+		player.TeamId = tryoutTeam.Id;
 		player.TeamLevel = TeamLevel.JuniorVarsity;
 		player.JerseyNumber = 0;
-		int upside = rng.Next(year == PlayerGrade.Freshman ? 6 : 4, year == PlayerGrade.Freshman ? 18 : 12);
+		player.TryoutCall = TryoutCall.Pending;
+		int upside = grade switch
+		{
+			PlayerGrade.Freshman => rng.Next(8, 22),
+			PlayerGrade.Sophomore => rng.Next(5, 15),
+			PlayerGrade.Junior => rng.Next(2, 9),
+			_ => rng.Next(1, 5),
+		};
 		player.Potential = PlayerRatings.ClampValue(Math.Max(player.Overall + 1, player.Overall + upside));
 		string full = player.FullName;
 		int guard = 0;

@@ -10,7 +10,7 @@ public static class BoardDesk
 	public static BoardCard For(GameSession session)
 	{
 		OrganizationState? program = session.LeagueProgram(session.CatalogOrganizationId)
-			?? session.RecruitingSchool(session.CatalogOrganizationId);
+			?? session.SchoolState(session.CatalogOrganizationId);
 		ProgramProfile? profile = program?.Profile;
 		SchoolSnapshot school = SchoolProfiles.For(DistrictHubData.UserTeamId, TeamLevel.Varsity, session);
 		BoardExpectation minimum = profile?.MinimumExpectation ?? BoardExpectation.WinningSeason;

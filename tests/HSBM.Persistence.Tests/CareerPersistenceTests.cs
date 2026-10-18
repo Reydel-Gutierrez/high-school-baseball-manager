@@ -34,7 +34,8 @@ public class CareerPersistenceTests
 				Assert.Equal(date, loaded.Career.CurrentDate);
 				Assert.Equal(fingerprint, Fingerprint(loaded));
 				Assert.Equal(33, loaded.Organizations.Count);
-				Assert.Equal(68, loaded.Teams.Count);
+				// 64 program teams + 32 tryout lists + the inactive list.
+				Assert.Equal(97, loaded.Teams.Count);
 				Assert.Equal(CompetitionLevel.HighSchool, loaded.Career.CompetitionLevel);
 				Assert.Equal(CompetitionLevel.HighSchool, loaded.World.CompetitionLevel);
 				Assert.Equal(4242, loaded.World.Seed);
@@ -47,12 +48,9 @@ public class CareerPersistenceTests
 					Assert.InRange((int)org.Profile.BaseballResources, (int)LetterGrade.F, (int)LetterGrade.APlus);
 					Assert.Equal(org.TalentTier, ProgramReputation.TalentBand(org.Profile.Reputation));
 				});
-				Assert.Equal(loaded.Districts.Count, loaded.OpenPlay.Count);
-				Assert.All(loaded.OpenPlay, session =>
-				{
-					Assert.Equal(LeagueCatalog.OpenPlayTargetPlayers, session.Lines.Count);
-					Assert.Contains(session.Lines, line => line.Hitting.Games >= 4);
-				});
+				Assert.All(
+					loaded.Organizations.Where(org => !LeagueCatalog.IsUnsignedOrganization(org.Id)),
+					org => Assert.InRange(loaded.TryoutCandidates(org.Id).Count(), 8, 18));
 				Assert.All(loaded.Teams.Where(team => team.RosterCap > 0), team =>
 					Assert.InRange(loaded.Players.Count(p => p.TeamId == team.Id), 12, team.RosterCap));
 			}
@@ -189,12 +187,12 @@ public class CareerPersistenceTests
 			service.CreateCareer(new CreateCareerRequest { Name = "Until", Seed = 11, UserOrganizationId = "cascade" });
 			CareerState start = service.LoadCareer();
 			DateOnly origin = start.Career.CurrentDate;
-			Assert.Equal(SeasonCalendar.OpenPlayStart(2026), origin);
+			Assert.Equal(SeasonCalendar.TryoutSignupDay(2026), origin);
 
 			string teamId = start.Teams.First(team => team.OrganizationId == "cascade" && team.Level == TeamLevel.Varsity).Id;
 			AdvanceDayResult result = service.SimulateUntilNextEvent(teamId, 40);
 			Assert.True(result.NewDate > origin);
-			Assert.True(result.NewDate <= SeasonCalendar.SigningWeek(2026).Start);
+			Assert.True(result.NewDate <= SeasonCalendar.TryoutWeek(2026).Start);
 			CareerState loaded = service.LoadCareer();
 			Assert.Equal(result.NewDate, loaded.World.CurrentDate);
 			Assert.Equal(loaded.Career.CurrentDate, loaded.World.CurrentDate);
@@ -351,7 +349,7 @@ public class CareerPersistenceTests
 	}
 
 	[Fact]
-	public void Recruiting_offer_survives_save_and_ai_schools_sign_during_signing_week()
+	public void Decision_day_posts_every_schools_roster_and_honors_the_coachs_calls()
 	{
 		string path = NewDb();
 		try
@@ -359,33 +357,36 @@ public class CareerPersistenceTests
 			using CareerService service = Open(path);
 			service.CreateCareer(new CreateCareerRequest
 			{
-				Name = "Recruit",
+				Name = "Tryouts",
 				Seed = 2026,
 				UserOrganizationId = "cascade",
 			});
-			service.SetCurrentDate(SeasonCalendar.SigningWeek(2026).Start);
+			service.SetCurrentDate(SeasonCalendar.TryoutWeek(2026).Start);
 			CareerState state = service.LoadCareer();
-			Player prospect = state.UnsignedInDistrict("great-lakes").First();
-			Assert.True(service.TryPlaceRecruitingOffer("cascade", prospect.Id, 450, prospect.RemainingEligibility));
+			List<Player> mine = state.TryoutCandidates("cascade").OrderByDescending(p => p.Overall).ToList();
+			Assert.NotEmpty(mine);
+			Player star = mine[0];
+			Player cut = mine[^1];
+			Assert.True(service.SetTryoutCall(star.Id, TryoutCall.Varsity));
+			Assert.True(service.SetTryoutCall(cut.Id, TryoutCall.Cut));
 
-			for (int i = 0; i < 7; i++)
+			while (service.LoadCareer().Career.CurrentDate <= SeasonCalendar.TryoutDecisionDay(2026))
 			{
 				service.AdvanceDay();
 			}
 
 			CareerState loaded = service.LoadCareer();
-			Assert.Contains(loaded.Offers, offer => offer.PlayerId == prospect.Id && offer.OrganizationId == "cascade");
-			Assert.True(loaded.Agreements.Count(a => a.OrganizationId != "cascade") >= 20);
-			Assert.True(loaded.Transactions.Count(t => t.Kind == PlayerTransactionKind.Tryout) >= 20);
-			Assert.Contains(loaded.Transactions, t => t.Headline.Contains(" signed ", StringComparison.Ordinal));
-			PlayerAgreement? userDeal = loaded.AgreementFor(prospect.Id);
-			if (userDeal != null && userDeal.OrganizationId == "cascade")
-			{
-				Assert.Equal(450, userDeal.AnnualSponsorship);
-				Assert.False(loaded.PlayerById(prospect.Id)!.IsUnsigned);
-			}
-
-			Assert.Contains(loaded.News, story => story.Tag == NewsTag.Recruiting);
+			Assert.DoesNotContain(loaded.Players, p => p.IsTryoutCandidate);
+			Player starAfter = loaded.PlayerById(star.Id)!;
+			Assert.Equal("cascade", starAfter.OrganizationId);
+			Assert.Equal(TeamLevel.Varsity, starAfter.TeamLevel);
+			Player cutAfter = loaded.PlayerById(cut.Id)!;
+			Assert.Equal(LeagueCatalog.InactiveTeamId, cutAfter.TeamId);
+			Assert.True(loaded.Transactions.Count(t => t.Kind == PlayerTransactionKind.Tryout) >= 100);
+			Assert.Contains(loaded.Transactions, t => t.Headline.Contains("after tryouts", StringComparison.Ordinal));
+			Assert.All(loaded.Teams.Where(t => t.RosterCap > 0), team =>
+				Assert.InRange(loaded.Players.Count(p => p.TeamId == team.Id), 9, team.RosterCap));
+			Assert.Contains(loaded.News, story => story.Tag == NewsTag.Tryouts);
 		}
 		finally
 		{
@@ -394,42 +395,28 @@ public class CareerPersistenceTests
 	}
 
 	[Fact]
-	public void Open_play_interest_and_user_target_survive_save()
+	public void Tryout_calls_survive_save()
 	{
 		string path = NewDb();
 		try
 		{
-			CareerState after;
+			Guid id;
 			using (CareerService service = Open(path))
 			{
 				service.CreateCareer(new CreateCareerRequest
 				{
-					Name = "Board",
+					Name = "Calls",
 					Seed = 2026,
 					UserOrganizationId = "cascade",
 				});
-				service.AdvanceDay();
-				after = service.LoadCareer();
-			}
-
-			Assert.True(after.RecruitingInterest.Count >= 8);
-			Player prospect = after.UnsignedInDistrict("great-lakes").First();
-			after.RecruitingTargets.Add(new RecruitingTarget
-			{
-				PlayerId = prospect.Id,
-				TeamId = prospect.TeamId,
-				PlayerName = prospect.FullName,
-				SeasonYear = 2026,
-			});
-			using (SqliteCareerStore store = new(path))
-			{
-				store.ReplaceAll(after);
+				id = service.LoadCareer().TryoutCandidates("cascade").First().Id;
+				Assert.True(service.SetTryoutCall(id, TryoutCall.JuniorVarsity));
 			}
 
 			using CareerService reopened = Open(path);
 			CareerState loaded = reopened.LoadCareer();
-			Assert.Contains(loaded.RecruitingInterest, item => item.OrganizationId != "cascade");
-			Assert.Contains(loaded.RecruitingTargets, item => item.PlayerId == prospect.Id);
+			Assert.Equal(TryoutCall.JuniorVarsity, loaded.PlayerById(id)!.TryoutCall);
+			Assert.True(loaded.PlayerById(id)!.IsTryoutCandidate);
 		}
 		finally
 		{

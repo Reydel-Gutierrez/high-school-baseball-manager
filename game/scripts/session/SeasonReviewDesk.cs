@@ -12,7 +12,7 @@ public static class SeasonReviewDesk
 	public static SeasonReviewSheet For(GameSession session)
 	{
 		SchoolSnapshot school = SchoolProfiles.For(DistrictHubData.UserTeamId, TeamLevel.Varsity, session);
-		OrganizationState? program = session.RecruitingSchool(session.CatalogOrganizationId);
+		OrganizationState? program = session.SchoolState(session.CatalogOrganizationId);
 		ProgramProfile? profile = program?.Profile;
 		BoardExpectation target = profile?.TargetExpectation ?? BoardExpectation.DistrictPlayoffs;
 		int wins = session.Wins;

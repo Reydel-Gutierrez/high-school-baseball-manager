@@ -6,7 +6,6 @@ public enum AdvanceDayInterruptKind
 {
 	PlayoffGame = 0,
 	JobOffer = 1,
-	SigningDeadline = 2,
 	TryoutDecision = 3,
 	RosterDeadline = 4,
 }
@@ -14,7 +13,7 @@ public enum AdvanceDayInterruptKind
 /// <summary>
 /// A hard stop the calendar cannot skip. Simulate Week must land on
 /// this day and wait — roster cuts, tryout decisions, playoff games,
-/// job offers, and the signing deadline.
+/// and job offers.
 /// </summary>
 public sealed record AdvanceDayInterrupt(
 	AdvanceDayInterruptKind Kind,
@@ -27,7 +26,6 @@ public sealed record AdvanceDayGateState(
 	int SeasonYear,
 	bool TryoutDecisionsPending,
 	bool RosterOverLimit,
-	bool SigningIncomplete,
 	bool PlayoffGameToday,
 	bool JobOfferPending);
 
@@ -53,23 +51,13 @@ public static class AdvanceDayGate
 				"READ JOB OFFER");
 		}
 
-		DateOnly signing = SeasonCalendar.SigningDeadline(state.SeasonYear);
-		if (state.Today == signing)
-		{
-			return new AdvanceDayInterrupt(
-				AdvanceDayInterruptKind.SigningDeadline,
-				signing,
-				MustComplete("Signing", signing),
-				"GO TO SIGNING");
-		}
-
-		DateOnly tryouts = SeasonCalendar.TryoutDecisionDeadline(state.SeasonYear);
-		if (state.Today == tryouts)
+		DateOnly tryouts = SeasonCalendar.TryoutDecisionDay(state.SeasonYear);
+		if (state.Today == tryouts && state.TryoutDecisionsPending)
 		{
 			return new AdvanceDayInterrupt(
 				AdvanceDayInterruptKind.TryoutDecision,
 				tryouts,
-				MustComplete("Tryout decisions", tryouts),
+				"Tryout decisions are due today.\nPost your list (or let your assistant decide).",
 				"GO TO TRYOUTS");
 		}
 

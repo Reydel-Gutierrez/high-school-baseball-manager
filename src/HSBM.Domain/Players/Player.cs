@@ -29,6 +29,14 @@ public sealed class Player
 	public string CollegeSchool { get; set; } = "";
 	public string CollegePath { get; set; } = "";
 
+	/// <summary>The coach's call on a tryout candidate (pending until Decision Day).</summary>
+	public TryoutCall TryoutCall { get; set; }
+
+	public bool IsTryoutCandidate => LeagueCatalog.IsTryoutTeam(TeamId) && !Alumni;
+
+	/// <summary>School this student is trying out for, or null.</summary>
+	public string? TryoutSchoolId => IsTryoutCandidate ? LeagueCatalog.SchoolForTryoutTeam(TeamId) : null;
+
 	/// <summary>Banked growth (hundredths of an overall point) not yet paid out as rating points.</summary>
 	public int DevelopmentProgress { get; set; }
 

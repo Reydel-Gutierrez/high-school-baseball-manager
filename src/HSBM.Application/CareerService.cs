@@ -37,7 +37,7 @@ public sealed class CareerService : IDisposable
 
 		int seasonYear = request.SeasonYear <= 0 ? LeagueCatalog.DefaultSeasonYear : request.SeasonYear;
 		GeneratedWorld world = _generator.Generate(_catalog, request.Seed, seasonYear, onProgress);
-		DateOnly start = SeasonCalendar.OpenPlayStart(seasonYear);
+		DateOnly start = SeasonCalendar.TryoutSignupDay(seasonYear);
 		GameWorld gameWorld = world.ToGameWorld(start);
 
 		var state = new CareerState
@@ -71,8 +71,6 @@ public sealed class CareerService : IDisposable
 		state.Lineups = [];
 		state.Rotations = [];
 		state.BoxScores = [];
-		state.Offers = [];
-		state.Agreements = [];
 		state.SyncClockFromCareer();
 
 		NewsWire.Publish(state);
@@ -213,59 +211,57 @@ public sealed class CareerService : IDisposable
 		return AdvanceDay();
 	}
 
-	public bool TryPlaceRecruitingOffer(
-		string organizationId,
-		Guid playerId,
-		int annualSponsorship,
-		int termYears)
-	{
-		return TryPlaceRecruitingOffer(organizationId, playerId, annualSponsorship, termYears, out _);
-	}
-
-	public bool TryPlaceRecruitingOffer(
-		string organizationId,
-		Guid playerId,
-		int annualSponsorship,
-		int termYears,
-		out string error)
+	/// <summary>Today's staff read on every tryout candidate at a school.</summary>
+	public IReadOnlyList<TryoutReport> GetTryoutReports(string organizationId)
 	{
 		CareerState state = _store.Load();
-		RecruitingMarket market = MarketFrom(state);
-		if (!market.TryPlaceOffer(
-			organizationId,
-			playerId,
-			annualSponsorship,
-			termYears,
-			state.Career.CurrentDate,
-			state.Career.CurrentSeasonYear,
-			out error))
+		int days = TryoutEvaluation.DaysSeen(state.Career.CurrentSeasonYear, state.Career.CurrentDate);
+		return state.TryoutCandidates(organizationId)
+			.Select(player => TryoutEvaluation.Report(player, days))
+			.ToList();
+	}
+
+	/// <summary>The assistant coach's suggested call for every candidate.</summary>
+	public IReadOnlyDictionary<Guid, TryoutCall> GetTryoutRecommendations(string organizationId)
+	{
+		CareerState state = _store.Load();
+		int days = TryoutEvaluation.DaysSeen(state.Career.CurrentSeasonYear, state.Career.CurrentDate);
+		return TryoutDesk.Recommend(state, organizationId, days);
+	}
+
+	/// <summary>Mark a candidate Varsity / JV / Cut (or back to Pending). Takes effect on Decision Day.</summary>
+	public bool SetTryoutCall(Guid playerId, TryoutCall call)
+	{
+		CareerState state = _store.Load();
+		Player? player = state.PlayerById(playerId);
+		if (player == null || !player.IsTryoutCandidate)
 		{
 			return false;
 		}
 
-		ApplyMarket(state, market);
+		player.TryoutCall = call;
 		_store.ReplaceAll(state);
 		return true;
 	}
 
-	public void ApplyRecruiting(
-		RecruitingMarket market,
-		DateOnly? currentDate = null,
-		IReadOnlyList<RecruitingTarget>? targets = null)
+	/// <summary>Fill every pending call at a school with the assistant's recommendation.</summary>
+	public int AcceptTryoutRecommendations(string organizationId)
 	{
 		CareerState state = _store.Load();
-		ApplyMarket(state, market);
-		if (targets != null)
+		int days = TryoutEvaluation.DaysSeen(state.Career.CurrentSeasonYear, state.Career.CurrentDate);
+		Dictionary<Guid, TryoutCall> calls = TryoutDesk.Recommend(state, organizationId, days);
+		int changed = 0;
+		foreach (Player player in state.TryoutCandidates(organizationId))
 		{
-			state.RecruitingTargets = targets.ToList();
-		}
-
-		if (currentDate.HasValue)
-		{
-			state.Career.CurrentDate = currentDate.Value;
+			if (player.TryoutCall == TryoutCall.Pending && calls.TryGetValue(player.Id, out TryoutCall call))
+			{
+				player.TryoutCall = call;
+				changed++;
+			}
 		}
 
 		_store.ReplaceAll(state);
+		return changed;
 	}
 
 	public void SetCurrentDate(DateOnly date)
@@ -277,20 +273,6 @@ public sealed class CareerService : IDisposable
 		PostseasonDesk.Tick(state, date);
 		NewsWire.Publish(state);
 		_store.ReplaceAll(state);
-	}
-
-	public bool TryWithdrawRecruitingOffer(string organizationId, Guid playerId)
-	{
-		CareerState state = _store.Load();
-		RecruitingMarket market = MarketFrom(state);
-		if (!market.TryWithdraw(organizationId, playerId))
-		{
-			return false;
-		}
-
-		WriteMarket(state, market);
-		_store.ReplaceAll(state);
-		return true;
 	}
 
 	public AdvanceDayResult AdvanceDays(int days)
@@ -665,15 +647,7 @@ public sealed class CareerService : IDisposable
 			return false;
 		}
 
-		OrganizationState school = state.OrganizationById(player.OrganizationId);
-		RosterMovement.ReleaseToPool(player, school.DistrictId);
-		foreach (PlayerAgreement agreement in state.Agreements)
-		{
-			if (agreement.PlayerId == playerId)
-			{
-				agreement.YearsRemaining = 0;
-			}
-		}
+		RosterMovement.Release(player);
 
 		_store.ReplaceAll(state);
 		released = player;
@@ -745,94 +719,6 @@ public sealed class CareerService : IDisposable
 			GameType = game.GameType,
 			WinningTeamId = game.WinningTeamId,
 		};
-
-	private static RecruitingDayResult RunRecruitingDay(CareerState state, DateOnly today)
-	{
-		RecruitingMarket market = MarketFrom(state);
-		ISeededRandom rng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, today.DayNumber));
-		RecruitingDayResult result = market.AdvanceDay(
-			today,
-			state.Career.CurrentSeasonYear,
-			state.Career.UserOrganizationId,
-			rng);
-		WriteMarket(state, market);
-		return result;
-	}
-
-	private static List<PlayerTransaction> LogSignings(
-		CareerState state,
-		RecruitingDayResult recruiting,
-		DateOnly today)
-	{
-		var posted = new List<PlayerTransaction>();
-		if (recruiting.Signed.Count == 0)
-		{
-			return posted;
-		}
-
-		var seen = new HashSet<string>(StringComparer.Ordinal);
-		foreach (PlayerTransaction existing in state.Transactions)
-		{
-			if (!string.IsNullOrWhiteSpace(existing.DedupKey))
-			{
-				seen.Add(existing.DedupKey);
-			}
-		}
-
-		foreach (PlayerAgreement agreement in recruiting.Signed)
-		{
-			Player? player = state.PlayerById(agreement.PlayerId);
-			if (player == null)
-			{
-				continue;
-			}
-
-			OrganizationState school = state.OrganizationById(agreement.OrganizationId);
-			PlayerTransaction entry = PlayerTransaction.FromSigning(player, school.ShortName, school.Id, today);
-			if (string.IsNullOrWhiteSpace(entry.DedupKey) || !seen.Add(entry.DedupKey))
-			{
-				continue;
-			}
-
-			posted.Add(entry);
-		}
-
-		if (posted.Count > 0)
-		{
-			state.Transactions.AddRange(posted);
-		}
-
-		return posted;
-	}
-
-	private static RecruitingMarket MarketFrom(CareerState state) =>
-		new(
-			state.Organizations,
-			state.Players.Where(p => !p.IsUnsigned && state.AgreementFor(p.Id) == null).ToList(),
-			state.Players.Where(p => p.IsUnsigned || state.AgreementFor(p.Id) != null).ToList(),
-			state.Teams,
-			state.Offers,
-			state.Agreements,
-			state.RecruitingInterest);
-
-	private static void ApplyMarket(CareerState state, RecruitingMarket market)
-	{
-		foreach (Player prospect in market.Prospects)
-		{
-			Player? existing = state.PlayerById(prospect.Id);
-			if (existing == null)
-			{
-				continue;
-			}
-
-			existing.OrganizationId = prospect.OrganizationId;
-			existing.TeamId = prospect.TeamId;
-			existing.TeamLevel = prospect.TeamLevel;
-			existing.JerseyNumber = prospect.JerseyNumber;
-		}
-
-		WriteMarket(state, market);
-	}
 
 	private static void ApplyUserSeasonProfile(
 		CareerState state,
@@ -1122,13 +1008,6 @@ public sealed class CareerService : IDisposable
 		ShortName = org.ShortName,
 		DisplayName = org.DisplayName,
 	};
-
-	private static void WriteMarket(CareerState state, RecruitingMarket market)
-	{
-		state.Offers = market.Offers.ToList();
-		state.Agreements = market.Agreements.ToList();
-		state.RecruitingInterest = market.Interest.ToList();
-	}
 
 	private static void ApplyResult(CareerState state, ScheduledGame scheduled, GameSimulationResult result)
 	{

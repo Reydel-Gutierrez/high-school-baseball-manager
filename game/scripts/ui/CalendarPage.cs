@@ -840,14 +840,14 @@ public partial class CalendarPage : Control
 		var body = MakeText(item.Summary, _medium, 13, new Color(0.78f, 0.81f, 0.86f), HorizontalAlignment.Left);
 		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 		box.AddChild(body);
-		if (item.Id is "open-play" or "signing-week")
+		if (item.Id is "class-reveal" or "winter-workouts" or "tryout-week" or "tryout-decisions")
 		{
-			box.AddChild(MakeEventLink("OPEN RECRUITING", OpenTryouts));
+			box.AddChild(MakeEventLink("OPEN TRYOUTS", OpenTryouts));
 		}
 
-		if (item.Id is "incoming-class" or "signing-deadline")
+		if (item.Id is "incoming-class")
 		{
-			box.AddChild(MakeEventLink("VIEW INCOMING CLASS", OpenIncomingClass));
+			box.AddChild(MakeEventLink("VIEW ROSTER", OpenIncomingClass));
 		}
 
 		if (item.Id is "graduation" or "senior-farewell")

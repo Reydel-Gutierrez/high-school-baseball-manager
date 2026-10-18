@@ -8,10 +8,10 @@ public class SeasonPhaseTests
 	public void Baseball_year_maps_onto_the_career_phases()
 	{
 		Assert.Equal(SeasonPhase.SeasonRollover, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 5)));
-		Assert.Equal(SeasonPhase.OpenPlay, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 12)));
-		Assert.Equal(SeasonPhase.OpenPlay, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 25)));
-		Assert.Equal(SeasonPhase.SigningPeriod, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 26)));
-		Assert.Equal(SeasonPhase.SigningPeriod, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 2, 1)));
+		Assert.Equal(SeasonPhase.WinterWorkouts, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 12)));
+		Assert.Equal(SeasonPhase.WinterWorkouts, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 25)));
+		Assert.Equal(SeasonPhase.Tryouts, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 1, 26)));
+		Assert.Equal(SeasonPhase.Tryouts, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 2, 1)));
 		Assert.Equal(SeasonPhase.Preseason, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 2, 2)));
 		Assert.Equal(SeasonPhase.Preseason, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 2, 12)));
 		Assert.Equal(SeasonPhase.RegularSeason, CareerCalendar.PhaseOn(2026, new DateOnly(2026, 2, 16)));
@@ -28,8 +28,8 @@ public class SeasonPhaseTests
 	{
 		IReadOnlyList<SeasonEvent> dates = CareerCalendar.ImportantDates(2026);
 		Assert.Contains(dates, item => item.Id == "opening-day");
-		Assert.Contains(dates, item => item.Id == "signing-deadline");
-		Assert.Contains(dates, item => item.Id == "open-play");
+		Assert.Contains(dates, item => item.Id == "tryout-week");
+		Assert.Contains(dates, item => item.Id == "tryout-decisions");
 		Assert.True(CareerCalendar.IsSimStop(2026, new DateOnly(2026, 2, 16)));
 		Assert.False(CareerCalendar.IsSimStop(2026, new DateOnly(2026, 1, 20)));
 	}

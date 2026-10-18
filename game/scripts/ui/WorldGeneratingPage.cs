@@ -23,6 +23,7 @@ public partial class WorldGeneratingPage : Control
 		WorldGenerationSteps.Varsity,
 		WorldGenerationSteps.JuniorVarsity,
 		WorldGenerationSteps.Identities,
+		WorldGenerationSteps.Tryouts,
 		WorldGenerationSteps.Schedule,
 	];
 

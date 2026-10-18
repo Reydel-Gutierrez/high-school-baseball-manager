@@ -71,13 +71,13 @@ public class RosterMovementTests
 	}
 
 	[Fact]
-	public void Release_sends_the_player_to_the_unsigned_pool()
+	public void Release_takes_the_player_off_every_team()
 	{
 		var varsity = new TeamIdentity("cascade-varsity", "cascade", TeamLevel.Varsity, 20);
 		Player player = SquadPlayer("Nico", "Vale", varsity, 55);
-		RosterMovement.ReleaseToPool(player, "great-lakes");
+		RosterMovement.Release(player);
 		Assert.True(player.IsUnsigned);
-		Assert.Equal(LeagueCatalog.OpenPlayTeamId("great-lakes"), player.TeamId);
+		Assert.Equal(LeagueCatalog.InactiveTeamId, player.TeamId);
 		Assert.Equal(0, player.JerseyNumber);
 	}
 

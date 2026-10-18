@@ -12,72 +12,58 @@ public static class ProgramFinances
 		0,
 		0,
 		0,
-		0,
-		0,
 		[],
 		Allocations(0),
 		[]);
 
-	public static ProgramFinanceSnapshot For(
-		OrganizationState program,
-		IReadOnlyList<PlayerAgreement> agreements,
-		int coachSalary)
+	public static ProgramFinanceSnapshot For(OrganizationState program, int coachSalary)
 	{
 		ProgramProfile profile = program.Profile;
-		int salary = Math.Max(0, coachSalary);
-		int recruiting = ProgramBudget.CommittedSponsorship(agreements, program.Id);
-		int pool = ProgramBudget.RecruitingPool(profile.BaseballBudget);
+		int salary = Math.Clamp(coachSalary, 0, Math.Max(0, profile.BaseballBudget));
 		return new ProgramFinanceSnapshot(
 			profile.BaseballBudget,
-			ProgramBudget.Available(profile, agreements, program.Id, salary),
+			Math.Max(0, profile.BaseballBudget - salary),
 			salary,
-			recruiting,
-			pool,
-			Spending(salary, recruiting),
-			Allocations(profile.BaseballBudget, salary, recruiting),
+			Spending(salary),
+			Allocations(profile.BaseballBudget, salary),
 			Sponsors(program.Id, program.ShortName, DistrictName(program.Id), profile.BaseballBudget));
 	}
 
-	public static IReadOnlyList<BudgetLine> Spending(int coachSalary, int recruitingCommitted)
+	public static IReadOnlyList<BudgetLine> Spending(int coachSalary)
 	{
 		int salary = Math.Max(0, coachSalary);
-		int recruiting = Math.Max(0, recruitingCommitted);
 		return
 		[
-			new BudgetLine("Head Coach", salary, salary),
-			new BudgetLine("Player Sponsorships", recruiting, recruiting),
+			new BudgetLine("Head Coach Stipend", salary, salary),
 		];
 	}
 
 	public static IReadOnlyList<BudgetLine> Allocations(int baseballBudget) =>
-		Allocations(baseballBudget, 0, 0);
+		Allocations(baseballBudget, 0);
 
-	public static IReadOnlyList<BudgetLine> Allocations(
-		int baseballBudget,
-		int coachSalary,
-		int recruitingSpent)
+	/// <summary>
+	/// What's left after the coaching stipend, split the way a high school
+	/// baseball program actually spends: gear, buses, the field, uniforms.
+	/// Always sums (with the stipend) to the full budget.
+	/// </summary>
+	public static IReadOnlyList<BudgetLine> Allocations(int baseballBudget, int coachSalary)
 	{
 		int total = Math.Max(0, baseballBudget);
 		int salary = Math.Clamp(coachSalary, 0, total);
-		int scouting = ProgramBudget.RecruitingPool(total);
-		int rest = Math.Max(0, total - salary - scouting);
-		int equipment = Snap(rest * 0.32);
-		int travel = Snap(rest * 0.25);
-		int facilities = Snap(rest * 0.35);
-		int misc = rest - equipment - travel - facilities;
+		int rest = total - salary;
+		int equipment = Snap(rest * 0.30);
+		int travel = Snap(rest * 0.22);
+		int facilities = Snap(rest * 0.28);
+		int uniforms = Snap(rest * 0.12);
+		int misc = rest - equipment - travel - facilities - uniforms;
 		if (misc < 0)
 		{
-			facilities += misc;
-			misc = 0;
-			if (facilities < 0)
+			facilities = Math.Max(0, facilities + misc);
+			misc = rest - equipment - travel - facilities - uniforms;
+			if (misc < 0)
 			{
-				travel += facilities;
-				facilities = 0;
-				if (travel < 0)
-				{
-					equipment = Math.Max(0, equipment + travel);
-					travel = 0;
-				}
+				equipment = Math.Max(0, equipment + misc);
+				misc = 0;
 			}
 		}
 
@@ -85,8 +71,8 @@ public static class ProgramFinances
 		[
 			new BudgetLine("Equipment", Math.Max(0, equipment)),
 			new BudgetLine("Travel", Math.Max(0, travel)),
-			new BudgetLine("Facilities", Math.Max(0, facilities)),
-			new BudgetLine("Scouting", scouting, Math.Min(Math.Max(0, recruitingSpent), scouting)),
+			new BudgetLine("Field & Facilities", Math.Max(0, facilities)),
+			new BudgetLine("Uniforms", Math.Max(0, uniforms)),
 			new BudgetLine("Misc.", Math.Max(0, misc)),
 		];
 	}
@@ -205,8 +191,6 @@ public sealed record ProgramFinanceSnapshot(
 	int BaseballBudget,
 	int Available,
 	int CoachSalary,
-	int RecruitingCommitted,
-	int RecruitingPool,
 	IReadOnlyList<BudgetLine> Spending,
 	IReadOnlyList<BudgetLine> Allocations,
 	IReadOnlyList<ProgramSponsor> Sponsors)
@@ -244,11 +228,11 @@ public sealed record BudgetLine(string Label, int Amount, int Spent = 0)
 {
 	public int Remaining => Math.Max(0, Amount - Spent);
 
-	public string AmountLabel => PlayerAgreement.FormatMoney(Amount);
+	public string AmountLabel => Money.Format(Amount);
 
-	public string SpentLabel => PlayerAgreement.FormatMoney(Spent);
+	public string SpentLabel => Money.Format(Spent);
 
-	public string RemainingLabel => PlayerAgreement.FormatMoney(Remaining);
+	public string RemainingLabel => Money.Format(Remaining);
 }
 
 public sealed record ProgramSponsor(string Name, int AnnualAmount, bool InKind, string Detail)
@@ -256,5 +240,5 @@ public sealed record ProgramSponsor(string Name, int AnnualAmount, bool InKind, 
 	public string AmountLabel =>
 		InKind
 			? (string.IsNullOrWhiteSpace(Detail) ? "In-kind support" : Detail)
-			: $"{PlayerAgreement.FormatMoney(AnnualAmount)} / season";
+			: $"{Money.Format(AnnualAmount)} / season";
 }

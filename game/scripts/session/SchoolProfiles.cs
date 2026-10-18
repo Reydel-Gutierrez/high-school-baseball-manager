@@ -53,11 +53,9 @@ public static class SchoolProfiles
 			: BoardLabel(place, wins, losses);
 
 		int baseballBudget = 0;
-		int sponsorships = 0;
 		int budgetLeft = 0;
-		int recruitingLeft = 0;
 		int coachSalary = 0;
-		OrganizationState? program = session?.LeagueProgram(id) ?? session?.RecruitingSchool(id);
+		OrganizationState? program = session?.LeagueProgram(id) ?? session?.SchoolState(id);
 		if (program != null)
 		{
 			baseballBudget = program.Profile.BaseballBudget;
@@ -70,17 +68,7 @@ public static class SchoolProfiles
 					coachSalary = session.AnnualSalary;
 				}
 
-				sponsorships = ProgramBudget.CommittedSponsorship(session.RecruitingMarket.Agreements, program.Id);
-				budgetLeft = ProgramBudget.Available(
-					program.Profile,
-					session.RecruitingMarket.Agreements,
-					program.Id,
-					coachSalary);
-				recruitingLeft = ProgramBudget.RecruitingAvailable(
-					program.Profile,
-					session.RecruitingMarket.Agreements,
-					program.Id,
-					session.RecruitingMarket.Offers);
+				budgetLeft = Math.Max(0, program.Profile.BaseballBudget - coachSalary);
 			}
 		}
 
@@ -114,9 +102,7 @@ public static class SchoolProfiles
 			BuildHistory(team, reputation, seed, program),
 			BuildRecords(team, roster, reputation, seed, program),
 			baseballBudget,
-			sponsorships,
 			budgetLeft,
-			recruitingLeft,
 			coachSalary,
 			BuildAlumni(session, team.Id));
 	}
@@ -616,9 +602,7 @@ public sealed record SchoolSnapshot(
 	IReadOnlyList<SchoolSeason> History,
 	IReadOnlyList<SchoolRecordGroup> Records,
 	int BaseballBudget = 0,
-	int SponsorshipCommitted = 0,
 	int BudgetAvailable = 0,
-	int RecruitingAvailable = 0,
 	int CoachSalary = 0,
 	IReadOnlyList<SchoolAlum>? Alumni = null)
 {

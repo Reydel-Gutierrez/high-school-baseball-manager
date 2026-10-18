@@ -14,7 +14,7 @@ public static class RosterMovement
 	{
 		if (LeagueCatalog.IsUnsignedOrganization(destination.OrganizationId))
 		{
-			error = "Cannot assign a player onto the unsigned pool.";
+			error = "Cannot assign a player to a holding list.";
 			return false;
 		}
 
@@ -67,10 +67,11 @@ public static class RosterMovement
 		}
 	}
 
-	public static void ReleaseToPool(Player player, string districtId)
+	/// <summary>Take a player off the team. He stays in school; he just isn't on a roster.</summary>
+	public static void Release(Player player)
 	{
 		player.OrganizationId = LeagueCatalog.UnsignedOrganizationId;
-		player.TeamId = LeagueCatalog.OpenPlayTeamId(districtId);
+		player.TeamId = LeagueCatalog.InactiveTeamId;
 		player.TeamLevel = TeamLevel.JuniorVarsity;
 		player.JerseyNumber = 0;
 	}

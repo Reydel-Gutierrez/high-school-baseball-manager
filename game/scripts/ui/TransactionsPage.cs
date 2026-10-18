@@ -154,7 +154,6 @@ public partial class TransactionsPage : Control
 		AddFilter(row, FilterGraduates, "GRADUATES");
 		AddFilter(row, FilterPromotions, "PROMOTIONS");
 		AddFilter(row, FilterReleases, "RELEASES");
-		AddFilter(row, FilterOpenPool, "OPEN POOL");
 		AddFilter(row, FilterTrades, "TRADES");
 		return row;
 	}

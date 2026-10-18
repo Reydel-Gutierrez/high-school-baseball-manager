@@ -35,7 +35,7 @@ public sealed class CoachContract
 
 	public string TermLabel => TermYears == 1 ? "1 Season" : $"{TermYears} Seasons";
 
-	public string SalaryLabel => PlayerAgreement.FormatMoney(AnnualSalary);
+	public string SalaryLabel => Money.Format(AnnualSalary);
 
 	public string YearLabel => $"Year {YearOnDeal} of {Math.Max(1, TermYears)}";
 
@@ -98,7 +98,7 @@ public sealed class CoachingJobOffer
 
 	public string TermLabel => TermYears == 1 ? "1 Season" : $"{TermYears} Seasons";
 
-	public string SalaryLabel => PlayerAgreement.FormatMoney(AnnualSalary);
+	public string SalaryLabel => Money.Format(AnnualSalary);
 
 	public string ExpectationLabel => TargetExpectation.ToLabel();
 

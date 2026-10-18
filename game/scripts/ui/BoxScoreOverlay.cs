@@ -421,28 +421,6 @@ public partial class BoxScoreOverlay : Control
 
 	private Control MakeTeamMark(string teamId, float size)
 	{
-		if (teamId == TryoutGame.BlueId || teamId == TryoutGame.WhiteId)
-		{
-			bool blue = teamId == TryoutGame.BlueId;
-			var mark = new PanelContainer
-			{
-				CustomMinimumSize = new Vector2(size, size),
-				MouseFilter = MouseFilterEnum.Ignore,
-			};
-			mark.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-			{
-				BgColor = blue ? BlueJersey : WhiteJersey,
-				CornerRadiusTopLeft = 4,
-				CornerRadiusTopRight = 4,
-				CornerRadiusBottomRight = 4,
-				CornerRadiusBottomLeft = 4,
-			});
-			var label = MakeText(blue ? "BLU" : "WHT", _bold, 14, blue ? Colors.White : new Color(0.12f, 0.14f, 0.18f), HorizontalAlignment.Center);
-			label.VerticalAlignment = VerticalAlignment.Center;
-			mark.AddChild(label);
-			return mark;
-		}
-
 		TextureRect? logo = TeamLogos.TryMakeIcon(teamId, size);
 		if (logo != null)
 		{

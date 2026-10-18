@@ -313,16 +313,6 @@ public partial class PlayerProfileCard : PanelContainer
 		content.AddChild(MakeText(player.Fogged && player.RecruitingHook == null ? "?" : player.Development, _bold, 18, TextPrimary, HorizontalAlignment.Left));
 		content.AddChild(MakeSection("HEALTH"));
 		content.AddChild(MakeText(player.Fogged ? "?" : player.Health, _bold, 18, player.Fogged ? TextMuted : HealthColor(player.Health), HorizontalAlignment.Left));
-		if (player.Agreement != null && player.Agreement.AnnualSponsorship > 0)
-		{
-			content.AddChild(MakeSection("SPONSORSHIP"));
-			content.AddChild(MakeText(
-				$"{player.Agreement.AnnualLabel} / season",
-				_bold,
-				18,
-				Accent,
-				HorizontalAlignment.Left));
-		}
 		if (!string.IsNullOrEmpty(player.SchoolInterest))
 		{
 			content.AddChild(MakeSection("SCHOOL INTEREST"));

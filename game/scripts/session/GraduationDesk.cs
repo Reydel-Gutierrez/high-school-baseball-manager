@@ -56,27 +56,14 @@ public static class GraduationDesk
 		var graduates = new List<GraduateRecord>();
 		var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-		foreach (FinalRosterPlayer row in session.RosterBoard.Players)
+		foreach (ClubhousePlayer player in ClubhouseSquad.Players)
 		{
-			if (row.Year != PlayerGrade.Senior || !seen.Add(row.FullName))
+			if (!player.Year.Equals("SR", StringComparison.OrdinalIgnoreCase) || !seen.Add(player.FullName))
 			{
 				continue;
 			}
 
-			graduates.Add(FromRoster(session, row));
-		}
-
-		if (graduates.Count == 0)
-		{
-			foreach (ClubhousePlayer player in ClubhouseSquad.Players)
-			{
-				if (!player.Year.Equals("SR", StringComparison.OrdinalIgnoreCase) || !seen.Add(player.FullName))
-				{
-					continue;
-				}
-
-				graduates.Add(FromClubhouse(session, player));
-			}
+			graduates.Add(FromClubhouse(session, player));
 		}
 
 		graduates.Sort((a, b) => b.Overall.CompareTo(a.Overall));
@@ -117,31 +104,6 @@ public static class GraduationDesk
 			Farewell(row.FullName, row.Position, pitcher, honors.Count));
 	}
 
-	private static GraduateRecord FromRoster(GameSession session, FinalRosterPlayer row)
-	{
-		ClubhousePlayer? club = FindClubhouse(row.FirstName, row.LastName);
-		if (club != null)
-		{
-			return FromClubhouse(session, club);
-		}
-
-		CollegeCommit college = CollegeCatalog.Place(row.FullName, row.Overall, row.Potential);
-		IReadOnlyList<string> honors = HonorsFor(session, row.FullName, row.Overall);
-		bool pitcher = row.Position.IsPitcher();
-		return new GraduateRecord(
-			row.Id,
-			row.FirstName,
-			row.LastName,
-			row.PositionLabel,
-			row.Overall,
-			4,
-			null,
-			null,
-			honors,
-			college,
-			Farewell(row.FullName, row.PositionLabel, pitcher, honors.Count));
-	}
-
 	private static GraduateRecord FromClubhouse(GameSession session, ClubhousePlayer player)
 	{
 		string fullName = player.FullName;
@@ -150,7 +112,7 @@ public static class GraduationDesk
 		GraduateHitting? hitting = player.Hitting == null ? null : CareerHitting(player.Hitting);
 		GraduatePitching? pitching = player.Pitching == null ? null : CareerPitching(player.Pitching);
 		return new GraduateRecord(
-			ProgramRosterFactory.StableId(player.FirstName, player.LastName),
+			GraduateRecord.StableId(player.FirstName, player.LastName),
 			player.FirstName,
 			player.LastName,
 			player.Position,
@@ -275,6 +237,25 @@ public sealed record GraduateRecord(
 	}
 
 	public string HonorsLine => Honors.Count == 0 ? "Four years in the program" : string.Join("  ·  ", Honors);
+
+	internal static Guid StableId(string firstName, string lastName)
+	{
+		unchecked
+		{
+			int hash = 17;
+			foreach (char c in $"{firstName}|{lastName}".ToUpperInvariant())
+			{
+				hash = (hash * 31) + c;
+			}
+
+			byte[] bytes = new byte[16];
+			BitConverter.GetBytes(hash).CopyTo(bytes, 0);
+			BitConverter.GetBytes(hash ^ 0x5bd1e995).CopyTo(bytes, 4);
+			BitConverter.GetBytes((firstName.Length * 7919) + lastName.Length).CopyTo(bytes, 8);
+			BitConverter.GetBytes(hash * 37).CopyTo(bytes, 12);
+			return new Guid(bytes);
+		}
+	}
 }
 
 public sealed record GraduateHitting(int AtBats, float Average, int HomeRuns, int Rbi, int StolenBases);

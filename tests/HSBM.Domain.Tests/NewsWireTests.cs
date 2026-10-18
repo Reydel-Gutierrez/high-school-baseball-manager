@@ -104,12 +104,12 @@ public class NewsWireTests
 	}
 
 	[Fact]
-	public void Open_play_start_is_a_calendar_story()
+	public void Tryout_week_is_a_calendar_story()
 	{
-		NewsWorld world = World(SeasonCalendar.OpenPlayStart(2026));
+		NewsWorld world = World(SeasonCalendar.TryoutWeek(2026).Start);
 		List<NewsStory> stories = NewsWire.Discover(world, []);
 
-		Assert.Contains(stories, s => s.Headline.Contains("District Open Play", StringComparison.Ordinal));
+		Assert.Contains(stories, s => s.Headline.Contains("Tryouts open", StringComparison.Ordinal));
 	}
 
 	[Fact]

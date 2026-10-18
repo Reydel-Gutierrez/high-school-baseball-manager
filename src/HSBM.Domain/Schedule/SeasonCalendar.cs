@@ -52,9 +52,11 @@ public static class SeasonCalendar
 
 	public static DateOnly OpeningDay(int seasonYear) => new(seasonYear, 2, 16);
 
-	public static DateOnly SigningDeadline(int seasonYear) => new(seasonYear, 2, 1);
+	/// <summary>Feb 1: tryout decisions are final; varsity/JV/cut takes effect.</summary>
+	public static DateOnly TryoutDecisionDay(int seasonYear) => new(seasonYear, 2, 1);
 
-	public static DateOnly TryoutDecisionDeadline(int seasonYear) => OpenPlay(seasonYear).End;
+	/// <summary>Jan 12: the tryout sign-up sheet (opened at the Jan 5 rollover) closes.</summary>
+	public static DateOnly TryoutSignupDay(int seasonYear) => new(seasonYear, 1, 12);
 
 	public static DateOnly InitialRosterCut(int seasonYear) => new(seasonYear, 2, 8);
 
@@ -86,38 +88,38 @@ public static class SeasonCalendar
 				new DateOnly(seasonYear, 1, 5)),
 			Window(
 				"prelim-scouting",
-				"Preliminary Scouting Period",
-				"Incoming freshmen and new players become partially visible. Ratings are still incomplete.",
+				"Winter Conditioning",
+				"Returning players lift, run, and start throwing programs. Word gets around about which students plan to try out.",
 				new DateOnly(seasonYear, 1, 5),
 				new DateOnly(seasonYear, 1, 11)),
 			Milestone(
 				"class-reveal",
-				"Incoming Class Reveal",
-				"Every district's unsigned incoming class is posted for Open Play. Schools start scouting the same pool.",
+				"Sign-Up Sheet Closes",
+				"The list of students trying out is final: mostly freshmen, a few older kids and transfers. You get a first look — grade, position, size.",
 				new DateOnly(seasonYear, 1, 12)),
 			Window(
-				"open-play",
-				"District Open Play",
-				"Two weeks of background games among ~200 unsigned players. Schools scout the same performances. No Game Day — results feed recruiting.",
+				"winter-workouts",
+				"Winter Workouts",
+				"Open gym and early throwing. First impressions only; nobody has been evaluated yet.",
 				new DateOnly(seasonYear, 1, 12),
-				new DateOnly(seasonYear, 1, 25),
-				featured: true),
+				new DateOnly(seasonYear, 1, 25)),
 			Window(
-				"signing-week",
-				"Signing Week",
-				"Schools make sponsorship offers. Players weigh reputation, playing time, roster competition, and money before committing.",
+				"tryout-week",
+				"Tryout Week",
+				"Six days of drills and scrimmages for every candidate. Your read on each player sharpens every day.",
 				new DateOnly(seasonYear, 1, 26),
+				new DateOnly(seasonYear, 1, 31),
+				featured: true),
+			Milestone(
+				"tryout-decisions",
+				"Decision Day",
+				"Post the list. Every candidate makes varsity, makes JV, or is cut. Anyone you leave undecided, your assistant decides.",
 				new DateOnly(seasonYear, 2, 1),
 				featured: true),
 			Milestone(
-				"signing-deadline",
-				"Signing Deadline",
-				"Normal signing closes. Unsigned players enter the available-player pool. The program's incoming class is posted.",
-				new DateOnly(seasonYear, 2, 1)),
-			Milestone(
 				"incoming-class",
-				"Incoming Class",
-				"The signed incoming class is posted: new players, positions, overall, and potential.",
+				"Rosters Posted",
+				"Varsity and JV rosters go up on the locker room door. New players get jerseys.",
 				new DateOnly(seasonYear, 2, 2),
 				featured: true),
 			Window(
@@ -128,8 +130,8 @@ public static class SeasonCalendar
 				new DateOnly(seasonYear, 2, 8)),
 			Milestone(
 				"roster-cut",
-				"Initial Roster Cut",
-				"Schools must be under roster limits. Players cut here become free or available prospects.",
+				"Roster Limits",
+				"Varsity and JV must each be at or under 20 players. Anyone released is off the team for the year.",
 				new DateOnly(seasonYear, 2, 8)),
 			Window(
 				"preseason",
@@ -286,13 +288,13 @@ public static class SeasonCalendar
 				new DateOnly(seasonYear, 7, 15)),
 			Milestone(
 				"fall-scouting",
-				"Fall Scouting Opens",
-				"The incoming class starts generating behind the scenes.",
+				"Fall Ball Opens",
+				"Fall workouts and scrimmages. A chance to see your returning kids and your district rivals before winter.",
 				new DateOnly(seasonYear, 8, 1)),
 			Window(
 				"fall-evaluation",
-				"Fall Evaluation Period",
-				"Scouts slowly discover next year's freshmen.",
+				"Fall Evaluation",
+				"Coaches compare notes on returning players and the district. Next spring's tryouts are still months away.",
 				new DateOnly(seasonYear, 9, 1),
 				new DateOnly(seasonYear, 10, 31)),
 			Milestone(
@@ -314,11 +316,10 @@ public static class SeasonCalendar
 		];
 	}
 
-	public static SeasonEvent OpenPlay(int seasonYear) => EventById(seasonYear, "open-play");
+	public static SeasonEvent WinterWorkouts(int seasonYear) => EventById(seasonYear, "winter-workouts");
 
-	public static SeasonEvent SigningWeek(int seasonYear) => EventById(seasonYear, "signing-week");
 
-	public static SeasonEvent TryoutWeek(int seasonYear) => OpenPlay(seasonYear);
+	public static SeasonEvent TryoutWeek(int seasonYear) => EventById(seasonYear, "tryout-week");
 
 	public static SeasonEvent IncomingClass(int seasonYear) => EventById(seasonYear, "incoming-class");
 
@@ -440,7 +441,6 @@ public static class SeasonCalendar
 			_ => null,
 		};
 
-	public static DateOnly OpenPlayStart(int seasonYear) => OpenPlay(seasonYear).Start;
 
 	public static SeasonEvent ById(int seasonYear, string id) => EventById(seasonYear, id);
 

@@ -757,9 +757,7 @@ public partial class ScoutingPlayersPage : Control
 			}
 		};
 
-		int looks = Math.Max(1, _session.OpenPlay.LooksOn(_session.CurrentDate));
-		string ovr = TryoutScouting.FormatOverall(player.Overall, looks, player.Id.GetHashCode());
-		int interest = _session.RecruitingMarket.InterestFor(player.Id).Count;
+		string team = _session.World == null ? "" : PlayerProfiles.FromWorld(player, _session.World).TeamShort;
 		var columns = new HBoxContainer();
 		columns.AddThemeConstantOverride("separation", 8);
 		columns.MouseFilter = MouseFilterEnum.Ignore;
@@ -768,9 +766,9 @@ public partial class ScoutingPlayersPage : Control
 		columns.AddChild(BuildNameCell(player.FirstName, player.LastName));
 		columns.AddChild(MakeFixed(player.DisplayPosition, 36, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 		columns.AddChild(MakeFixed(player.Grade.ToAbbrev(), 28, _semibold, 12, TextMuted, HorizontalAlignment.Center));
-		columns.AddChild(MakeFixed("OPEN PLAY", 72, _semibold, 11, Accent, HorizontalAlignment.Left));
-		columns.AddChild(MakeFixed(ovr, 56, _bold, 13, Accent, HorizontalAlignment.Center));
-		columns.AddChild(MakeFixed(interest == 0 ? "—" : $"{interest} ON", 56, _bold, 13, interest > 0 ? Accent : TextMuted, HorizontalAlignment.Right));
+		columns.AddChild(MakeFixed(team.ToUpperInvariant(), 72, _semibold, 11, Accent, HorizontalAlignment.Left));
+		columns.AddChild(MakeFixed($"{player.Overall}", 36, _bold, 13, OverallColor(player.Overall), HorizontalAlignment.Center));
+		columns.AddChild(MakeFixed("—", 56, _bold, 13, TextMuted, HorizontalAlignment.Right));
 		row.AddChild(columns);
 		_rowByKey[key] = row;
 		return row;
@@ -944,48 +942,9 @@ public partial class ScoutingPlayersPage : Control
 		});
 		layout.AddChild(card);
 
-		PlayerAgreement? agreement = _session.RecruitingMarket.AgreementFor(player.Id);
-		PlayerAgreementSnapshot? snapshot = null;
-		if (agreement != null)
+		if (_session.World != null)
 		{
-			OrganizationState? school = _session.RecruitingSchool(agreement.OrganizationId);
-			snapshot = new PlayerAgreementSnapshot(
-				school?.DisplayName ?? agreement.OrganizationId,
-				agreement.StartSeasonYear,
-				agreement.YearsRemaining,
-				agreement.TermYears,
-				agreement.AnnualSponsorship,
-				agreement.TotalCommitment);
-		}
-
-		string teamShort = agreement == null
-			? "Open Play"
-			: (_session.RecruitingSchool(agreement.OrganizationId)?.ShortName ?? "Signed");
-		card.Bind(PlayerProfiles.FromOpenPlay(
-			player,
-			_session.OpenPlay,
-			_session.CurrentDate,
-			teamShort,
-			snapshot,
-			_session.InterestCopy(player.Id)));
-
-		layout.AddChild(MakeText(player.Priorities.Hook, _medium, 13, TextMuted, HorizontalAlignment.Left));
-		layout.AddChild(MakeText(_session.InterestCopy(player.Id), _medium, 13, TextPrimary, HorizontalAlignment.Left));
-		bool signing = SeasonCalendar.SigningWeek(GameSession.SeasonYear).OccursOn(_session.CurrentDate)
-			|| _session.CurrentDate == SeasonCalendar.SigningDeadline(GameSession.SeasonYear);
-		if (signing && agreement == null)
-		{
-			var offer = new Button
-			{
-				Text = "MAKE $450 OFFER",
-				MouseDefaultCursorShape = CursorShape.PointingHand,
-			};
-			offer.Pressed += () =>
-			{
-				_session.TryPlaceRecruitingOffer(player.Id, 450);
-				Refresh();
-			};
-			layout.AddChild(offer);
+			card.Bind(PlayerProfiles.FromWorld(player, _session.World));
 		}
 	}
 

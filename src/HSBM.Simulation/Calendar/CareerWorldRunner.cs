@@ -16,7 +16,7 @@ public static class CareerWorldRunner
 		string name = "League Sim",
 		string userOrganizationId = "")
 	{
-		DateOnly start = SeasonCalendar.OpenPlayStart(world.SeasonYear);
+		DateOnly start = SeasonCalendar.TryoutSignupDay(world.SeasonYear);
 		var state = new CareerState
 		{
 			Career = new Career
@@ -47,8 +47,6 @@ public static class CareerWorldRunner
 		state.Lineups = [];
 		state.Rotations = [];
 		state.BoxScores = [];
-		state.Offers = [];
-		state.Agreements = [];
 		state.SyncClockFromCareer();
 		NewsWire.Publish(state);
 		return state;

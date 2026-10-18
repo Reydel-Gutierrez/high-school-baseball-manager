@@ -4,8 +4,8 @@ namespace HSBM.Simulation;
 
 /// <summary>
 /// January 5: the baseball year rolls. Seniors who remain are archived,
-/// everyone else advances a grade, a new Open Play class is posted, and
-/// the district schedule is rebuilt.
+/// everyone else advances a grade, each school posts its tryout sign-up
+/// sheet, and the district schedule is rebuilt.
 /// </summary>
 public static class SeasonRollover
 {
@@ -20,12 +20,10 @@ public static class SeasonRollover
 		PlayerGraduation.Apply(state.Players, previousYear);
 		DevelopmentDesk.Offseason(state, previousYear, rng.Derive(53));
 		AdvanceReturningPlayers(state);
-		TickAgreements(state);
-		state.Offers.Clear();
-		state.RecruitingInterest.Clear();
-		state.RecruitingTargets.Clear();
 
-		ReplaceIncomingClass(state, catalog, year, rng.Derive(41));
+		// Kids who were cut or left a team last year are no longer tracked.
+		state.Players.RemoveAll(player => player.IsUnsigned && !player.Alumni);
+		TryoutDesk.PostSignups(state, year, rng.Derive(41));
 		ReplaceSchedule(state, catalog, year, rng.Derive(47));
 		AddSeasonRecords(state, year);
 	}
@@ -53,49 +51,6 @@ public static class SeasonRollover
 			player.Age++;
 			player.Injury = null;
 		}
-	}
-
-	private static void TickAgreements(CareerState state)
-	{
-		foreach (PlayerAgreement agreement in state.Agreements)
-		{
-			if (agreement.YearsRemaining > 0)
-			{
-				agreement.YearsRemaining--;
-			}
-		}
-	}
-
-	private static void ReplaceIncomingClass(
-		CareerState state,
-		LeagueCatalog catalog,
-		int year,
-		ISeededRandom rng)
-	{
-		state.Players.RemoveAll(player => player.IsUnsigned && !player.Alumni);
-		state.OpenPlay.Clear();
-
-		var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		foreach (Player player in state.Players)
-		{
-			usedNames.Add(player.FullName);
-		}
-
-		var incoming = new List<Player>();
-		foreach (DistrictIdentity district in catalog.Districts)
-		{
-			ISeededRandom districtRng = rng.Derive(StableSalt(district.Id));
-			List<Player> districtPlayers = OpenPlayGenerator.GenerateDistrict(
-				district.Id,
-				year,
-				districtRng,
-				usedNames);
-			incoming.AddRange(districtPlayers);
-			ISeededRandom simRng = rng.Derive(StableSalt(district.Id) ^ 917);
-			state.OpenPlay.Add(OpenPlaySimulator.Simulate(district.Id, year, districtPlayers, simRng));
-		}
-
-		state.Players.AddRange(incoming);
 	}
 
 	private static void ReplaceSchedule(
@@ -132,20 +87,6 @@ public static class SeasonRollover
 				TeamId = team.Id,
 				SeasonYear = year,
 			});
-		}
-	}
-
-	private static int StableSalt(string value)
-	{
-		unchecked
-		{
-			int hash = 17;
-			foreach (char c in value)
-			{
-				hash = (hash * 31) + c;
-			}
-
-			return hash;
 		}
 	}
 }

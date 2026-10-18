@@ -296,31 +296,6 @@ public sealed class SqliteCareerStore : ICareerStore
 				InsertTraining(tx, plan);
 			}
 
-			foreach (PlayerAgreement agreement in state.Agreements)
-			{
-				InsertAgreement(tx, agreement);
-			}
-
-			foreach (RecruitingOffer offer in state.Offers)
-			{
-				InsertOffer(tx, offer);
-			}
-
-			foreach (RecruitingInterest interest in state.RecruitingInterest)
-			{
-				InsertInterest(tx, interest);
-			}
-
-			foreach (RecruitingTarget target in state.RecruitingTargets)
-			{
-				InsertTarget(tx, target);
-			}
-
-			foreach (DistrictOpenPlay session in state.OpenPlay)
-			{
-				InsertOpenPlay(tx, session);
-			}
-
 			foreach (NewsStory story in state.News)
 			{
 				InsertNews(tx, story);
@@ -363,11 +338,6 @@ public sealed class SqliteCareerStore : ICareerStore
 			Rotations = ReadRotations(),
 			Training = ReadTraining(),
 			BoxScores = ReadBoxScores(),
-			Agreements = ReadAgreements(),
-			Offers = ReadOffers(),
-			RecruitingInterest = ReadInterest(),
-			RecruitingTargets = ReadTargets(),
-			OpenPlay = ReadOpenPlay(),
 			News = ReadNews(),
 			Transactions = ReadTransactions(),
 		};
@@ -440,6 +410,7 @@ public sealed class SqliteCareerStore : ICareerStore
 		AddColumnIfMissing("players", "college_path", "TEXT NOT NULL DEFAULT ''");
 		AddColumnIfMissing("players", "development_progress", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("players", "season_start_rating", "INTEGER NOT NULL DEFAULT 0");
+		AddColumnIfMissing("players", "tryout_call", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "wins", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "losses", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "district_titles", "INTEGER NOT NULL DEFAULT 0");
@@ -493,13 +464,13 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating)
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating, tryout_call)
 			VALUES (
 				$id, $first, $last, $year, $bats, $throws, $pos, $sec, $grade, $age, $org, $team, $level, $jersey,
 				$contact, $power, $disc, $speed, $field, $arm, $stuff, $control, $move, $stam, $pot, $arch,
 				$appearance, $height, $weight, $strength, $personality,
 				$injuryKind, $injuryStart, $injuryUntil, $injuryDtd, $alumni,
-				$gradYear, $collegeId, $collegeSchool, $collegePath, $devProgress, $seasonStart);
+				$gradYear, $collegeId, $collegeSchool, $collegePath, $devProgress, $seasonStart, $tryoutCall);
 			""";
 		command.Parameters.AddWithValue("$id", player.Id.ToString());
 		command.Parameters.AddWithValue("$first", player.FirstName);
@@ -551,6 +522,7 @@ public sealed class SqliteCareerStore : ICareerStore
 		command.Parameters.AddWithValue("$collegePath", player.CollegePath ?? "");
 		command.Parameters.AddWithValue("$devProgress", player.DevelopmentProgress);
 		command.Parameters.AddWithValue("$seasonStart", player.SeasonStartRating);
+		command.Parameters.AddWithValue("$tryoutCall", (int)player.TryoutCall);
 		command.ExecuteNonQuery();
 	}
 
@@ -793,7 +765,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating, tryout_call
 			FROM players ORDER BY id;
 			""";
 		using SqliteDataReader reader = command.ExecuteReader();
@@ -850,6 +822,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				CollegePath = reader.FieldCount > 39 && !reader.IsDBNull(39) ? reader.GetString(39) : "",
 				DevelopmentProgress = reader.FieldCount > 40 && !reader.IsDBNull(40) ? reader.GetInt32(40) : 0,
 				SeasonStartRating = reader.FieldCount > 41 && !reader.IsDBNull(41) ? reader.GetInt32(41) : 0,
+				TryoutCall = reader.FieldCount > 42 && !reader.IsDBNull(42) ? (TryoutCall)reader.GetInt32(42) : TryoutCall.Pending,
 			});
 			Player restored = list[^1];
 			if (restored.Physical.HeightInches > 0)
@@ -1135,167 +1108,6 @@ public sealed class SqliteCareerStore : ICareerStore
 	private static Guid? ReadGuid(SqliteDataReader reader, int ordinal) =>
 		reader.IsDBNull(ordinal) ? null : Guid.Parse(reader.GetString(ordinal));
 
-	private List<PlayerAgreement> ReadAgreements()
-	{
-		var list = new List<PlayerAgreement>();
-		if (!TableExists("player_agreements"))
-		{
-			return list;
-		}
-
-		using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = """
-			SELECT id, player_id, organization_id, start_season_year, term_years, years_remaining, annual_sponsorship
-			FROM player_agreements;
-			""";
-		using SqliteDataReader reader = command.ExecuteReader();
-		while (reader.Read())
-		{
-			list.Add(new PlayerAgreement
-			{
-				Id = Guid.Parse(reader.GetString(0)),
-				PlayerId = Guid.Parse(reader.GetString(1)),
-				OrganizationId = reader.GetString(2),
-				StartSeasonYear = reader.GetInt32(3),
-				TermYears = reader.GetInt32(4),
-				YearsRemaining = reader.GetInt32(5),
-				AnnualSponsorship = reader.GetInt32(6),
-			});
-		}
-
-		return list;
-	}
-
-	private List<RecruitingOffer> ReadOffers()
-	{
-		var list = new List<RecruitingOffer>();
-		if (!TableExists("recruiting_offers"))
-		{
-			return list;
-		}
-
-		using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = """
-			SELECT id, player_id, organization_id, season_year, annual_sponsorship, term_years, offered_on, status
-			FROM recruiting_offers;
-			""";
-		using SqliteDataReader reader = command.ExecuteReader();
-		while (reader.Read())
-		{
-			list.Add(new RecruitingOffer
-			{
-				Id = Guid.Parse(reader.GetString(0)),
-				PlayerId = Guid.Parse(reader.GetString(1)),
-				OrganizationId = reader.GetString(2),
-				SeasonYear = reader.GetInt32(3),
-				AnnualSponsorship = reader.GetInt32(4),
-				TermYears = reader.GetInt32(5),
-				OfferedOn = DateOnly.Parse(reader.GetString(6), CultureInfo.InvariantCulture),
-				Status = (RecruitingOfferStatus)reader.GetInt32(7),
-			});
-		}
-
-		return list;
-	}
-
-	private List<DistrictOpenPlay> ReadOpenPlay()
-	{
-		var list = new List<DistrictOpenPlay>();
-		if (!TableExists("open_play"))
-		{
-			return list;
-		}
-
-		using SqliteCommand sessions = _connection.CreateCommand();
-		sessions.CommandText = "SELECT district_id, season_year FROM open_play;";
-		using SqliteDataReader sessionReader = sessions.ExecuteReader();
-		var headers = new List<(string DistrictId, int SeasonYear)>();
-		while (sessionReader.Read())
-		{
-			headers.Add((sessionReader.GetString(0), sessionReader.GetInt32(1)));
-		}
-
-		foreach ((string districtId, int seasonYear) in headers)
-		{
-			var playerIds = new List<Guid>();
-			var lines = new List<OpenPlayLine>();
-			using SqliteCommand linesCmd = _connection.CreateCommand();
-			linesCmd.CommandText = """
-				SELECT player_id, hit_games, at_bats, runs, hits, doubles, triples, home_runs, rbi, walks, strikeouts, stolen_bases,
-					pitch_games, games_started, wins, losses, saves, outs, hits_allowed, runs_allowed, earned_runs, walks_allowed,
-					strikeouts_pitch, home_runs_allowed, grade
-				FROM open_play_lines WHERE district_id = $d AND season_year = $y;
-				""";
-			linesCmd.Parameters.AddWithValue("$d", districtId);
-			linesCmd.Parameters.AddWithValue("$y", seasonYear);
-			using SqliteDataReader reader = linesCmd.ExecuteReader();
-			while (reader.Read())
-			{
-				Guid playerId = Guid.Parse(reader.GetString(0));
-				playerIds.Add(playerId);
-				TryoutPitchingLine? pitching = reader.IsDBNull(12)
-					? null
-					: new TryoutPitchingLine
-					{
-						Games = reader.GetInt32(12),
-						GamesStarted = reader.GetInt32(13),
-						Wins = reader.GetInt32(14),
-						Losses = reader.GetInt32(15),
-						Saves = reader.GetInt32(16),
-						Outs = reader.GetInt32(17),
-						Hits = reader.GetInt32(18),
-						Runs = reader.GetInt32(19),
-						EarnedRuns = reader.GetInt32(20),
-						Walks = reader.GetInt32(21),
-						Strikeouts = reader.GetInt32(22),
-						HomeRuns = reader.GetInt32(23),
-					};
-				lines.Add(new OpenPlayLine
-				{
-					PlayerId = playerId,
-					Hitting = new TryoutHittingLine
-					{
-						Games = reader.GetInt32(1),
-						AtBats = reader.GetInt32(2),
-						Runs = reader.GetInt32(3),
-						Hits = reader.GetInt32(4),
-						Doubles = reader.GetInt32(5),
-						Triples = reader.GetInt32(6),
-						HomeRuns = reader.GetInt32(7),
-						Rbi = reader.GetInt32(8),
-						Walks = reader.GetInt32(9),
-						Strikeouts = reader.GetInt32(10),
-						StolenBases = reader.GetInt32(11),
-					},
-					Pitching = pitching,
-					Grade = (LetterGrade)reader.GetInt32(24),
-				});
-			}
-
-			list.Add(new DistrictOpenPlay(districtId, seasonYear, SeasonCalendar.OpenPlay(seasonYear), playerIds, lines));
-		}
-
-		return list;
-	}
-
-	private void InsertAgreement(SqliteTransaction tx, PlayerAgreement agreement)
-	{
-		using SqliteCommand command = _connection.CreateCommand();
-		command.Transaction = tx;
-		command.CommandText = """
-			INSERT INTO player_agreements(id, player_id, organization_id, start_season_year, term_years, years_remaining, annual_sponsorship)
-			VALUES ($id, $player, $org, $start, $term, $left, $annual);
-			""";
-		command.Parameters.AddWithValue("$id", agreement.Id.ToString());
-		command.Parameters.AddWithValue("$player", agreement.PlayerId.ToString());
-		command.Parameters.AddWithValue("$org", agreement.OrganizationId);
-		command.Parameters.AddWithValue("$start", agreement.StartSeasonYear);
-		command.Parameters.AddWithValue("$term", agreement.TermYears);
-		command.Parameters.AddWithValue("$left", agreement.YearsRemaining);
-		command.Parameters.AddWithValue("$annual", agreement.AnnualSponsorship);
-		command.ExecuteNonQuery();
-	}
-
 	private void InsertNews(SqliteTransaction tx, NewsStory story)
 	{
 		using SqliteCommand command = _connection.CreateCommand();
@@ -1422,170 +1234,6 @@ public sealed class SqliteCareerStore : ICareerStore
 		}
 
 		return list;
-	}
-
-	private void InsertOffer(SqliteTransaction tx, RecruitingOffer offer)
-	{
-		using SqliteCommand command = _connection.CreateCommand();
-		command.Transaction = tx;
-		command.CommandText = """
-			INSERT INTO recruiting_offers(id, player_id, organization_id, season_year, annual_sponsorship, term_years, offered_on, status)
-			VALUES ($id, $player, $org, $year, $annual, $term, $date, $status);
-			""";
-		command.Parameters.AddWithValue("$id", offer.Id.ToString());
-		command.Parameters.AddWithValue("$player", offer.PlayerId.ToString());
-		command.Parameters.AddWithValue("$org", offer.OrganizationId);
-		command.Parameters.AddWithValue("$year", offer.SeasonYear);
-		command.Parameters.AddWithValue("$annual", offer.AnnualSponsorship);
-		command.Parameters.AddWithValue("$term", offer.TermYears);
-		command.Parameters.AddWithValue("$date", offer.OfferedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-		command.Parameters.AddWithValue("$status", (int)offer.Status);
-		command.ExecuteNonQuery();
-	}
-
-	private void InsertInterest(SqliteTransaction tx, RecruitingInterest interest)
-	{
-		using SqliteCommand command = _connection.CreateCommand();
-		command.Transaction = tx;
-		command.CommandText = """
-			INSERT INTO recruiting_interest(player_id, organization_id, season_year, noted_on, heat)
-			VALUES ($player, $org, $year, $date, $heat);
-			""";
-		command.Parameters.AddWithValue("$player", interest.PlayerId.ToString());
-		command.Parameters.AddWithValue("$org", interest.OrganizationId);
-		command.Parameters.AddWithValue("$year", interest.SeasonYear);
-		command.Parameters.AddWithValue("$date", interest.NotedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-		command.Parameters.AddWithValue("$heat", interest.Heat);
-		command.ExecuteNonQuery();
-	}
-
-	private void InsertTarget(SqliteTransaction tx, RecruitingTarget target)
-	{
-		using SqliteCommand command = _connection.CreateCommand();
-		command.Transaction = tx;
-		command.CommandText = """
-			INSERT INTO recruiting_targets(player_id, team_id, player_name, season_year)
-			VALUES ($player, $team, $name, $year);
-			""";
-		command.Parameters.AddWithValue(
-			"$player",
-			target.PlayerId == Guid.Empty ? "" : target.PlayerId.ToString());
-		command.Parameters.AddWithValue("$team", target.TeamId);
-		command.Parameters.AddWithValue("$name", target.PlayerName);
-		command.Parameters.AddWithValue("$year", target.SeasonYear);
-		command.ExecuteNonQuery();
-	}
-
-	private List<RecruitingInterest> ReadInterest()
-	{
-		var list = new List<RecruitingInterest>();
-		if (!TableExists("recruiting_interest"))
-		{
-			return list;
-		}
-
-		using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = """
-			SELECT player_id, organization_id, season_year, noted_on, heat
-			FROM recruiting_interest;
-			""";
-		using SqliteDataReader reader = command.ExecuteReader();
-		while (reader.Read())
-		{
-			list.Add(new RecruitingInterest
-			{
-				PlayerId = Guid.Parse(reader.GetString(0)),
-				OrganizationId = reader.GetString(1),
-				SeasonYear = reader.GetInt32(2),
-				NotedOn = DateOnly.Parse(reader.GetString(3), CultureInfo.InvariantCulture),
-				Heat = reader.GetInt32(4),
-			});
-		}
-
-		return list;
-	}
-
-	private List<RecruitingTarget> ReadTargets()
-	{
-		var list = new List<RecruitingTarget>();
-		if (!TableExists("recruiting_targets"))
-		{
-			return list;
-		}
-
-		using SqliteCommand command = _connection.CreateCommand();
-		command.CommandText = """
-			SELECT player_id, team_id, player_name, season_year
-			FROM recruiting_targets;
-			""";
-		using SqliteDataReader reader = command.ExecuteReader();
-		while (reader.Read())
-		{
-			string playerText = reader.GetString(0);
-			list.Add(new RecruitingTarget
-			{
-				PlayerId = Guid.TryParse(playerText, out Guid parsed) ? parsed : Guid.Empty,
-				TeamId = reader.GetString(1),
-				PlayerName = reader.GetString(2),
-				SeasonYear = reader.GetInt32(3),
-			});
-		}
-
-		return list;
-	}
-
-	private void InsertOpenPlay(SqliteTransaction tx, DistrictOpenPlay session)
-	{
-		using (SqliteCommand command = _connection.CreateCommand())
-		{
-			command.Transaction = tx;
-			command.CommandText = "INSERT INTO open_play(district_id, season_year) VALUES ($d, $y);";
-			command.Parameters.AddWithValue("$d", session.DistrictId);
-			command.Parameters.AddWithValue("$y", session.SeasonYear);
-			command.ExecuteNonQuery();
-		}
-
-		foreach (OpenPlayLine line in session.Lines)
-		{
-			using SqliteCommand command = _connection.CreateCommand();
-			command.Transaction = tx;
-			command.CommandText = """
-				INSERT INTO open_play_lines(
-					district_id, season_year, player_id, hit_games, at_bats, runs, hits, doubles, triples, home_runs, rbi, walks, strikeouts, stolen_bases,
-					pitch_games, games_started, wins, losses, saves, outs, hits_allowed, runs_allowed, earned_runs, walks_allowed, strikeouts_pitch, home_runs_allowed, grade)
-				VALUES (
-					$dist, $y, $player, $hg, $ab, $r, $h, $d2, $t, $hr, $rbi, $bb, $so, $sb,
-					$pg, $gs, $w, $l, $sv, $outs, $ha, $ra, $er, $bbp, $sop, $hra, $grade);
-				""";
-			command.Parameters.AddWithValue("$dist", session.DistrictId);
-			command.Parameters.AddWithValue("$y", session.SeasonYear);
-			command.Parameters.AddWithValue("$player", line.PlayerId.ToString());
-			command.Parameters.AddWithValue("$hg", line.Hitting.Games);
-			command.Parameters.AddWithValue("$ab", line.Hitting.AtBats);
-			command.Parameters.AddWithValue("$r", line.Hitting.Runs);
-			command.Parameters.AddWithValue("$h", line.Hitting.Hits);
-			command.Parameters.AddWithValue("$d2", line.Hitting.Doubles);
-			command.Parameters.AddWithValue("$t", line.Hitting.Triples);
-			command.Parameters.AddWithValue("$hr", line.Hitting.HomeRuns);
-			command.Parameters.AddWithValue("$rbi", line.Hitting.Rbi);
-			command.Parameters.AddWithValue("$bb", line.Hitting.Walks);
-			command.Parameters.AddWithValue("$so", line.Hitting.Strikeouts);
-			command.Parameters.AddWithValue("$sb", line.Hitting.StolenBases);
-			command.Parameters.AddWithValue("$pg", (object?)line.Pitching?.Games ?? DBNull.Value);
-			command.Parameters.AddWithValue("$gs", (object?)line.Pitching?.GamesStarted ?? DBNull.Value);
-			command.Parameters.AddWithValue("$w", (object?)line.Pitching?.Wins ?? DBNull.Value);
-			command.Parameters.AddWithValue("$l", (object?)line.Pitching?.Losses ?? DBNull.Value);
-			command.Parameters.AddWithValue("$sv", (object?)line.Pitching?.Saves ?? DBNull.Value);
-			command.Parameters.AddWithValue("$outs", (object?)line.Pitching?.Outs ?? DBNull.Value);
-			command.Parameters.AddWithValue("$ha", (object?)line.Pitching?.Hits ?? DBNull.Value);
-			command.Parameters.AddWithValue("$ra", (object?)line.Pitching?.Runs ?? DBNull.Value);
-			command.Parameters.AddWithValue("$er", (object?)line.Pitching?.EarnedRuns ?? DBNull.Value);
-			command.Parameters.AddWithValue("$bbp", (object?)line.Pitching?.Walks ?? DBNull.Value);
-			command.Parameters.AddWithValue("$sop", (object?)line.Pitching?.Strikeouts ?? DBNull.Value);
-			command.Parameters.AddWithValue("$hra", (object?)line.Pitching?.HomeRuns ?? DBNull.Value);
-			command.Parameters.AddWithValue("$grade", (int)line.Grade);
-			command.ExecuteNonQuery();
-		}
 	}
 
 	private void InsertProgramSeason(SqliteTransaction tx, ProgramSeasonResult season)

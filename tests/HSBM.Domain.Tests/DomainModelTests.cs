@@ -108,7 +108,7 @@ public class SeasonCalendarTests
 	public void Opening_day_and_roster_freeze_match_the_baseball_year()
 	{
 		Assert.Equal(new DateOnly(2026, 2, 16), SeasonCalendar.OpeningDay(2026));
-		Assert.Equal(new DateOnly(2026, 2, 1), SeasonCalendar.SigningDeadline(2026));
+		Assert.Equal(new DateOnly(2026, 2, 1), SeasonCalendar.TryoutDecisionDay(2026));
 		Assert.Equal(new DateOnly(2026, 2, 8), SeasonCalendar.InitialRosterCut(2026));
 		Assert.Equal(new DateOnly(2026, 4, 24), SeasonCalendar.RosterFreeze(2026));
 		Assert.Equal(new DateOnly(2026, 5, 3), SeasonCalendar.RegularSeasonEnd(2026));

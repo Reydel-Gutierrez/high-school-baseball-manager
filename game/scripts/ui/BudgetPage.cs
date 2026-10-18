@@ -148,20 +148,15 @@ public partial class BudgetPage : Control
 		_subtitle.Text = _session.Organization.Name.ToUpperInvariant();
 
 		ProgramFinanceSnapshot sheet = FinanceDesk.Current(_session);
-		_availableValue.Text = PlayerAgreement.FormatMoney(sheet.Available);
+		_availableValue.Text = Money.Format(sheet.Available);
 
 		var copy = new List<string>(3)
 		{
-			$"Annual budget {PlayerAgreement.FormatMoney(sheet.BaseballBudget)}",
+			$"Annual budget {Money.Format(sheet.BaseballBudget)}",
 		};
 		if (sheet.CoachSalary > 0)
 		{
-			copy.Add($"head coach {PlayerAgreement.FormatMoney(sheet.CoachSalary)}");
-		}
-
-		if (sheet.RecruitingCommitted > 0)
-		{
-			copy.Add($"recruiting {PlayerAgreement.FormatMoney(sheet.RecruitingCommitted)}");
+			copy.Add($"head coach {Money.Format(sheet.CoachSalary)}");
 		}
 
 		_availableCopy.Text = string.Join("  ·  ", copy);

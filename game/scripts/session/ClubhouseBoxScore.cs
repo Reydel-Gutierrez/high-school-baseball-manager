@@ -11,17 +11,8 @@ public static class ClubhouseBoxScore
 {
 	public const int Innings = 7;
 
-	public static BoxScore For(CalendarContest game, TryoutCamp? tryouts = null)
+	public static BoxScore For(CalendarContest game)
 	{
-		if (game.IsTryout)
-		{
-			TryoutGame? tryout = tryouts?.GameNumber(game.TryoutNumber);
-			if (tryout != null)
-			{
-				return ForTryout(tryout, game);
-			}
-		}
-
 		if (game.GameId != Guid.Empty)
 		{
 			BoxScore? live = ForWorld(game);
@@ -75,80 +66,6 @@ public static class ClubhouseBoxScore
 			loser.Name,
 			save?.Name,
 			FieldingPlays(homeWon ? home : away, rng));
-	}
-
-	public static BoxScore ForTryout(TryoutGame tryout, CalendarContest? contest = null)
-	{
-		CalendarContest game = contest ?? ClubhouseCalendar.FromTryout(tryout);
-		BoxScoreSide away = new(
-			TryoutGame.BlueId,
-			TryoutGame.BlueName,
-			"BLUE",
-			tryout.BlueInningRuns,
-			tryout.BlueRuns,
-			tryout.BlueHits,
-			tryout.BlueErrors,
-			false,
-			ToBatters(tryout.BlueBatters),
-			ToPitchers(tryout.BluePitchers));
-		bool skippedLast = tryout.WhiteRuns > tryout.BlueRuns
-			&& tryout.WhiteInningRuns.Length == Innings
-			&& tryout.WhiteInningRuns[Innings - 1] == 0;
-		BoxScoreSide home = new(
-			TryoutGame.WhiteId,
-			TryoutGame.WhiteName,
-			"WHITE",
-			tryout.WhiteInningRuns,
-			tryout.WhiteRuns,
-			tryout.WhiteHits,
-			tryout.WhiteErrors,
-			skippedLast,
-			ToBatters(tryout.WhiteBatters),
-			ToPitchers(tryout.WhitePitchers));
-		return new BoxScore(
-			game,
-			away,
-			home,
-			tryout.WinningPitcher,
-			tryout.LosingPitcher,
-			tryout.Save,
-			tryout.FieldingPlays);
-	}
-
-	private static List<BoxScoreBatter> ToBatters(IReadOnlyList<TryoutGameBatter> source)
-	{
-		var batters = new List<BoxScoreBatter>(source.Count);
-		foreach (TryoutGameBatter batter in source)
-		{
-			batters.Add(new BoxScoreBatter(
-				batter.Name,
-				batter.LastName,
-				batter.Position,
-				batter.AtBats,
-				batter.Runs,
-				batter.Hits,
-				batter.HomeRuns,
-				batter.Rbi));
-		}
-
-		return batters;
-	}
-
-	private static List<BoxScorePitcher> ToPitchers(IReadOnlyList<TryoutGamePitcher> source)
-	{
-		var pitchers = new List<BoxScorePitcher>(source.Count);
-		foreach (TryoutGamePitcher pitcher in source)
-		{
-			pitchers.Add(new BoxScorePitcher(
-				pitcher.Name,
-				pitcher.LastName,
-				pitcher.Innings,
-				pitcher.Hits,
-				pitcher.Walks,
-				pitcher.Strikeouts));
-		}
-
-		return pitchers;
 	}
 
 	private static BoxScoreSide BuildSide(HubTeam team, int runs, TeamLevel level, Random rng, bool isHome)

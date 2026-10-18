@@ -23,7 +23,7 @@ public static class WorldIntegrity
 
 	public static IReadOnlyList<string> InspectGenerated(GeneratedWorld world)
 	{
-		DateOnly start = SeasonCalendar.OpenPlayStart(world.SeasonYear);
+		DateOnly start = SeasonCalendar.TryoutSignupDay(world.SeasonYear);
 		return Inspect(CareerWorldRunner.FromGenerated(world, "Integrity", ""));
 	}
 
@@ -57,12 +57,11 @@ public static class WorldIntegrity
 			issues.Add($"{seasonYear}: no state champion was recorded.");
 		}
 
-		int unsigned = state.Players.Count(player => player.IsUnsigned && !player.Alumni);
-		if (unsigned < LeagueCatalog.DistrictCount * LeagueCatalog.OpenPlayTargetPlayers)
+		int candidates = state.Players.Count(player => player.IsTryoutCandidate);
+		int expected = state.Organizations.Count(org => !LeagueCatalog.IsUnsignedOrganization(org.Id)) * 8;
+		if (candidates < expected)
 		{
-			issues.Add(
-				$"{seasonYear}: incoming unsigned class is {unsigned}, "
-				+ $"expected at least {LeagueCatalog.DistrictCount * LeagueCatalog.OpenPlayTargetPlayers}.");
+			issues.Add($"{seasonYear}: {candidates} tryout sign-ups posted, expected at least {expected}.");
 		}
 
 		int scheduled = state.Games.Count(game =>
@@ -162,7 +161,7 @@ public static class WorldIntegrity
 			List<Player> roster = state.Players
 				.Where(player => player.TeamId == team.Id && !player.Alumni)
 				.ToList();
-			bool inSeason = today >= SeasonCalendar.SigningDeadline(year)
+			bool inSeason = today >= SeasonCalendar.TryoutDecisionDay(year)
 				&& today <= SeasonCalendar.Graduation(year).Start;
 			if (inSeason && roster.Count < MinPlayableRoster)
 			{

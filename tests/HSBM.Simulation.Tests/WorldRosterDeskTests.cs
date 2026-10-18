@@ -37,20 +37,17 @@ public class WorldRosterDeskTests
 	}
 
 	[Fact]
-	public void Under_cap_school_signs_an_unsigned_district_player()
+	public void Under_cap_school_never_signs_a_kid_who_is_not_on_a_team()
 	{
 		CareerState state = World(new DateOnly(2026, 2, 20));
 		AddRoster(state, "great-lakes", TeamLevel.Varsity, 20, 55);
 		AddRoster(state, "great-lakes", TeamLevel.JuniorVarsity, 18, 48);
 		Player mason = AddUnsigned(state, "Mason", "Young", 64);
 
-		List<PlayerTransaction> posted = WorldRosterDesk.AdvanceDay(state, state.Career.CurrentDate, new SeededRandom(21));
+		WorldRosterDesk.AdvanceDay(state, state.Career.CurrentDate, new SeededRandom(21));
 
-		PlayerTransaction? signing = posted.FirstOrDefault(t => t.Kind == PlayerTransactionKind.OpenPool);
-		Assert.NotNull(signing);
-		Assert.Equal("Great Lakes signed Mason Young.", signing.Headline);
-		Assert.False(mason.IsUnsigned);
-		Assert.Equal("great-lakes", mason.OrganizationId);
+		Assert.True(mason.IsUnsigned);
+		Assert.Equal(LeagueCatalog.InactiveTeamId, mason.TeamId);
 	}
 
 	[Fact]
@@ -107,7 +104,7 @@ public class WorldRosterDeskTests
 				new TeamIdentity("cascade-jv", "cascade", TeamLevel.JuniorVarsity, 20),
 				new TeamIdentity("great-lakes-varsity", "great-lakes", TeamLevel.Varsity, 20),
 				new TeamIdentity("great-lakes-jv", "great-lakes", TeamLevel.JuniorVarsity, 20),
-				new TeamIdentity(LeagueCatalog.OpenPlayTeamId("great-lakes"), LeagueCatalog.UnsignedOrganizationId, TeamLevel.JuniorVarsity, 0),
+				new TeamIdentity(LeagueCatalog.InactiveTeamId, LeagueCatalog.UnsignedOrganizationId, TeamLevel.JuniorVarsity, 0),
 			],
 			Players = [],
 			Transactions = [],
@@ -166,7 +163,7 @@ public class WorldRosterDeskTests
 			PrimaryPosition = PlayerPosition.Shortstop,
 			Grade = PlayerGrade.Freshman,
 			OrganizationId = LeagueCatalog.UnsignedOrganizationId,
-			TeamId = LeagueCatalog.OpenPlayTeamId("great-lakes"),
+			TeamId = LeagueCatalog.InactiveTeamId,
 			TeamLevel = TeamLevel.JuniorVarsity,
 			Ratings = PlayerRatings.Clamp(overall, overall, overall, overall, overall, overall, 30, 30, 30, 30),
 		};

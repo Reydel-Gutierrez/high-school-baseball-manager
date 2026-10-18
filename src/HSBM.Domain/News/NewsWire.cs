@@ -144,27 +144,25 @@ public static class NewsWire
 				continue;
 			}
 
-			string key = $"signing:{player.Id:N}:{signedOn:yyyyMMdd}";
+			string key = $"tryout:{player.Id:N}:{signedOn:yyyyMMdd}";
 			if (!seen.Add(key))
 			{
 				continue;
 			}
 
-			string money = "";
-			PlayerAgreement? deal = state.AgreementFor(player.Id);
-			if (deal != null && deal.AnnualSponsorship > 0)
-			{
-				money = $" The deal is {deal.AnnualLabel} per season for {deal.TermYears} years.";
-			}
-
+			bool varsity = player.TeamLevel == TeamLevel.Varsity;
+			bool young = player.Grade <= PlayerGrade.Sophomore;
+			string headline = varsity && young
+				? $"{player.FullName} makes {school.ShortName} varsity as a {GradeWord(player.Grade)}."
+				: $"{player.FullName} earns a spot at {school.ShortName}.";
 			stories.Add(Story(
 				signedOn,
-				NewsTag.Recruiting,
-				$"{player.FullName} signs with {school.ShortName}.",
-				$"{player.FullName}, a {player.Grade.ToAbbrev()} {player.DisplayPosition}, is in the {school.ShortName} incoming class.{money}",
-				school.Id == userOrg
-					? "He is on the roster. Signing Week is how the class actually lands."
-					: "District schools are filling the same incoming class the user is recruiting from.",
+				NewsTag.Tryouts,
+				headline,
+				$"{player.FullName}, a {player.Grade.ToAbbrev()} {player.DisplayPosition}, came out of tryouts on the {school.ShortName} {player.TeamLevel.ToLabel()} roster.",
+				varsity && young
+					? "Underclassmen don't usually crack a varsity lineup card. This one forced the issue in tryout week."
+					: "Every roster in the district was built the same way: whoever showed up, and whoever was good enough.",
 				key,
 				school.Id,
 				player.FullName));
@@ -539,7 +537,7 @@ public static class NewsWire
 		NewsTag.Playoffs => 0,
 		NewsTag.Results => 1,
 		NewsTag.Rankings => 2,
-		NewsTag.Recruiting => 2,
+		NewsTag.Tryouts => 2,
 		NewsTag.Calendar => 3,
 		NewsTag.Coach => 3,
 		NewsTag.Freshman => 4,
@@ -575,20 +573,20 @@ public static class NewsWire
 	{
 		return item.Id switch
 		{
-			"open-play" => (
+			"tryout-week" => (
 				NewsTag.Calendar,
-				$"District Open Play is underway in {world.SeasonYear}.",
-				"Unsigned incoming players are in the same games every school is watching. Performances this fortnight feed Signing Week, not the regular-season ledger.",
-				"This is the first public look at the class. The schools that scout it honestly will enter February with a board, not a guess."),
-			"signing-week" => (
+				$"Tryouts open at every school in {world.SeasonYear}.",
+				"Freshmen, returning JV kids, and a few transfers are on the field together. Six days of drills, bullpens, and scrimmages decide who makes it.",
+				"Coaches see what a kid can do with a bat in his hands. The sign-up sheet only told them his name and his shoe size."),
+			"tryout-decisions" => (
 				NewsTag.Calendar,
-				"Signing Week opens across the four districts.",
-				"Offers are on the table. Players weigh reputation, playing time, and sponsorship before the deadline locks the incoming class.",
-				"Miss this window and the leftover pool is thinner, older, and already passed over."),
+				"Decision Day: the lists go up.",
+				"Varsity, JV, or cut. Every school posts its rosters today.",
+				"Some kids will be back next year. Some will find another sport. That's high school baseball."),
 			"incoming-class" => (
 				NewsTag.Calendar,
-				"Incoming classes are posted.",
-				"Normal signing is closed. Every program's new names, positions, and remaining eligibility are on the board.",
+				"Rosters are posted.",
+				"Every program's new names, positions, and remaining eligibility are on the board.",
 				"Roster week starts now. The varsity that opens in February is built from this list."),
 			"opening-day" => (
 				NewsTag.Calendar,
@@ -1100,4 +1098,12 @@ public static class NewsWire
 			SubjectOrganizationId = organizationId,
 			SubjectPlayerName = playerName,
 		};
+
+	private static string GradeWord(PlayerGrade grade) => grade switch
+	{
+		PlayerGrade.Freshman => "freshman",
+		PlayerGrade.Sophomore => "sophomore",
+		PlayerGrade.Junior => "junior",
+		_ => "senior",
+	};
 }

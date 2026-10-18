@@ -17,34 +17,24 @@ public class AdvanceDayGateTests
 	[Fact]
 	public void Tryout_decisions_stop_simulation_on_the_deadline()
 	{
-		DateOnly deadline = SeasonCalendar.TryoutDecisionDeadline(2026);
-		AdvanceDayInterrupt? stop = AdvanceDayGate.Evaluate(Clear(deadline));
+		DateOnly deadline = SeasonCalendar.TryoutDecisionDay(2026);
+		AdvanceDayInterrupt? stop = AdvanceDayGate.Evaluate(Clear(deadline) with { TryoutDecisionsPending = true });
 		Assert.NotNull(stop);
 		Assert.Equal(AdvanceDayInterruptKind.TryoutDecision, stop.Kind);
 		Assert.Equal("GO TO TRYOUTS", stop.ActionLabel);
-		Assert.Contains("Tryout decisions must be completed", stop.Body);
-		Assert.Contains("before January 25", stop.Body);
+		Assert.Contains("Tryout decisions are due today", stop.Body);
+		Assert.Null(AdvanceDayGate.Evaluate(Clear(deadline)));
 	}
 
 	[Fact]
 	public void The_day_after_tryouts_does_not_keep_blocking()
 	{
 		AdvanceDayInterrupt? stop = AdvanceDayGate.Evaluate(
-			Clear(SeasonCalendar.TryoutDecisionDeadline(2026).AddDays(1)) with
+			Clear(SeasonCalendar.TryoutDecisionDay(2026).AddDays(1)) with
 			{
 				TryoutDecisionsPending = true,
 			});
 		Assert.Null(stop);
-	}
-
-	[Fact]
-	public void Signing_deadline_cannot_be_skipped()
-	{
-		AdvanceDayInterrupt? stop = AdvanceDayGate.Evaluate(Clear(SeasonCalendar.SigningDeadline(2026)));
-		Assert.NotNull(stop);
-		Assert.Equal(AdvanceDayInterruptKind.SigningDeadline, stop.Kind);
-		Assert.Equal("GO TO SIGNING", stop.ActionLabel);
-		Assert.Contains("before February 1", stop.Body);
 	}
 
 	[Fact]
@@ -117,7 +107,6 @@ public class AdvanceDayGateTests
 			2026,
 			TryoutDecisionsPending: false,
 			RosterOverLimit: false,
-			SigningIncomplete: false,
 			PlayoffGameToday: false,
 			JobOfferPending: false);
 }

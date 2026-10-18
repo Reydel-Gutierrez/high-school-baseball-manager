@@ -17,9 +17,13 @@ public class PlayerTransactionTests
 		Assert.Equal(
 			"Cascade promoted Luis Torres to Varsity.",
 			PlayerTransaction.Promoted(promoted, "Cascade", "cascade", march12).Headline);
+		signed.TeamLevel = TeamLevel.JuniorVarsity;
 		Assert.Equal(
-			"Great Lakes signed Mason Young.",
-			PlayerTransaction.FromSigning(signed, "Great Lakes", "great-lakes", march11).Headline);
+			"Mason Young made the Great Lakes JV roster.",
+			PlayerTransaction.MadeTeam(signed, "Great Lakes", "great-lakes", march11).Headline);
+		Assert.Equal(
+			"Great Lakes cut Mason Young after tryouts.",
+			PlayerTransaction.CutAtTryouts(signed, "Great Lakes", "great-lakes", march11).Headline);
 		Assert.Equal(
 			"Palmetto released Diego Gonzalez.",
 			PlayerTransaction.Released(released, "Palmetto", "palmetto", march9).Headline);

@@ -47,7 +47,7 @@ public static class HallOfFameDesk
 
 	public static OrganizationState? ProgramFor(GameSession session) =>
 		session.LeagueProgram(session.CatalogOrganizationId)
-		?? session.RecruitingSchool(session.CatalogOrganizationId);
+		?? session.SchoolState(session.CatalogOrganizationId);
 
 	public static ProgramHallOfFameInductee? Select(GameSession session)
 	{

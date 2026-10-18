@@ -15,7 +15,7 @@ public static class MessagesDesk
 		var items = new List<InboxMessage>();
 		CollectPendingGates(items, session);
 		CollectGameDay(items, session);
-		CollectRecruiting(items, session);
+		CollectTryouts(items, session);
 		CollectRecentDecisions(items, session);
 		CollectScouting(items, session);
 		CollectBoard(items, session);
@@ -175,148 +175,74 @@ public static class MessagesDesk
 			game: game);
 	}
 
-	private static void CollectRecruiting(List<InboxMessage> items, GameSession session)
+	private static void CollectTryouts(List<InboxMessage> items, GameSession session)
 	{
 		int year = GameSession.SeasonYear;
 		DateOnly date = session.CurrentDate;
 		DateOnly tomorrow = date.AddDays(1);
-		SeasonEvent openPlay = SeasonCalendar.OpenPlay(year);
-		SeasonEvent signing = SeasonCalendar.SigningWeek(year);
-		DateOnly deadline = SeasonCalendar.SigningDeadline(year);
-		RecruitingMarket market = session.RecruitingMarket;
-		string orgId = session.CatalogOrganizationId;
-		int pending = market.PendingCount(orgId);
-		int remaining = market.RemainingNeed(orgId);
-
-		if (openPlay.End == tomorrow || (openPlay.OccursOn(date) && openPlay.End == date))
+		SeasonEvent week = SeasonCalendar.TryoutWeek(year);
+		DateOnly decision = SeasonCalendar.TryoutDecisionDay(year);
+		IReadOnlyList<Player> candidates = session.TryoutCandidates;
+		if (candidates.Count == 0 || date > decision)
 		{
-			string when = openPlay.End == date ? "today" : "tomorrow";
-			Add(
-				items,
-				session,
-				"recruit-decisions",
-				InboxChannel.Urgent,
-				6,
-				$"Tryout roster decisions due {when}",
-				"Open Play closes. Signing week is next.",
-				$"District Open Play ends {when}. Unsigned players you still want need a look before the pool turns into offers.",
-				InboxDestination.Tryouts,
-				"OPEN RECRUITING");
+			return;
 		}
-		else if (openPlay.OccursOn(date))
+
+		int pending = 0;
+		foreach (Player player in candidates)
+		{
+			if (player.TryoutCall == TryoutCall.Pending)
+			{
+				pending++;
+			}
+		}
+
+		if (date < week.Start)
 		{
 			Add(
 				items,
 				session,
-				"recruit-open-play",
+				$"tryout-signups-{year}",
 				InboxChannel.Scouting,
-				7,
-				"District Open Play is live",
-				$"{market.UnsignedProspects.Count} unsigned players on the board.",
-				"Two weeks of background games. Schools scout the same performances. No Game Day — results feed recruiting.",
+				8,
+				$"{candidates.Count} students signed up for tryouts",
+				$"Tryout week runs {week.FormatDates()}.",
+				"Mostly freshmen, plus a few older kids and transfers. All you have is a first look — grade, position, size. You'll see them play during tryout week.",
 				InboxDestination.Tryouts,
-				"OPEN RECRUITING");
+				"OPEN TRYOUTS");
+			return;
 		}
 
-		if (signing.Start == tomorrow)
+		if (week.OccursOn(date))
 		{
+			int day = TryoutEvaluation.DaysSeen(year, date);
 			Add(
 				items,
 				session,
-				"recruit-signing-soon",
+				$"tryout-day-{year}-{day}",
+				day >= TryoutEvaluation.TryoutDays - 1 ? InboxChannel.Urgent : InboxChannel.Scouting,
+				day >= TryoutEvaluation.TryoutDays - 1 ? 6 : 8,
+				$"Tryouts, day {day} of {TryoutEvaluation.TryoutDays}",
+				pending > 0 ? $"{pending} kids still undecided." : "Every candidate has a call.",
+				"Your staff's read on every kid narrows each day. The assistant coach's suggestions get sharper too.",
+				InboxDestination.Tryouts,
+				"OPEN TRYOUTS");
+		}
+
+		if (date == decision || tomorrow == decision)
+		{
+			string when = date == decision ? "today" : "tomorrow";
+			Add(
+				items,
+				session,
+				$"tryout-decision-{year}",
 				InboxChannel.Urgent,
-				6,
-				"Signing week starts tomorrow",
-				remaining > 0
-					? $"{remaining} incoming spots still open."
-					: "Offers go out tomorrow.",
-				"Sponsorship offers open tomorrow. Players weigh reputation, playing time, roster competition, and money before they commit.",
+				5,
+				$"Decision Day is {when}",
+				pending > 0 ? $"{pending} kids still undecided." : "Your list is ready to post.",
+				"Varsity, JV, or cut. Anyone you leave undecided, your assistant decides. If you call more kids up than you have spots, the weakest calls get bumped down a level or cut.",
 				InboxDestination.Tryouts,
-				"OPEN RECRUITING");
-		}
-
-		if (signing.OccursOn(date) || date == deadline)
-		{
-			bool lastDay = date == deadline || tomorrow == deadline;
-			if (lastDay)
-			{
-				string when = date == deadline ? "today" : "tomorrow";
-				Add(
-					items,
-					session,
-					"recruit-deadline",
-					InboxChannel.Urgent,
-					6,
-					$"Signing deadline {when}",
-					pending > 0
-						? $"{pending} offers still waiting on answers."
-						: remaining > 0
-							? $"{remaining} incoming spots still open."
-							: "Normal signing closes. Unsigned players hit the pool.",
-					"After the deadline, unsigned players enter the available-player pool and the incoming class is posted.",
-					InboxDestination.Tryouts,
-					"OPEN RECRUITING");
-			}
-			else if (pending > 0)
-			{
-				Add(
-					items,
-					session,
-					"recruit-pending-offers",
-					InboxChannel.Urgent,
-					7,
-					$"{pending} recruiting offers still out",
-					remaining > 0
-						? $"{remaining} incoming spots still open."
-						: "Waiting on commitments.",
-					"Signing week is open. Offers you have already placed are still waiting. Players decide before the deadline.",
-					InboxDestination.Tryouts,
-					"OPEN RECRUITING");
-			}
-			else if (remaining > 0)
-			{
-				Add(
-					items,
-					session,
-					"recruit-spots",
-					InboxChannel.Urgent,
-					7,
-					$"{remaining} incoming spots still open",
-					"Signing week is open. Place offers before the deadline.",
-					$"The program still needs {remaining} incoming player{(remaining == 1 ? "" : "s")} against the roster target.",
-					InboxDestination.Tryouts,
-					"OPEN RECRUITING");
-			}
-			else
-			{
-				Add(
-					items,
-					session,
-					"recruit-signing",
-					InboxChannel.Scouting,
-					8,
-					"Signing week is open",
-					signing.FormatDates(),
-					"Schools make sponsorship offers. Players weigh reputation, playing time, roster competition, and money before committing.",
-					InboxDestination.Tryouts,
-					"OPEN RECRUITING");
-			}
-		}
-
-		if (SeasonCalendar.IncomingClass(year).OccursOn(date)
-			|| (date == deadline.AddDays(1) && date != deadline))
-		{
-			Add(
-				items,
-				session,
-				"recruit-incoming",
-				InboxChannel.Scouting,
-				9,
-				"Incoming class is posted",
-				"New players, positions, overall, and potential.",
-				"The signed incoming class is on the board. Check who committed and where they slot on the roster.",
-				InboxDestination.IncomingClass,
-				"VIEW INCOMING CLASS");
+				"OPEN TRYOUTS");
 		}
 	}
 
@@ -334,7 +260,7 @@ public static class MessagesDesk
 				continue;
 			}
 
-			if (posted.Kind is PlayerTransactionKind.Tryout or PlayerTransactionKind.OpenPool)
+			if (posted.Kind == PlayerTransactionKind.Tryout)
 			{
 				signings++;
 				Add(
@@ -345,9 +271,9 @@ public static class MessagesDesk
 					8,
 					posted.Headline,
 					posted.Detail,
-					$"{posted.Headline} {posted.Detail}. The incoming class and roster both move.",
-					InboxDestination.IncomingClass,
-					"VIEW INCOMING CLASS");
+					$"{posted.Headline} He has a jersey and a spot on the {posted.Detail} roster.",
+					InboxDestination.Roster,
+					"OPEN ROSTER");
 			}
 			else if (posted.Kind == PlayerTransactionKind.Release)
 			{
@@ -365,22 +291,6 @@ public static class MessagesDesk
 			}
 		}
 
-		int pending = session.RecruitingMarket.PendingCount(orgId);
-		if (pending > 0 && !SeasonCalendar.SigningWeek(GameSession.SeasonYear).OccursOn(session.CurrentDate))
-		{
-			Add(
-				items,
-				session,
-				"decision-pending-offers",
-				InboxChannel.Urgent,
-				7,
-				$"{pending} offer{(pending == 1 ? "" : "s")} waiting on a player decision",
-				"Commitments can land on any recruiting day.",
-				"Players still holding your paperwork will answer before the deadline. Check the board if you need to withdraw or add a name.",
-				InboxDestination.Tryouts,
-				"OPEN RECRUITING");
-		}
-
 		_ = signings;
 	}
 
@@ -388,42 +298,8 @@ public static class MessagesDesk
 	{
 		int year = GameSession.SeasonYear;
 		DateOnly date = session.CurrentDate;
-		SeasonEvent prelim = SeasonCalendar.PreliminaryScouting(year);
-		SeasonEvent reveal = SeasonCalendar.ClassReveal(year);
 		SeasonEvent fall = SeasonCalendar.FallScouting(year);
 		SeasonEvent evaluation = SeasonCalendar.FallEvaluation(year);
-		bool openPlay = SeasonCalendar.OpenPlay(year).OccursOn(date);
-		bool scoutingWindow = prelim.OccursOn(date) || reveal.OccursOn(date) || fall.OccursOn(date) || evaluation.OccursOn(date);
-
-		if (prelim.OccursOn(date) && !openPlay)
-		{
-			Add(
-				items,
-				session,
-				"scout-prelim",
-				InboxChannel.Scouting,
-				10,
-				"Preliminary scouting period is open",
-				"Incoming freshmen are partially visible. Ratings are still incomplete.",
-				prelim.Summary,
-				InboxDestination.PlayerSearch,
-				"OPEN PLAYER SEARCH");
-		}
-
-		if (reveal.OccursOn(date) && !openPlay)
-		{
-			Add(
-				items,
-				session,
-				"scout-reveal",
-				InboxChannel.Scouting,
-				10,
-				"Incoming class is on the board",
-				"Every district's unsigned class is posted for Open Play.",
-				reveal.Summary,
-				InboxDestination.Tryouts,
-				"OPEN RECRUITING");
-		}
 
 		if (fall.OccursOn(date) || evaluation.OccursOn(date))
 		{
@@ -434,37 +310,10 @@ public static class MessagesDesk
 				InboxChannel.Scouting,
 				11,
 				evaluation.OccursOn(date) ? "Fall evaluation is open" : "Fall scouting is open",
-				"Next year's incoming class is generating.",
+				"Get a look at district opponents before next spring.",
 				evaluation.OccursOn(date) ? evaluation.Summary : fall.Summary,
 				InboxDestination.PlayerSearch,
 				"OPEN PLAYER SEARCH");
-		}
-
-		if (openPlay || scoutingWindow)
-		{
-			var prospects = new List<Player>(session.RecruitingMarket.UnsignedProspects);
-			prospects.Sort((a, b) =>
-			{
-				int overall = b.Overall.CompareTo(a.Overall);
-				return overall != 0 ? overall : string.Compare(a.LastName, b.LastName, StringComparison.Ordinal);
-			});
-
-			int reports = Math.Min(2, prospects.Count);
-			for (int i = 0; i < reports; i++)
-			{
-				Player prospect = prospects[i];
-				Add(
-					items,
-					session,
-					$"scout-report-{prospect.Id:N}",
-					InboxChannel.Scouting,
-					12,
-					$"Report completed on {prospect.FullName}",
-					$"{prospect.DisplayPosition}  ·  {prospect.Grade.ToAbbrev()}  ·  {prospect.Overall} OVR",
-					$"The desk finished a look at {prospect.FullName}. Present is clearer than projection. He is still unsigned.",
-					InboxDestination.Tryouts,
-					"OPEN RECRUITING");
-			}
 		}
 
 		if (session.ScoutTargets.Count > 0)
@@ -621,9 +470,9 @@ public static class MessagesDesk
 		DateOnly date = session.CurrentDate;
 		var covered = new HashSet<string>(StringComparer.Ordinal)
 		{
-			"open-play",
-			"signing-week",
-			"signing-deadline",
+			"winter-workouts",
+			"tryout-week",
+			"tryout-decisions",
 			"incoming-class",
 			"class-reveal",
 			"prelim-scouting",
@@ -775,14 +624,13 @@ public static class MessagesDesk
 
 	private static string ActionLabelFor(InboxDestination destination) => destination switch
 	{
-		InboxDestination.Tryouts => "OPEN RECRUITING",
-		InboxDestination.IncomingClass => "VIEW INCOMING CLASS",
+		InboxDestination.Tryouts => "OPEN TRYOUTS",
+		InboxDestination.IncomingClass => "OPEN ROSTER",
 		InboxDestination.Graduation => "VIEW GRADUATION",
 		InboxDestination.Goals => "OPEN BOARD",
 		InboxDestination.Injuries => "OPEN TRAINING ROOM",
 		InboxDestination.PlayerSearch => "OPEN PLAYER SEARCH",
 		InboxDestination.Targets => "VIEW TARGETS",
-		InboxDestination.OpenPool => "OPEN POOL",
 		InboxDestination.JobMarket => "VIEW JOB MARKET",
 		InboxDestination.JobOffer => "READ OFFER",
 		InboxDestination.Championship => "OPEN CELEBRATION",
@@ -889,7 +737,6 @@ public enum InboxDestination
 	Injuries,
 	PlayerSearch,
 	Targets,
-	OpenPool,
 	JobMarket,
 	JobOffer,
 	Championship,

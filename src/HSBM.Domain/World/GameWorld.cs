@@ -26,11 +26,6 @@ public sealed class GameWorld
 	public List<TeamRotation> Rotations { get; set; } = [];
 	public List<TeamTraining> Training { get; set; } = [];
 	public List<GameBoxScore> BoxScores { get; set; } = [];
-	public List<DistrictOpenPlay> OpenPlay { get; set; } = [];
-	public List<RecruitingOffer> Offers { get; set; } = [];
-	public List<PlayerAgreement> Agreements { get; set; } = [];
-	public List<RecruitingInterest> RecruitingInterest { get; set; } = [];
-	public List<RecruitingTarget> RecruitingTargets { get; set; } = [];
 	public List<NewsStory> News { get; set; } = [];
 	public List<PlayerTransaction> Transactions { get; set; } = [];
 	public PostseasonState? Postseason { get; set; }

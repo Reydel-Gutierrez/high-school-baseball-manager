@@ -36,18 +36,21 @@ public class PlayerGenerationTests
 	}
 
 	[Fact]
-	public void Open_play_players_are_unsigned_with_recruiting_priorities()
+	public void Every_school_posts_a_tryout_sign_up_sheet()
 	{
 		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 42, 2026);
-		List<Player> unsigned = world.Players.Where(p => p.IsUnsigned).ToList();
-		Assert.True(unsigned.Count >= LeagueCatalog.DistrictCount * LeagueCatalog.OpenPlayTargetPlayers);
-		Assert.All(unsigned, player =>
+		List<Player> candidates = world.Players.Where(p => p.IsTryoutCandidate).ToList();
+		Assert.True(candidates.Count >= 32 * 8);
+		Assert.All(candidates, player =>
 		{
+			Assert.True(player.IsUnsigned);
+			Assert.Equal(TryoutCall.Pending, player.TryoutCall);
 			Assert.Equal(0, player.JerseyNumber);
 			Assert.True(player.Potential >= player.Overall);
 			Assert.NotEqual(0, player.Appearance.Seed);
 			Assert.InRange(player.Physical.HeightInches, PlayerPhysical.MinHeightInches, PlayerPhysical.MaxHeightInches);
 		});
+		Assert.True(candidates.Count(p => p.Grade == PlayerGrade.Freshman) > candidates.Count / 2);
 	}
 
 	[Fact]

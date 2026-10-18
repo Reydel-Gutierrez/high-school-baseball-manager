@@ -13,7 +13,6 @@ public sealed class GeneratedWorld
 	public List<Player> Players { get; init; } = [];
 	public List<ProgramCoach> Coaches { get; init; } = [];
 	public List<ScheduledGame> Games { get; init; } = [];
-	public List<DistrictOpenPlay> OpenPlay { get; init; } = [];
 
 	public GameWorld ToGameWorld(DateOnly currentDate) => new()
 	{
@@ -27,7 +26,6 @@ public sealed class GeneratedWorld
 		Players = Players,
 		Coaches = Coaches,
 		Games = Games,
-		OpenPlay = OpenPlay,
 	};
 }
 
@@ -44,7 +42,7 @@ public sealed class CareerWorldGenerator
 		ISeededRandom historyRng = root.Derive(13);
 		ISeededRandom openingRng = root.Derive(17);
 		ISeededRandom rosterRng = root.Derive(29);
-		ISeededRandom openPlayRng = root.Derive(41);
+		ISeededRandom tryoutRng = root.Derive(41);
 		ISeededRandom scheduleRng = root.Derive(47);
 		ISeededRandom coachRng = root.Derive(53);
 
@@ -91,50 +89,12 @@ public sealed class CareerWorldGenerator
 		List<ProgramCoach> coaches = ProgramCoachGenerator.Assign(organizations, coachRng);
 
 		var teams = catalog.Teams.ToList();
-		organizations.Add(new OrganizationState
-		{
-			Identity = new OrganizationIdentity(LeagueCatalog.UnsignedOrganizationId, "Unsigned Prospects", "Unsigned", 0),
-			DistrictId = catalog.Districts[0].Id,
-			CompetitionLevel = catalog.CompetitionLevel,
-			TalentTier = ProgramTalentTier.Average,
-		});
-		foreach (DistrictIdentity district in catalog.Districts)
-		{
-			teams.Add(new TeamIdentity(
-				LeagueCatalog.OpenPlayTeamId(district.Id),
-				LeagueCatalog.UnsignedOrganizationId,
-				TeamLevel.JuniorVarsity,
-				0));
-		}
+		TryoutDesk.EnsureTeams(organizations, teams, catalog.Districts[0].Id, catalog.CompetitionLevel);
 
-		var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		foreach (Player player in players)
-		{
-			usedNames.Add(player.FullName);
-		}
+		Report(onProgress, WorldGenerationSteps.Tryouts, 5);
+		players.AddRange(TryoutDesk.GenerateClasses(organizations, players, seasonYear, tryoutRng));
 
-		Report(onProgress, WorldGenerationSteps.OpenPlay, 5);
-		var openPlayPlayers = new List<Player>();
-		foreach (DistrictIdentity district in catalog.Districts)
-		{
-			ISeededRandom districtRng = openPlayRng.Derive(StableSalt(district.Id));
-			openPlayPlayers.AddRange(OpenPlayGenerator.GenerateDistrict(district.Id, seasonYear, districtRng, usedNames));
-		}
-
-		players.AddRange(openPlayPlayers);
-
-		Report(onProgress, WorldGenerationSteps.OpenPlayGames, 6);
-		var openPlay = new List<DistrictOpenPlay>();
-		foreach (DistrictIdentity district in catalog.Districts)
-		{
-			ISeededRandom districtRng = openPlayRng.Derive(StableSalt(district.Id) ^ 917);
-			List<Player> districtPlayers = openPlayPlayers
-				.Where(p => p.TeamId == LeagueCatalog.OpenPlayTeamId(district.Id))
-				.ToList();
-			openPlay.Add(OpenPlaySimulator.Simulate(district.Id, seasonYear, districtPlayers, districtRng));
-		}
-
-		Report(onProgress, WorldGenerationSteps.Schedule, 7);
+		Report(onProgress, WorldGenerationSteps.Schedule, 6);
 		List<ScheduledGame> games = ScheduleGenerator.Generate(
 			catalog,
 			catalog.Teams,
@@ -153,7 +113,6 @@ public sealed class CareerWorldGenerator
 			Players = players,
 			Coaches = coaches,
 			Games = games,
-			OpenPlay = openPlay,
 		};
 	}
 

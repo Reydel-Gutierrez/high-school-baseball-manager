@@ -23,10 +23,9 @@ public class ProgramFinancesTests
 		Assert.Equal(5, lines.Count);
 		Assert.Equal("Equipment", lines[0].Label);
 		Assert.Equal("Travel", lines[1].Label);
-		Assert.Equal("Facilities", lines[2].Label);
-		Assert.Equal("Scouting", lines[3].Label);
+		Assert.Equal("Field & Facilities", lines[2].Label);
+		Assert.Equal("Uniforms", lines[3].Label);
 		Assert.Equal("Misc.", lines[4].Label);
-		Assert.Equal(ProgramBudget.RecruitingPool(budget), lines[3].Amount);
 	}
 
 	[Fact]
@@ -38,21 +37,11 @@ public class ProgramFinancesTests
 			DistrictId = "great-lakes",
 			Profile = new ProgramProfile { BaseballBudget = 40_000 },
 		};
-		var deals = new List<PlayerAgreement>
-		{
-			new()
-			{
-				OrganizationId = "cascade",
-				AnnualSponsorship = 900,
-				YearsRemaining = 2,
-			},
-		};
 		int salary = CoachSalary.From(78, 40_000);
-		ProgramFinanceSnapshot sheet = ProgramFinances.For(program, deals, salary);
+		ProgramFinanceSnapshot sheet = ProgramFinances.For(program, salary);
 
 		Assert.Equal(40_000, sheet.BaseballBudget);
-		Assert.Equal(ProgramBudget.Available(program.Profile, deals, "cascade", salary), sheet.Available);
-		Assert.Equal(900, sheet.RecruitingCommitted);
+		Assert.Equal(40_000 - salary, sheet.Available);
 		Assert.Equal(salary, sheet.CoachSalary);
 		// Head coach salary is carved out before the operating allocations.
 		Assert.Equal(40_000 - salary, sheet.AllocatedTotal);

@@ -127,7 +127,6 @@ public partial class RosterPage : Control
 		}
 
 		_players.AddRange(BuildPrototypeRoster());
-		MergeSignedPlayers();
 	}
 
 	private static RosterPlayer FromDomain(Player player)
@@ -162,63 +161,6 @@ public partial class RosterPage : Control
 			player.TeamLevel == TeamLevel.Varsity ? "Varsity" : "JV",
 			false,
 			player.Id);
-	}
-
-	private void MergeSignedPlayers()
-	{
-		var usedJerseys = new HashSet<int>();
-		foreach (RosterPlayer player in _players)
-		{
-			usedJerseys.Add(player.Jersey);
-		}
-
-		foreach (FinalRosterPlayer board in _session.RosterBoard.Players)
-		{
-			if (!board.FromTryout)
-			{
-				continue;
-			}
-
-			if (_players.Exists(p =>
-				string.Equals(p.FirstName, board.FirstName, StringComparison.OrdinalIgnoreCase)
-				&& string.Equals(p.LastName, board.LastName, StringComparison.OrdinalIgnoreCase)))
-			{
-				continue;
-			}
-
-			int jersey = board.Jersey > 0 && usedJerseys.Add(board.Jersey)
-				? board.Jersey
-				: NextUnusedJersey(usedJerseys);
-			usedJerseys.Add(jersey);
-			string squad = board.Assignment == RosterAssignment.JuniorVarsity ? "JV" : "Varsity";
-			string group = board.Position.IsPitcher()
-				? FilterPitchers
-				: board.Position == PlayerPosition.Catcher
-					? FilterCatchers
-					: board.Position.IsInfielder()
-						? FilterInfield
-						: FilterOutfield;
-			_players.Add(MakePlayer(
-				board.FirstName,
-				board.LastName,
-				jersey,
-				board.PositionLabel,
-				board.Year.ToAbbrev(),
-				board.Bats.ToBatsThrowsLabel(board.Throws),
-				group,
-				board.Overall,
-				board.Overall,
-				board.Overall,
-				board.Overall,
-				board.Overall,
-				board.Overall,
-				"Healthy",
-				null,
-				board.Position.IsPitcher() ? null : PrototypeHitting(board.Year.ToAbbrev(), board.Overall, board.Overall),
-				board.Position.IsPitcher() ? PrototypePitching(board.Year.ToAbbrev(), board.Overall, false) : null,
-				squad,
-				sourceId: board.Id));
-		}
 	}
 
 	private static int NextUnusedJersey(HashSet<int> used)
@@ -2156,18 +2098,7 @@ public partial class RosterPage : Control
 			Player? live = _session.FindWorldPlayer(id);
 			if (live != null)
 			{
-				PlayerProfileSnapshot worldSnap = PlayerProfiles.FromWorld(
-					live,
-					_session.World,
-					player.IsCaptain,
-					AgreementSnapshot(player));
-				string? worldHook = HookFor(player);
-				if (string.IsNullOrEmpty(worldHook))
-				{
-					return worldSnap;
-				}
-
-				return worldSnap with { RecruitingHook = worldHook };
+				return PlayerProfiles.FromWorld(live, _session.World, player.IsCaptain);
 			}
 		}
 
@@ -2190,78 +2121,7 @@ public partial class RosterPage : Control
 			UserProgram.ShortName.ToUpperInvariant(),
 			player.Squad,
 			seasons,
-			player.IsCaptain,
-			AgreementSnapshot(player));
-		string? hook = HookFor(player);
-		if (string.IsNullOrEmpty(hook))
-		{
-			return snapshot;
-		}
-
-		return snapshot with
-		{
-			Personality = ProspectFor(player)?.Priorities.Label ?? snapshot.Personality,
-			RecruitingHook = hook,
-		};
-	}
-
-	private string? HookFor(RosterPlayer player) => ProspectFor(player)?.Priorities.Hook;
-
-	private Player? ProspectFor(RosterPlayer player)
-	{
-		if (player.SourceId is Guid id)
-		{
-			return _session.FindProspect(id);
-		}
-
-		foreach (Player candidate in _session.Recruiting.Prospects)
-		{
-			if (string.Equals(candidate.FirstName, player.FirstName, StringComparison.OrdinalIgnoreCase)
-				&& string.Equals(candidate.LastName, player.LastName, StringComparison.OrdinalIgnoreCase))
-			{
-				return candidate;
-			}
-		}
-
-		return null;
-	}
-
-	private PlayerAgreementSnapshot? AgreementSnapshot(RosterPlayer player)
-	{
-		if (player.SourceId is not Guid id)
-		{
-			Player? prospect = null;
-			foreach (Player candidate in _session.Recruiting.Prospects)
-			{
-				if (string.Equals(candidate.FirstName, player.FirstName, StringComparison.OrdinalIgnoreCase)
-					&& string.Equals(candidate.LastName, player.LastName, StringComparison.OrdinalIgnoreCase))
-				{
-					prospect = candidate;
-					break;
-				}
-			}
-
-			if (prospect == null)
-			{
-				return null;
-			}
-
-			id = prospect.Id;
-		}
-
-		PlayerAgreement? agreement = _session.RecruitingMarket.AgreementFor(id);
-		if (agreement == null)
-		{
-			return null;
-		}
-
-		OrganizationState? school = _session.RecruitingSchool(agreement.OrganizationId);
-		return new PlayerAgreementSnapshot(
-			school?.DisplayName ?? agreement.OrganizationId,
-			agreement.StartSeasonYear,
-			agreement.YearsRemaining,
-			agreement.TermYears,
-			agreement.AnnualSponsorship,
-			agreement.TotalCommitment);
+			player.IsCaptain);
+		return snapshot;
 	}
 }

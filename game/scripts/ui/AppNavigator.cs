@@ -17,7 +17,6 @@ public partial class AppNavigator : MarginContainer
 	public const string TransactionsViewKey = "transactions";
 	public const string GoalsViewKey = "goals";
 	public const string TryoutsViewKey = "tryouts";
-	public const string IncomingClassViewKey = "incoming-class";
 	public const string GraduationViewKey = "graduation";
 	public const string LineupsViewKey = "lineups";
 	public const string RotationViewKey = "rotation";
@@ -32,7 +31,6 @@ public partial class AppNavigator : MarginContainer
 	public const string MessagesViewKey = "messages";
 	public const string PlayerSearchViewKey = "player-search";
 	public const string TargetsViewKey = "targets";
-	public const string OpenPoolViewKey = "open-pool";
 	public const string BudgetViewKey = "budget";
 	public const string SponsorsViewKey = "sponsors";
 	public const string CareerViewKey = "career";
@@ -51,7 +49,6 @@ public partial class AppNavigator : MarginContainer
 	public const int OrganizationTransactionsId = 102;
 	public const int OrganizationGoalsId = 103;
 	public const int OrganizationTryoutsId = 104;
-	public const int OrganizationIncomingClassId = 105;
 	public const int OrganizationGraduationId = 106;
 	public const int ClubhouseLineupsId = 200;
 	public const int ClubhouseRotationId = 201;
@@ -70,7 +67,6 @@ public partial class AppNavigator : MarginContainer
 	public const int ScoutingPlayerSearchId = 500;
 	public const int ScoutingTradesId = 501;
 	public const int ScoutingTargetsId = 502;
-	public const int ScoutingOpenPoolId = 503;
 
 	private TopBarNavigation _topBar = null!;
 	private Control _homeView = null!;
@@ -81,7 +77,6 @@ public partial class AppNavigator : MarginContainer
 	private Control _transactionsView = null!;
 	private Control _goalsView = null!;
 	private Control _tryoutsView = null!;
-	private Control _incomingClassView = null!;
 	private Control _graduationView = null!;
 	private Control _lineupsView = null!;
 	private Control _rotationView = null!;
@@ -96,7 +91,6 @@ public partial class AppNavigator : MarginContainer
 	private Control _messagesView = null!;
 	private Control _playerSearchView = null!;
 	private Control _targetsView = null!;
-	private Control _openPoolView = null!;
 	private Control _budgetView = null!;
 	private Control _sponsorsView = null!;
 	private Control _careerView = null!;
@@ -132,7 +126,6 @@ public partial class AppNavigator : MarginContainer
 		_transactionsView = GetNode<Control>("AppLayout/ContentArea/TransactionsView");
 		_goalsView = GetNode<Control>("AppLayout/ContentArea/GoalsView");
 		_tryoutsView = GetNode<Control>("AppLayout/ContentArea/TryoutsView");
-		_incomingClassView = GetNode<Control>("AppLayout/ContentArea/IncomingClassView");
 		_graduationView = GetNode<Control>("AppLayout/ContentArea/GraduationView");
 		_lineupsView = GetNode<Control>("AppLayout/ContentArea/LineupsView");
 		_rotationView = GetNode<Control>("AppLayout/ContentArea/RotationView");
@@ -149,7 +142,6 @@ public partial class AppNavigator : MarginContainer
 		_messagesView = GetNode<Control>("AppLayout/ContentArea/MessagesView");
 		_playerSearchView = GetNode<Control>("AppLayout/ContentArea/PlayerSearchView");
 		_targetsView = GetNode<Control>("AppLayout/ContentArea/TargetsView");
-		_openPoolView = GetNode<Control>("AppLayout/ContentArea/OpenPoolView");
 		_budgetView = GetNode<Control>("AppLayout/ContentArea/BudgetView");
 		_sponsorsView = GetNode<Control>("AppLayout/ContentArea/SponsorsView");
 		_careerView = GetNode<Control>("AppLayout/ContentArea/CareerView");
@@ -221,7 +213,6 @@ public partial class AppNavigator : MarginContainer
 		_views[TransactionsViewKey] = _transactionsView;
 		_views[GoalsViewKey] = _goalsView;
 		_views[TryoutsViewKey] = _tryoutsView;
-		_views[IncomingClassViewKey] = _incomingClassView;
 		_views[GraduationViewKey] = _graduationView;
 		_views[LineupsViewKey] = _lineupsView;
 		_views[RotationViewKey] = _rotationView;
@@ -236,7 +227,6 @@ public partial class AppNavigator : MarginContainer
 		_views[MessagesViewKey] = _messagesView;
 		_views[PlayerSearchViewKey] = _playerSearchView;
 		_views[TargetsViewKey] = _targetsView;
-		_views[OpenPoolViewKey] = _openPoolView;
 		_views[BudgetViewKey] = _budgetView;
 		_views[SponsorsViewKey] = _sponsorsView;
 		_views[CareerViewKey] = _careerView;
@@ -558,11 +548,6 @@ public partial class AppNavigator : MarginContainer
 		ShowView(TargetsViewKey, TopBarNavigation.ScoutingKey);
 	}
 
-	public void ShowOpenPool()
-	{
-		ShowView(OpenPoolViewKey, TopBarNavigation.ScoutingKey);
-	}
-
 	public void ShowTransactions()
 	{
 		ShowView(TransactionsViewKey, TopBarNavigation.OrganizationKey);
@@ -578,9 +563,10 @@ public partial class AppNavigator : MarginContainer
 		ShowView(TryoutsViewKey, TopBarNavigation.OrganizationKey);
 	}
 
+	/// <summary>The new class lives on the roster once Decision Day has passed.</summary>
 	public void ShowIncomingClass()
 	{
-		ShowView(IncomingClassViewKey, TopBarNavigation.OrganizationKey);
+		ShowRoster();
 	}
 
 	public void ShowGraduation()
@@ -777,9 +763,6 @@ public partial class AppNavigator : MarginContainer
 				break;
 			case InboxDestination.Targets:
 				ShowTargets();
-				break;
-			case InboxDestination.OpenPool:
-				ShowOpenPool();
 				break;
 			case InboxDestination.JobMarket:
 				ShowCareerJobMarket();
@@ -989,9 +972,6 @@ public partial class AppNavigator : MarginContainer
 			case OrganizationTryoutsId:
 				ShowTryouts();
 				break;
-			case OrganizationIncomingClassId:
-				ShowIncomingClass();
-				break;
 			case OrganizationGraduationId:
 				ShowGraduation();
 				break;
@@ -1085,9 +1065,6 @@ public partial class AppNavigator : MarginContainer
 				break;
 			case ScoutingTargetsId:
 				ShowTargets();
-				break;
-			case ScoutingOpenPoolId:
-				ShowOpenPool();
 				break;
 			default:
 				GD.PushWarning($"AppNavigator: unhandled scouting item id '{id}'.");

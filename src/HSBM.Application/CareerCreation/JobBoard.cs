@@ -44,7 +44,7 @@ public sealed record JobListing(
 
 	public string ContractTermLabel => CoachSalary.TermLabel(ContractTermYears);
 
-	public string CoachSalaryLabel => PlayerAgreement.FormatMoney(AnnualCoachSalary);
+	public string CoachSalaryLabel => Money.Format(AnnualCoachSalary);
 
 	public bool Matches(string query)
 	{

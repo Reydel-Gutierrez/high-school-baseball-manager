@@ -59,9 +59,10 @@ public class WorldRulesTests
 		Assert.True(LeagueCatalog.IsUnsignedOrganization(""));
 		Assert.True(LeagueCatalog.IsUnsignedOrganization(LeagueCatalog.UnsignedOrganizationId));
 		Assert.False(LeagueCatalog.IsUnsignedOrganization("cascade"));
-		Assert.True(LeagueCatalog.IsOpenPlayTeam("open-play-great-lakes"));
-		Assert.False(LeagueCatalog.IsOpenPlayTeam("cascade-varsity"));
-		Assert.Equal("open-play-great-lakes", LeagueCatalog.OpenPlayTeamId("great-lakes"));
+		Assert.Equal("tryouts-cascade", LeagueCatalog.TryoutTeamId("cascade"));
+		Assert.True(LeagueCatalog.IsTryoutTeam("tryouts-cascade"));
+		Assert.False(LeagueCatalog.IsTryoutTeam("cascade-varsity"));
+		Assert.Equal("cascade", LeagueCatalog.SchoolForTryoutTeam("tryouts-cascade"));
 	}
 }
 
@@ -119,7 +120,7 @@ public class PlayerRulesTests
 		player.Injury.DayToDay = true;
 		Assert.True(player.CanPlay(new DateOnly(2026, 3, 5)));
 
-		RosterMovement.ReleaseToPool(player, "great-lakes");
+		RosterMovement.Release(player);
 		Assert.True(player.IsUnsigned);
 		Assert.False(player.IsActive);
 		Assert.Equal(0, player.JerseyNumber);

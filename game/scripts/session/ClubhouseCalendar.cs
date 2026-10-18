@@ -11,9 +11,8 @@ public static class ClubhouseCalendar
 {
 	public static IReadOnlyList<CalendarContest> Contests { get; } = Build();
 
-	public static IReadOnlyList<CalendarContest> On(DateOnly date, TryoutCamp? tryouts = null)
+	public static IReadOnlyList<CalendarContest> On(DateOnly date)
 	{
-		_ = tryouts;
 		var matches = new List<CalendarContest>();
 		foreach (CalendarContest contest in Contests)
 		{
@@ -26,9 +25,8 @@ public static class ClubhouseCalendar
 		return matches;
 	}
 
-	public static IReadOnlyList<CalendarContest> InMonth(int year, int month, TryoutCamp? tryouts = null)
+	public static IReadOnlyList<CalendarContest> InMonth(int year, int month)
 	{
-		_ = tryouts;
 		var matches = new List<CalendarContest>();
 		foreach (CalendarContest contest in Contests)
 		{
@@ -40,19 +38,6 @@ public static class ClubhouseCalendar
 
 		return matches;
 	}
-
-	public static CalendarContest FromTryout(TryoutGame game) =>
-		new(
-			game.Date,
-			TryoutGame.WhiteId,
-			true,
-			TeamLevel.Varsity,
-			TryoutGame.Time,
-			true,
-			game.BlueRuns,
-			game.WhiteRuns,
-			CalendarContestKind.Tryout,
-			game.Number);
 
 	public static CalendarContest FromScheduled(ScheduledGame game, string userTeamId, GameWorld world)
 	{
@@ -77,38 +62,8 @@ public static class ClubhouseCalendar
 			game.GameType);
 	}
 
-	private static void AppendTryouts(
-		List<CalendarContest> matches,
-		TryoutCamp? tryouts,
-		Func<CalendarContest, bool> include)
-	{
-		if (tryouts == null)
-		{
-			return;
-		}
-
-		foreach (TryoutGame game in tryouts.Games)
-		{
-			CalendarContest contest = FromTryout(game);
-			if (include(contest))
-			{
-				matches.Add(contest);
-			}
-		}
-	}
-
 	public static string OpponentMark(string opponentId)
 	{
-		if (opponentId == TryoutGame.WhiteId)
-		{
-			return "WHT";
-		}
-
-		if (opponentId == TryoutGame.BlueId)
-		{
-			return "BLU";
-		}
-
 		HubTeam team = DistrictHubData.GetTeam(opponentId);
 		string[] parts = team.Name.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
 		if (parts.Length >= 2)
@@ -226,7 +181,7 @@ public sealed record CalendarContest(
 
 	public string VenueLabel => IsTryout ? "CAMP" : Home ? "HOME" : "AWAY";
 
-	public string Headline => IsTryout ? $"TRYOUT GAME {TryoutNumber} OF {TryoutGame.GameCount}" : string.Empty;
+	public string Headline => IsTryout ? $"TRYOUT GAME {TryoutNumber}" : string.Empty;
 
 	public string ResultLabel
 	{

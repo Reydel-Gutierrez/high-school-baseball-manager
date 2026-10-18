@@ -3,12 +3,11 @@ using HSBM.Domain;
 namespace HSBM.Simulation;
 
 /// <summary>
-/// AI roster moves after signing week: cut to cap, claim unsigned
-/// leftovers, and call JV players up. User schools are left alone.
+/// AI roster moves after Decision Day: cut to cap and call JV players
+/// up. Nobody is signed from outside the school. User schools are left alone.
 /// </summary>
 public static class WorldRosterDesk
 {
-	public const int MaxPoolSigningsPerDay = 2;
 	public const int MaxPromotionsPerDay = 4;
 	public const int PromotionOverallGap = 3;
 	public const int HotAverageAtBats = 12;
@@ -39,13 +38,7 @@ public static class WorldRosterDesk
 		CutToCap(state, today, year, schools, seen, posted);
 		BalanceTeamCaps(state, schools);
 
-		if (today > SeasonCalendar.SigningDeadline(year)
-			&& today <= SeasonCalendar.TransferDeadline(year))
-		{
-			SignFromPool(state, today, year, schools, rng, seen, posted);
-		}
-
-		if (today > SeasonCalendar.SigningDeadline(year)
+		if (today > SeasonCalendar.TryoutDecisionDay(year)
 			&& today <= SeasonCalendar.PromotionDeadline(year))
 		{
 			Promote(state, today, year, schools, rng, seen, posted);
@@ -166,66 +159,6 @@ public static class WorldRosterDesk
 		}
 	}
 
-	private static void SignFromPool(
-		CareerState state,
-		DateOnly today,
-		int year,
-		List<OrganizationState> schools,
-		ISeededRandom rng,
-		HashSet<string> seen,
-		List<PlayerTransaction> posted)
-	{
-		int cap = ProgramRosterRules.RegisteredCap(today, year);
-		int signed = 0;
-		foreach (OrganizationState school in schools)
-		{
-			if (signed >= MaxPoolSigningsPerDay)
-			{
-				break;
-			}
-
-			List<Player> roster = Roster(state, school.Id);
-			int holes = cap - roster.Count;
-			if (holes <= 0)
-			{
-				continue;
-			}
-
-			bool hungry = holes >= 2 || today <= SeasonCalendar.InitialRosterCut(year);
-			if (!hungry && rng.NextDouble() > 0.35)
-			{
-				continue;
-			}
-
-			Player? pickup = BestUnsigned(state, school, roster);
-			if (pickup == null)
-			{
-				continue;
-			}
-
-			TeamIdentity? varsity = Team(state, school.Id, TeamLevel.Varsity);
-			TeamIdentity? jv = Team(state, school.Id, TeamLevel.JuniorVarsity);
-			if (varsity == null)
-			{
-				continue;
-			}
-
-			TeamLevel? level = RosterNeed.FitIncoming(roster, pickup);
-			if (level == null)
-			{
-				continue;
-			}
-
-			TeamIdentity dest = level == TeamLevel.Varsity || jv == null ? varsity : jv;
-			Assign(pickup, dest, roster);
-			VoidAgreement(state, pickup.Id);
-			if (TryAdd(seen, posted, PlayerTransaction.FromSigning(pickup, school.ShortName, school.Id, today, fromPool: true)))
-			{
-				signed++;
-			}
-		}
-	}
-
 	private static void Promote(
 		CareerState state,
 		DateOnly today,
@@ -335,32 +268,8 @@ public static class WorldRosterDesk
 			return false;
 		}
 
-		RosterMovement.ReleaseToPool(player, school.DistrictId);
-		VoidAgreement(state, player.Id);
+		RosterMovement.Release(player);
 		return true;
-	}
-
-	private static Player? BestUnsigned(CareerState state, OrganizationState school, List<Player> roster)
-	{
-		string openPlay = LeagueCatalog.OpenPlayTeamId(school.DistrictId);
-		Player? best = null;
-		double bestScore = double.MinValue;
-		foreach (Player player in state.Players)
-		{
-			if (!player.IsUnsigned || player.TeamId != openPlay)
-			{
-				continue;
-			}
-
-			double score = player.Overall + (RosterNeed.PlayingTimeScore(roster, player.PrimaryPosition, player.Overall) * 12);
-			if (score > bestScore)
-			{
-				bestScore = score;
-				best = player;
-			}
-		}
-
-		return best;
 	}
 
 	private static Player? BestCallup(CareerState state, List<Player> jv, bool rosterWeek)
@@ -497,17 +406,6 @@ public static class WorldRosterDesk
 	private static void Assign(Player player, TeamIdentity team, List<Player> roster)
 	{
 		RosterMovement.ForceAssign(player, team, roster);
-	}
-
-	private static void VoidAgreement(CareerState state, Guid playerId)
-	{
-		foreach (PlayerAgreement agreement in state.Agreements)
-		{
-			if (agreement.PlayerId == playerId)
-			{
-				agreement.YearsRemaining = 0;
-			}
-		}
 	}
 
 	private static List<Player> Roster(CareerState state, string organizationId)

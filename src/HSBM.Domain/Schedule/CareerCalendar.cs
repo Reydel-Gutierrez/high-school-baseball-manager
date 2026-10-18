@@ -14,15 +14,15 @@ public static class CareerCalendar
 			return SeasonPhase.SeasonRollover;
 		}
 
-		if (SeasonCalendar.OpenPlay(seasonYear).OccursOn(date))
+		if (SeasonCalendar.WinterWorkouts(seasonYear).OccursOn(date))
 		{
-			return SeasonPhase.OpenPlay;
+			return SeasonPhase.WinterWorkouts;
 		}
 
-		if (SeasonCalendar.SigningWeek(seasonYear).OccursOn(date)
-			|| date == SeasonCalendar.SigningDeadline(seasonYear))
+		if (SeasonCalendar.TryoutWeek(seasonYear).OccursOn(date)
+			|| date == SeasonCalendar.TryoutDecisionDay(seasonYear))
 		{
-			return SeasonPhase.SigningPeriod;
+			return SeasonPhase.Tryouts;
 		}
 
 		if (SeasonCalendar.FinalRosterWeek(seasonYear).OccursOn(date)

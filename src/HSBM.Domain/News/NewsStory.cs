@@ -13,7 +13,7 @@ public static class NewsTag
 	public const string Hitting = "HITTING";
 	public const string Rivalry = "RIVALRY";
 	public const string Calendar = "CALENDAR";
-	public const string Recruiting = "RECRUITING";
+	public const string Tryouts = "TRYOUTS";
 	public const string Results = "RESULTS";
 	public const string Note = "NOTE";
 }

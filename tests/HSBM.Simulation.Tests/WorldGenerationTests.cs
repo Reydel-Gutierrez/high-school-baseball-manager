@@ -17,7 +17,6 @@ public class WorldGenerationTests
 			int schools = world.Organizations.Count(org =>
 				org.DistrictId == district.Id && !LeagueCatalog.IsUnsignedOrganization(org.Id));
 			Assert.Equal(LeagueCatalog.SchoolsPerDistrict, schools);
-			Assert.Contains(world.Teams, team => team.Id == LeagueCatalog.OpenPlayTeamId(district.Id));
 		}
 
 		Assert.Equal(32, world.Coaches.Count);
@@ -27,7 +26,9 @@ public class WorldGenerationTests
 			Assert.NotNull(org.HeadCoach);
 			Assert.Contains(world.Teams, team => team.OrganizationId == org.Id && team.Level == TeamLevel.Varsity);
 			Assert.Contains(world.Teams, team => team.OrganizationId == org.Id && team.Level == TeamLevel.JuniorVarsity);
+			Assert.Contains(world.Teams, team => team.Id == LeagueCatalog.TryoutTeamId(org.Id));
 		});
+		Assert.Contains(world.Teams, team => team.Id == LeagueCatalog.InactiveTeamId);
 	}
 
 	[Fact]
@@ -60,21 +61,5 @@ public class WorldGenerationTests
 
 		IReadOnlyList<string> issues = WorldIntegrity.InspectGenerated(world);
 		Assert.True(issues.Count == 0, string.Join(Environment.NewLine, issues));
-	}
-
-	[Fact]
-	public void District_open_play_posts_a_full_unsigned_class()
-	{
-		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 11, 2026);
-		Assert.Equal(LeagueCatalog.DistrictCount, world.OpenPlay.Count);
-		foreach (DistrictOpenPlay session in world.OpenPlay)
-		{
-			Assert.Equal(LeagueCatalog.OpenPlayTargetPlayers, session.Lines.Count);
-			List<Player> pool = world.Players
-				.Where(p => p.TeamId == LeagueCatalog.OpenPlayTeamId(session.DistrictId))
-				.ToList();
-			Assert.Equal(session.Lines.Count, pool.Count);
-			Assert.All(pool, player => Assert.True(player.IsUnsigned));
-		}
 	}
 }

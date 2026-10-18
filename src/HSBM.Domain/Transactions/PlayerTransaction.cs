@@ -41,15 +41,6 @@ public sealed record PlayerTransaction(
 			$"{position}  ·  {year}  ·  {squad}",
 			DedupKey: $"Trade:{toTeam}:{fromTeam}:{name}:{date}");
 
-	public static PlayerTransaction SignedFromOpenPool(
-		string name,
-		string position,
-		string year,
-		string squad,
-		string team,
-		string date) =>
-		Signed(name, position, year, squad, team, date, PlayerTransactionKind.OpenPool);
-
 	public static PlayerTransaction Tryout(
 		string name,
 		string position,
@@ -86,24 +77,33 @@ public sealed record PlayerTransaction(
 			$"{position}  ·  {year}  ·  Varsity",
 			DedupKey: $"Promotion:{team}:{name}:{date}");
 
-	public static PlayerTransaction FromSigning(
+	/// <summary>A tryout candidate made the team on Decision Day.</summary>
+	public static PlayerTransaction MadeTeam(
 		Player player,
 		string schoolShortName,
 		string organizationId,
-		DateOnly date,
-		bool fromPool = false)
-	{
-		PlayerTransactionKind kind = fromPool
-			? PlayerTransactionKind.OpenPool
-			: PlayerTransactionKind.Tryout;
-		return From(
-			kind,
+		DateOnly date) =>
+		From(
+			PlayerTransactionKind.Tryout,
 			date,
 			organizationId,
 			player,
-			$"{schoolShortName} signed {player.FullName}.",
+			$"{player.FullName} made the {schoolShortName} {player.TeamLevel.ToLabel()} roster.",
 			player.TeamLevel.ToLabel());
-	}
+
+	/// <summary>A tryout candidate was cut on Decision Day.</summary>
+	public static PlayerTransaction CutAtTryouts(
+		Player player,
+		string schoolShortName,
+		string organizationId,
+		DateOnly date) =>
+		From(
+			PlayerTransactionKind.Release,
+			date,
+			organizationId,
+			player,
+			$"{schoolShortName} cut {player.FullName} after tryouts.",
+			"Tryouts");
 
 	public static PlayerTransaction Released(
 		Player player,

@@ -93,36 +93,6 @@ public sealed class CareerState
 		set => World.BoxScores = value;
 	}
 
-	public List<DistrictOpenPlay> OpenPlay
-	{
-		get => World.OpenPlay;
-		set => World.OpenPlay = value;
-	}
-
-	public List<RecruitingOffer> Offers
-	{
-		get => World.Offers;
-		set => World.Offers = value;
-	}
-
-	public List<PlayerAgreement> Agreements
-	{
-		get => World.Agreements;
-		set => World.Agreements = value;
-	}
-
-	public List<RecruitingInterest> RecruitingInterest
-	{
-		get => World.RecruitingInterest;
-		set => World.RecruitingInterest = value;
-	}
-
-	public List<RecruitingTarget> RecruitingTargets
-	{
-		get => World.RecruitingTargets;
-		set => World.RecruitingTargets = value;
-	}
-
 	public List<NewsStory> News
 	{
 		get => World.News;
@@ -457,16 +427,13 @@ public sealed class CareerState
 		}
 	}
 
-	public IEnumerable<Player> UnsignedInDistrict(string districtId)
+	/// <summary>Students on this school's tryout list (not yet on a team).</summary>
+	public IEnumerable<Player> TryoutCandidates(string organizationId)
 	{
+		string teamId = LeagueCatalog.TryoutTeamId(organizationId);
 		foreach (Player player in Players)
 		{
-			if (!player.IsUnsigned)
-			{
-				continue;
-			}
-
-			if (player.TeamId == LeagueCatalog.OpenPlayTeamId(districtId))
+			if (!player.Alumni && player.TeamId == teamId)
 			{
 				yield return player;
 			}
@@ -497,31 +464,5 @@ public sealed class CareerState
 		}
 
 		throw new KeyNotFoundException($"Organization '{organizationId}' was not found.");
-	}
-
-	public DistrictOpenPlay? OpenPlayFor(string districtId)
-	{
-		foreach (DistrictOpenPlay session in OpenPlay)
-		{
-			if (session.DistrictId == districtId)
-			{
-				return session;
-			}
-		}
-
-		return null;
-	}
-
-	public PlayerAgreement? AgreementFor(Guid playerId)
-	{
-		foreach (PlayerAgreement agreement in Agreements)
-		{
-			if (agreement.PlayerId == playerId && agreement.YearsRemaining > 0)
-			{
-				return agreement;
-			}
-		}
-
-		return null;
 	}
 }

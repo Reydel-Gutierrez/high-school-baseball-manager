@@ -35,7 +35,7 @@ public static class HiringDesk
 				new("We compete for the district right away. This roster can win now.", CoachingPitch.WinNow),
 				new("Every player on this roster is better in May than in February. Wins follow growth.", CoachingPitch.Development),
 				new("We set the standard: practice habits, accountability, how we carry ourselves.", CoachingPitch.Culture),
-				new("I'm in every gym and travel field in the county. We change who wants to play here.", CoachingPitch.Recruiting),
+				new("I'm at every Little League and middle school game in town. We change who signs up to try out here.", CoachingPitch.Recruiting),
 			]),
 		new(
 			"\"Your best player is a senior who skips practice. What do you do?\"",
@@ -50,7 +50,7 @@ public static class HiringDesk
 			[
 				new("Playing in the state tournament.", CoachingPitch.WinNow),
 				new("Sending kids to college ball every spring.", CoachingPitch.Development),
-				new("The program every family in town wants their son in.", CoachingPitch.Recruiting),
+				new("The program every kid in town wants to try out for.", CoachingPitch.Recruiting),
 				new("Known for how we play: hard, clean, together.", CoachingPitch.Culture),
 			]),
 	];

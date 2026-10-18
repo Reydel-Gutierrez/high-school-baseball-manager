@@ -14,13 +14,28 @@ public sealed class LeagueCatalog
 	public const int SchoolsPerDistrict = 8;
 	public const string DefaultUserOrganizationId = "cascade";
 	public const int DefaultSeasonYear = 2026;
+	/// <summary>
+	/// Holding organization for students who are not on a team: tryout
+	/// candidates (on a school's tryout team) and players who were cut or
+	/// released (on the inactive team). Nobody can sign them.
+	/// </summary>
 	public const string UnsignedOrganizationId = "unsigned";
-	public const int OpenPlayTargetPlayers = 200;
-	public const int OpenPlayGamesPerPlayer = 5;
+
+	/// <summary>Students who were cut or released. Off the team for the year.</summary>
+	public const string InactiveTeamId = "inactive";
+
 	public const int TypicalIncomingMin = 7;
 	public const int TypicalIncomingMax = 15;
 
-	public static string OpenPlayTeamId(string districtId) => $"open-play-{districtId}";
+	/// <summary>The school's tryout group: students who signed up to try out.</summary>
+	public static string TryoutTeamId(string organizationId) => $"tryouts-{organizationId}";
+
+	public static bool IsTryoutTeam(string? teamId) =>
+		!string.IsNullOrWhiteSpace(teamId) && teamId.StartsWith("tryouts-", StringComparison.Ordinal);
+
+	/// <summary>The school a tryout team belongs to, or null.</summary>
+	public static string? SchoolForTryoutTeam(string? teamId) =>
+		IsTryoutTeam(teamId) ? teamId!["tryouts-".Length..] : null;
 
 	public static string TeamIdFor(string organizationId, TeamLevel level) =>
 		level == TeamLevel.JuniorVarsity ? $"{organizationId}-jv" : $"{organizationId}-varsity";
@@ -28,8 +43,6 @@ public sealed class LeagueCatalog
 	public static bool IsUnsignedOrganization(string? organizationId) =>
 		string.IsNullOrWhiteSpace(organizationId) || organizationId == UnsignedOrganizationId;
 
-	public static bool IsOpenPlayTeam(string? teamId) =>
-		!string.IsNullOrWhiteSpace(teamId) && teamId.StartsWith("open-play-", StringComparison.Ordinal);
 
 	public CompetitionLevel CompetitionLevel { get; }
 	public IReadOnlyList<DistrictIdentity> Districts { get; }

@@ -22,11 +22,11 @@ public class GraduateHistoryTests
 	}
 
 	[Fact]
-	public void Unsigned_seniors_are_not_graduated_from_a_high_school_roster()
+	public void Seniors_not_on_a_team_are_not_graduated_from_a_high_school_roster()
 	{
-		var unsigned = Hitter("Open", "Pool", PlayerGrade.Senior, 70, 74);
+		var unsigned = Hitter("Cut", "Senior", PlayerGrade.Senior, 70, 74);
 		unsigned.OrganizationId = LeagueCatalog.UnsignedOrganizationId;
-		unsigned.TeamId = LeagueCatalog.OpenPlayTeamId("cascade");
+		unsigned.TeamId = LeagueCatalog.InactiveTeamId;
 
 		Assert.False(PlayerGraduation.ShouldGraduate(unsigned));
 		Assert.Equal(0, PlayerGraduation.Apply([unsigned], 2026));
