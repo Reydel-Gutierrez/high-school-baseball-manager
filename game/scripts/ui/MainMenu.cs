@@ -11,7 +11,6 @@ public partial class MainMenu : Control
 {
 	private const string ClubhouseScene = "res://scenes/main/main.tscn";
 	private const string SettingsScene = "res://scenes/pages/settings.tscn";
-	private const float XpProgress = 4250f / 7500f;
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.70f, 0.74f, 0.80f, 1f);
@@ -219,7 +218,9 @@ public partial class MainMenu : Control
 			CornerRadiusBottomLeft = 6,
 			CornerDetail = 6,
 		});
-		var initials = MakeText(CareerDesk.CoachInitials, _bold, 20, TextPrimary, HorizontalAlignment.Center);
+		CareerSaveSlot? last = CareerLibrary.ActiveSlot();
+		string coach = last?.CoachName ?? "New Coach";
+		var initials = MakeText(Initials(coach), _bold, 20, TextPrimary, HorizontalAlignment.Center);
 		initials.VerticalAlignment = VerticalAlignment.Center;
 		initials.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		initials.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -231,90 +232,26 @@ public partial class MainMenu : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -3);
-		identity.AddChild(MakeText(CareerDesk.CoachName.ToUpperInvariant(), _bold, 18, TextPrimary, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("HEAD COACH", _medium, 11, TextDim, HorizontalAlignment.Left));
+		identity.AddChild(MakeText(coach.ToUpperInvariant(), _bold, 18, TextPrimary, HorizontalAlignment.Left));
+		string role = last == null
+			? "NO CAREER YET  ·  START ONE BELOW"
+			: string.IsNullOrWhiteSpace(last.SchoolName) ? "LICENSED  ·  UNSIGNED" : $"HEAD COACH  ·  {last.SchoolName.ToUpperInvariant()}";
+		identity.AddChild(MakeText(role, _medium, 11, TextDim, HorizontalAlignment.Left));
 		row.AddChild(identity);
-
-		row.AddChild(BuildOverallBadge());
-		row.AddChild(BuildXpBlock());
 		return row;
 	}
 
-	private Control BuildOverallBadge()
+	private static string Initials(string name)
 	{
-		var wrap = new Control
+		string[] parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length == 0)
 		{
-			CustomMinimumSize = new Vector2(54, 56),
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		wrap.MouseFilter = MouseFilterEnum.Ignore;
-		wrap.Draw += () => DrawHex(wrap, AccentBlue);
-		wrap.Resized += wrap.QueueRedraw;
-
-		var labels = new VBoxContainer
-		{
-			Alignment = BoxContainer.AlignmentMode.Center,
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		labels.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		labels.AddThemeConstantOverride("separation", -6);
-		var value = MakeText("72", _bold, 16, TextPrimary, HorizontalAlignment.Center);
-		value.VerticalAlignment = VerticalAlignment.Center;
-		labels.AddChild(value);
-		labels.AddChild(MakeText("OVR", _semibold, 9, TextPrimary, HorizontalAlignment.Center));
-		wrap.AddChild(labels);
-		return wrap;
-	}
-
-	private static void DrawHex(Control target, Color fill)
-	{
-		Vector2 center = target.Size * 0.5f;
-		float radius = Mathf.Min(target.Size.X, target.Size.Y) * 0.46f;
-		var points = new Vector2[6];
-		for (int i = 0; i < 6; i++)
-		{
-			float angle = Mathf.DegToRad(30 + i * 60);
-			points[i] = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+			return "?";
 		}
 
-		target.DrawColoredPolygon(points, fill);
-	}
-
-	private Control BuildXpBlock()
-	{
-		var col = new VBoxContainer
-		{
-			CustomMinimumSize = new Vector2(148, 0),
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		col.AddThemeConstantOverride("separation", 3);
-		col.AddChild(MakeText("LVL 12", _semibold, 11, TextPrimary, HorizontalAlignment.Left));
-
-		var track = new Control
-		{
-			CustomMinimumSize = new Vector2(0, 8),
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		var trackBg = new ColorRect
-		{
-			Color = new Color(0.10f, 0.14f, 0.22f, 1f),
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		trackBg.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		var fill = new ColorRect
-		{
-			Color = AccentBlue,
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		fill.SetAnchor(Side.Left, 0);
-		fill.SetAnchor(Side.Top, 0);
-		fill.SetAnchor(Side.Bottom, 1);
-		fill.SetAnchor(Side.Right, XpProgress);
-		track.AddChild(trackBg);
-		track.AddChild(fill);
-		col.AddChild(track);
-		col.AddChild(MakeText("4,250 / 7,500 XP", _medium, 10, TextDim, HorizontalAlignment.Left));
-		return col;
+		return parts.Length == 1
+			? parts[0][..1].ToUpperInvariant()
+			: $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}";
 	}
 
 	private Control BuildDateCluster()
@@ -326,16 +263,21 @@ public partial class MainMenu : Control
 		row.AddThemeConstantOverride("separation", 10);
 		row.AddChild(MakeIcon(UiSvg.Load("res://assets/ui/icon_calendar.svg"), 22));
 
-		DateOnly date = GameSession.Current.CurrentDate;
+		CareerSaveSlot? last = CareerLibrary.ActiveSlot();
 		var col = new VBoxContainer();
 		col.AddThemeConstantOverride("separation", -3);
 		col.AddChild(MakeText(
-			date.ToString("dddd, MMMM d, yyyy", CultureInfo.InvariantCulture).ToUpperInvariant(),
+			last == null ? "NO SAVED CAREER" : $"SEASON {last.SeasonNumber}  ·  {last.SeasonYear}",
 			_bold,
 			16,
 			TextPrimary,
 			HorizontalAlignment.Left));
-		col.AddChild(MakeText("REGULAR SEASON", _medium, 11, TextDim, HorizontalAlignment.Left));
+		col.AddChild(MakeText(
+			last == null ? "YOUR STORY STARTS WITH A JOB INTERVIEW" : $"{last.Status.ToUpperInvariant()}  ·  LAST PLAYED {last.LastPlayedLabel.ToUpperInvariant()}",
+			_medium,
+			11,
+			TextDim,
+			HorizontalAlignment.Left));
 		row.AddChild(col);
 		return row;
 	}
@@ -367,7 +309,7 @@ public partial class MainMenu : Control
 			CornerRadiusBottomLeft = 17,
 			CornerDetail = 8,
 		});
-		var dollar = MakeText("$", _bold, 16, TextPrimary, HorizontalAlignment.Center);
+		var dollar = MakeText("W", _bold, 16, TextPrimary, HorizontalAlignment.Center);
 		dollar.VerticalAlignment = VerticalAlignment.Center;
 		dollar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		dollar.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -376,8 +318,9 @@ public partial class MainMenu : Control
 
 		var col = new VBoxContainer();
 		col.AddThemeConstantOverride("separation", -3);
-		col.AddChild(MakeText("PROGRAM BUDGET", _medium, 10, TextDim, HorizontalAlignment.Left));
-		col.AddChild(MakeText("$125,000", _bold, 18, TextPrimary, HorizontalAlignment.Left));
+		CareerSaveSlot? slot = CareerLibrary.ActiveSlot();
+		col.AddChild(MakeText("SEASON RECORD", _medium, 10, TextDim, HorizontalAlignment.Left));
+		col.AddChild(MakeText(slot == null ? "—" : slot.RecordLabel, _bold, 18, TextPrimary, HorizontalAlignment.Left));
 		row.AddChild(col);
 		return row;
 	}
