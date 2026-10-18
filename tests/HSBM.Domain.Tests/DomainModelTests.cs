@@ -124,16 +124,16 @@ public class SeasonCalendarTests
 	}
 
 	[Fact]
-	public void District_open_play_covers_two_january_weeks()
+	public void Tryout_week_is_the_last_week_of_january()
 	{
-		SeasonEvent openPlay = SeasonCalendar.ForSeason(2026).Single(e => e.Id == "open-play");
-		Assert.True(openPlay.Featured);
-		Assert.Equal(new DateOnly(2026, 1, 12), openPlay.Start);
-		Assert.Equal(new DateOnly(2026, 1, 25), openPlay.End);
-		Assert.True(openPlay.OccursOn(new DateOnly(2026, 1, 12)));
-		Assert.True(openPlay.OccursOn(new DateOnly(2026, 1, 25)));
-		Assert.False(openPlay.OccursOn(new DateOnly(2026, 1, 11)));
-		Assert.False(openPlay.OccursOn(new DateOnly(2026, 1, 26)));
+		SeasonEvent week = SeasonCalendar.ForSeason(2026).Single(e => e.Id == "tryout-week");
+		Assert.True(week.Featured);
+		Assert.Equal(new DateOnly(2026, 1, 26), week.Start);
+		Assert.Equal(new DateOnly(2026, 1, 31), week.End);
+		Assert.False(week.OccursOn(new DateOnly(2026, 1, 25)));
+		Assert.False(week.OccursOn(new DateOnly(2026, 2, 1)));
+		SeasonEvent decision = SeasonCalendar.ForSeason(2026).Single(e => e.Id == "tryout-decisions");
+		Assert.Equal(SeasonCalendar.TryoutDecisionDay(2026), decision.Start);
 	}
 
 	[Fact]

@@ -111,7 +111,7 @@ public class CareerPersistenceTests
 	}
 
 	[Fact]
-	public void Create_career_publishes_open_play_news_and_reopen_keeps_it()
+	public void Create_career_publishes_tryout_news_and_reopen_keeps_it()
 	{
 		string path = NewDb();
 		try
@@ -123,7 +123,7 @@ public class CareerPersistenceTests
 				service.CreateCareer(new CreateCareerRequest { Name = "Wire", Seed = 21 });
 				IReadOnlyList<NewsStory> news = service.GetNews();
 				Assert.NotEmpty(news);
-				Assert.Contains(news, story => story.Headline.Contains("Open Play", StringComparison.OrdinalIgnoreCase));
+				Assert.Contains(news, story => story.Headline.Contains("Sign-Up", StringComparison.OrdinalIgnoreCase));
 				NewsStory first = news[0];
 				storyId = first.Id;
 				headline = first.Headline;

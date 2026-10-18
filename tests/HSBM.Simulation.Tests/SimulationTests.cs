@@ -86,15 +86,14 @@ public class RosterGenerationTests
 	{
 		var labels = new List<string>();
 		new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 7, 2026, progress => labels.Add(progress.Label));
-		Assert.Equal(8, labels.Count);
+		Assert.Equal(7, labels.Count);
 		Assert.Equal("Creating 32 programs...", labels[0]);
 		Assert.Equal("Generating program histories...", labels[1]);
 		Assert.Equal("Generating returning varsity rosters...", labels[2]);
 		Assert.Equal("Generating returning JV rosters...", labels[3]);
 		Assert.Equal("Generating player identities...", labels[4]);
-		Assert.Equal("Building District Open Play classes...", labels[5]);
-		Assert.Equal("Simulating Open Play games...", labels[6]);
-		Assert.Equal("Building season schedule...", labels[7]);
+		Assert.Equal("Posting tryout sign-up sheets...", labels[5]);
+		Assert.Equal("Building season schedule...", labels[6]);
 	}
 
 	[Fact]
