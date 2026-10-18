@@ -839,6 +839,60 @@ public partial class GameSession : Node
 		return true;
 	}
 
+	private GameSimulationResult? _pendingLiveResult;
+
+	/// <summary>
+	/// Set up today's game for live play. Returns null when there is no
+	/// saved career, the game is not today, or a side cannot field a team.
+	/// </summary>
+	public LiveGame? StartLiveGame(CalendarContest contest)
+	{
+		if (!HasCareerDatabase || contest.GameId == Guid.Empty || contest.Date != CurrentDate || contest.Completed)
+		{
+			return null;
+		}
+
+		if (SimulationDesk.InterruptOn(this) != null)
+		{
+			return null;
+		}
+
+		try
+		{
+			using SqliteCareerStore store = new(CareerDatabasePath(ActiveSaveId!));
+			using CareerService service = CareerService.Create(store);
+			LiveGame? live = service.StartLiveGame(contest.GameId);
+			if (live != null && ActiveTeam != null)
+			{
+				// The assistant runs the opponent; the user's club waits for calls.
+				bool userHome = live.HomeTeamId == ActiveTeam.Id;
+				live.AutoManageHome = !userHome;
+				live.AutoManageAway = userHome;
+			}
+
+			return live;
+		}
+		catch (Exception ex)
+		{
+			GD.PushError($"Failed to start live game: {ex.Message}");
+			return null;
+		}
+	}
+
+	/// <summary>Apply a finished live game and advance the calendar past it.</summary>
+	public SimulationRun FinishLiveGame(GameSimulationResult result)
+	{
+		_pendingLiveResult = result;
+		try
+		{
+			return SimulateDays(1);
+		}
+		finally
+		{
+			_pendingLiveResult = null;
+		}
+	}
+
 	public SimulationRun SimulateDays(int days)
 	{
 		if (days < 1)
@@ -1046,7 +1100,9 @@ public partial class GameSession : Node
 			HashSet<Guid> signedBefore = UserSignedIds();
 			using SqliteCareerStore store = new(CareerDatabasePath(ActiveSaveId!));
 			using CareerService service = CareerService.Create(store);
-			AdvanceDayResult advanced = service.AdvanceDay();
+			GameSimulationResult? preplayed = _pendingLiveResult;
+			_pendingLiveResult = null;
+			AdvanceDayResult advanced = preplayed != null ? service.AdvanceDay(preplayed) : service.AdvanceDay();
 			CareerState state = service.LoadCareer();
 			BindWorld(state);
 			BindRecruiting(state);

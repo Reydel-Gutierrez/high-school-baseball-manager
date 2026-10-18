@@ -39,6 +39,7 @@ public partial class AppNavigator : MarginContainer
 	public const string SettingsViewKey = "settings";
 	public const string PlaceholderViewKey = "placeholder";
 	public const string GamePreviewViewKey = "game-preview";
+	public const string LiveGameViewKey = "live-game";
 	public const string ChampionshipViewKey = "championship";
 	public const string SeasonReviewViewKey = "season-review";
 	public const string HallOfFameViewKey = "hall-of-fame";
@@ -103,6 +104,7 @@ public partial class AppNavigator : MarginContainer
 	private Label _placeholderBody = null!;
 	private ProfileDock _profileDock = null!;
 	private GamePreviewPage _gamePreviewPage = null!;
+	private LiveGamePage _liveGamePage = null!;
 	private ChampionshipCelebrationPage _championshipPage = null!;
 	private SeasonReviewPage _seasonReviewPage = null!;
 	private HallOfFameInductionPage _hallOfFamePage = null!;
@@ -164,7 +166,18 @@ public partial class AppNavigator : MarginContainer
 		_gamePreviewPage.EditLineupRequested += ShowLineups;
 		_gamePreviewPage.EditRotationRequested += ShowRotation;
 		_gamePreviewPage.SimulateRequested += OnSimulateGame;
-		_gamePreviewPage.PlayGameRequested += OnSimulateGame;
+		_gamePreviewPage.PlayGameRequested += OnPlayLiveGame;
+
+		// Live game day is built in code and parked beside the preview.
+		_liveGamePage = new LiveGamePage
+		{
+			Name = "LiveGameView",
+			Visible = false,
+			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+			SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+		};
+		_gamePreviewPage.GetParent().AddChild(_liveGamePage);
+		_liveGamePage.Completed += OnLiveGameCompleted;
 
 		_championshipPage = GetNode<ChampionshipCelebrationPage>("AppLayout/ContentArea/ChampionshipView");
 		_championshipPage.Closed += ReturnFromFullscreenDesk;
@@ -218,6 +231,7 @@ public partial class AppNavigator : MarginContainer
 		_views[SettingsViewKey] = _settingsView;
 		_views[PlaceholderViewKey] = _placeholderView;
 		_views[GamePreviewViewKey] = _gamePreviewPage;
+		_views[LiveGameViewKey] = _liveGamePage;
 		_views[ChampionshipViewKey] = _championshipPage;
 		_views[SeasonReviewViewKey] = _seasonReviewPage;
 		_views[HallOfFameViewKey] = _hallOfFamePage;
@@ -275,6 +289,7 @@ public partial class AppNavigator : MarginContainer
 			}
 		}
 
+		_previewContest = game;
 		_gamePreviewPage.Bind(game);
 		ShowView(GamePreviewViewKey, TopBarNavigation.HomeKey);
 	}
@@ -336,7 +351,7 @@ public partial class AppNavigator : MarginContainer
 
 	private void RememberFullscreenReturn()
 	{
-		if (_activeView is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey
+		if (_activeView is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey or LiveGameViewKey
 			|| (_activeView == AwardsViewKey && _awardsCeremony))
 		{
 			return;
@@ -396,7 +411,7 @@ public partial class AppNavigator : MarginContainer
 		string view = _previewReturnView;
 		string topBar = _previewReturnTopBar;
 		if (string.IsNullOrEmpty(view)
-			|| view is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey
+			|| view is ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey or GamePreviewViewKey or LiveGameViewKey
 			|| view == AwardsViewKey && _awardsCeremony
 			|| !_views.ContainsKey(view))
 		{
@@ -430,7 +445,7 @@ public partial class AppNavigator : MarginContainer
 	{
 		string view = _previewReturnView;
 		string topBar = _previewReturnTopBar;
-		if (string.IsNullOrEmpty(view) || view == GamePreviewViewKey || !_views.ContainsKey(view))
+		if (string.IsNullOrEmpty(view) || view == GamePreviewViewKey || view == LiveGameViewKey || !_views.ContainsKey(view))
 		{
 			view = HomeViewKey;
 			topBar = TopBarNavigation.HomeKey;
@@ -440,6 +455,30 @@ public partial class AppNavigator : MarginContainer
 		if (view == ScheduleViewKey && _scheduleView is SchedulePage schedule)
 		{
 			schedule.FocusCurrentGame();
+		}
+	}
+
+	private CalendarContest? _previewContest;
+
+	private void OnPlayLiveGame()
+	{
+		if (_previewContest is CalendarContest contest && _liveGamePage.Begin(contest))
+		{
+			ShowView(LiveGameViewKey, TopBarNavigation.HomeKey);
+			return;
+		}
+
+		// Tryouts, prototype careers, or a forfeit: fall back to the quick sim.
+		OnSimulateGame();
+	}
+
+	private void OnLiveGameCompleted(SimulationRun run)
+	{
+		ReturnFromGamePreview();
+		ShowHome();
+		if (_homeView is HomePage home)
+		{
+			home.ApplySimulationRun(run);
 		}
 	}
 
@@ -1057,7 +1096,7 @@ public partial class AppNavigator : MarginContainer
 			pair.Value.Visible = pair.Key == viewKey;
 		}
 
-		_topBar.Visible = viewKey is not (GamePreviewViewKey or ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey)
+		_topBar.Visible = viewKey is not (GamePreviewViewKey or LiveGameViewKey or ChampionshipViewKey or SeasonReviewViewKey or HallOfFameViewKey or SeasonRolloverViewKey)
 			&& !(viewKey == AwardsViewKey && _awardsCeremony);
 		_topBar.ApplyCareerShell(
 			hideClubhouseNav: _unsignedLock || viewKey == CareerViewKey,
