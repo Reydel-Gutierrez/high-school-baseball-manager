@@ -227,15 +227,15 @@ public partial class TrainingPage : Control
 		});
 
 		Clear(_rows);
-		int total = 0;
+		double total = 0;
 		for (int i = 0; i < roster.Count; i++)
 		{
 			total += roster[i].SeasonGain;
 			_rows.AddChild(BuildRow(roster[i], i, header: false));
 		}
 
-		_summary.Text = total > 0 ? $"+{total} OVR" : total < 0 ? $"{total} OVR" : "—";
-		_summary.AddThemeColorOverride("font_color", total > 0 ? Green : TextPrimary);
+		_summary.Text = total >= 0.05 ? $"+{total:0.0} OVR" : total <= -0.05 ? $"{total:0.0} OVR" : "—";
+		_summary.AddThemeColorOverride("font_color", total >= 0.05 ? Green : TextPrimary);
 	}
 
 	private void Apply(TeamLevel level, TrainingFocus focus, TrainingIntensity intensity)
@@ -280,14 +280,16 @@ public partial class TrainingPage : Control
 		}
 
 		Player p = player!;
-		int start = p.SeasonStartOverall > 0 ? p.SeasonStartOverall : p.Overall;
-		int gain = p.SeasonGain;
+		int start = p.SeasonStartRating > 0 ? (int)Math.Round(p.SeasonStartRating / 100.0) : p.Overall;
+		double gain = p.SeasonGain;
 		Cell(row, p.FullName, 0, TextPrimary, _semibold, 14, expand: true);
 		Cell(row, p.PrimaryPosition.ToCode(), 44, TextMuted, _semibold, 13);
 		Cell(row, p.Grade.ToAbbrev(), 36, TextMuted, _semibold, 13);
 		Cell(row, start.ToString(CultureInfo.InvariantCulture), 50, TextMuted, _semibold, 13);
 		Cell(row, p.Overall.ToString(CultureInfo.InvariantCulture), 44, TextPrimary, _bold, 14);
-		Cell(row, gain > 0 ? $"▲ {gain}" : gain < 0 ? $"▼ {-gain}" : "—", 50, gain > 0 ? Green : gain < 0 ? Urgent : TextDim, _bold, 13);
+		bool up = gain >= 0.05;
+		bool down = gain <= -0.05;
+		Cell(row, up ? $"▲ {gain:0.0}" : down ? $"▼ {-gain:0.0}" : "—", 50, up ? Green : down ? Urgent : TextDim, _bold, 13);
 		Cell(row, p.Potential.ToString(CultureInfo.InvariantCulture), 44, Accent, _bold, 13);
 		string outlook = PlayerDevelopment.Outlook(p);
 		Color outlookColor = outlook switch

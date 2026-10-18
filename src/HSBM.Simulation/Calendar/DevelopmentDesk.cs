@@ -39,9 +39,9 @@ public static class DevelopmentDesk
 				continue;
 			}
 
-			if (player.SeasonStartOverall <= 0)
+			if (player.SeasonStartRating <= 0)
 			{
-				player.SeasonStartOverall = player.Overall;
+				player.MarkSeasonStart();
 			}
 
 			if (player.Injury != null && player.Injury.ActiveOn(today) && !player.Injury.DayToDay)
@@ -84,7 +84,7 @@ public static class DevelopmentDesk
 				continue;
 			}
 
-			player.SeasonStartOverall = player.Overall;
+			player.MarkSeasonStart();
 			LetterGrade facilities = Facilities(state, player.OrganizationId);
 			double share = PlayingShare(player, teamGames, usage);
 			PlayerDevelopment.Offseason(player, facilities, share, rng.Derive(Salt(player.Id)));

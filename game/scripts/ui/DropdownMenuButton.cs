@@ -9,9 +9,9 @@ public partial class DropdownMenuButton : MenuButton
 	public float MaximumPopupWidth { get; set; } = 280.0f;
 
 	// Hover opens the menu; the click that usually follows would toggle it
-	// shut again. A close this soon after a hover-open, with the pointer still
-	// on the button, is that click — reopen instead.
-	private const ulong HoverClickGraceMs = 450;
+	// shut again. The first close after a hover-open, with the pointer still
+	// on the button, is that click — reopen instead. A second click closes.
+	private const ulong HoverClickGraceMs = 15000;
 	private ulong _hoverOpenedAt;
 
 	public override void _Ready()

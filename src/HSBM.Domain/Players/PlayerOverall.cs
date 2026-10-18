@@ -58,6 +58,32 @@ public static class PlayerOverall
 		};
 	}
 
+	/// <summary>Unrounded overall, for showing small development steps.</summary>
+	public static double Exact(PlayerPosition position, PlayerRatings ratings)
+	{
+		double total = 0;
+		for (int attribute = 0; attribute < 10; attribute++)
+		{
+			total += Weight(position, attribute) * Attribute(ratings, attribute);
+		}
+
+		return total;
+	}
+
+	public static int Attribute(PlayerRatings ratings, int attribute) => attribute switch
+	{
+		0 => ratings.Contact,
+		1 => ratings.Power,
+		2 => ratings.PlateDiscipline,
+		3 => ratings.Speed,
+		4 => ratings.Fielding,
+		5 => ratings.ArmStrength,
+		6 => ratings.Stuff,
+		7 => ratings.Control,
+		8 => ratings.Movement,
+		_ => ratings.Stamina,
+	};
+
 	public static double OffensiveRating(PlayerRatings ratings) =>
 		ratings.Contact * 0.40 +
 		ratings.Power * 0.30 +

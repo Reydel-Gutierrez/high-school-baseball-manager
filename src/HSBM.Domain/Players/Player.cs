@@ -32,10 +32,18 @@ public sealed class Player
 	/// <summary>Banked growth (hundredths of an overall point) not yet paid out as rating points.</summary>
 	public int DevelopmentProgress { get; set; }
 
-	/// <summary>Overall when the current baseball year began; 0 if unknown. Drives "this season" deltas.</summary>
-	public int SeasonStartOverall { get; set; }
+	/// <summary>
+	/// Exact (unrounded) overall when the current baseball year began, in
+	/// hundredths; 0 if unknown. Drives "this season" development deltas.
+	/// </summary>
+	public int SeasonStartRating { get; set; }
 
-	public int SeasonGain => SeasonStartOverall > 0 ? Overall - SeasonStartOverall : 0;
+	public double ExactOverall => PlayerOverall.Exact(PrimaryPosition, Ratings);
+
+	/// <summary>Overall points gained since the baseball year began (fractional).</summary>
+	public double SeasonGain => SeasonStartRating > 0 ? ExactOverall - SeasonStartRating / 100.0 : 0;
+
+	public void MarkSeasonStart() => SeasonStartRating = (int)Math.Round(ExactOverall * 100);
 
 	public string FullName => $"{FirstName} {LastName}";
 

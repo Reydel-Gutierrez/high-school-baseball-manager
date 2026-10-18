@@ -41,7 +41,7 @@ public class DevelopmentPersistenceTests
 				Player player = state.Players.First(p => p.TeamId == teamId);
 				playerId = player.Id;
 				player.DevelopmentProgress = 73;
-				player.SeasonStartOverall = 41;
+				player.SeasonStartRating = 4125;
 				store.ReplaceAll(state);
 				service.SetTraining(teamId, TrainingFocus.Defense, TrainingIntensity.Hard);
 			}
@@ -55,7 +55,7 @@ public class DevelopmentPersistenceTests
 				Assert.Equal(TrainingIntensity.Hard, plan.Intensity);
 				Player player = loaded.PlayerById(playerId)!;
 				Assert.Equal(73, player.DevelopmentProgress);
-				Assert.Equal(41, player.SeasonStartOverall);
+				Assert.Equal(4125, player.SeasonStartRating);
 			}
 		}
 		finally

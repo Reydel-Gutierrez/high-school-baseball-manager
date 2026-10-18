@@ -439,7 +439,7 @@ public sealed class SqliteCareerStore : ICareerStore
 		AddColumnIfMissing("players", "college_school", "TEXT NOT NULL DEFAULT ''");
 		AddColumnIfMissing("players", "college_path", "TEXT NOT NULL DEFAULT ''");
 		AddColumnIfMissing("players", "development_progress", "INTEGER NOT NULL DEFAULT 0");
-		AddColumnIfMissing("players", "season_start_overall", "INTEGER NOT NULL DEFAULT 0");
+		AddColumnIfMissing("players", "season_start_rating", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "wins", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "losses", "INTEGER NOT NULL DEFAULT 0");
 		AddColumnIfMissing("coach_stints", "district_titles", "INTEGER NOT NULL DEFAULT 0");
@@ -493,7 +493,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path, development_progress, season_start_overall)
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating)
 			VALUES (
 				$id, $first, $last, $year, $bats, $throws, $pos, $sec, $grade, $age, $org, $team, $level, $jersey,
 				$contact, $power, $disc, $speed, $field, $arm, $stuff, $control, $move, $stam, $pot, $arch,
@@ -550,7 +550,7 @@ public sealed class SqliteCareerStore : ICareerStore
 		command.Parameters.AddWithValue("$collegeSchool", player.CollegeSchool ?? "");
 		command.Parameters.AddWithValue("$collegePath", player.CollegePath ?? "");
 		command.Parameters.AddWithValue("$devProgress", player.DevelopmentProgress);
-		command.Parameters.AddWithValue("$seasonStart", player.SeasonStartOverall);
+		command.Parameters.AddWithValue("$seasonStart", player.SeasonStartRating);
 		command.ExecuteNonQuery();
 	}
 
@@ -793,7 +793,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				fielding, arm_strength, stuff, control, movement, stamina, potential, recruiting_archetype,
 				appearance_json, height_inches, weight_lbs, strength, personality,
 				injury_kind, injury_start, injury_available_on, injury_day_to_day, alumni,
-				graduated_year, college_id, college_school, college_path, development_progress, season_start_overall
+				graduated_year, college_id, college_school, college_path, development_progress, season_start_rating
 			FROM players ORDER BY id;
 			""";
 		using SqliteDataReader reader = command.ExecuteReader();
@@ -849,7 +849,7 @@ public sealed class SqliteCareerStore : ICareerStore
 				CollegeSchool = reader.FieldCount > 38 && !reader.IsDBNull(38) ? reader.GetString(38) : "",
 				CollegePath = reader.FieldCount > 39 && !reader.IsDBNull(39) ? reader.GetString(39) : "",
 				DevelopmentProgress = reader.FieldCount > 40 && !reader.IsDBNull(40) ? reader.GetInt32(40) : 0,
-				SeasonStartOverall = reader.FieldCount > 41 && !reader.IsDBNull(41) ? reader.GetInt32(41) : 0,
+				SeasonStartRating = reader.FieldCount > 41 && !reader.IsDBNull(41) ? reader.GetInt32(41) : 0,
 			});
 			Player restored = list[^1];
 			if (restored.Physical.HeightInches > 0)
