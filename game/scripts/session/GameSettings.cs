@@ -29,6 +29,15 @@ public static class GameSettings
 	public const int DefaultWindowWidth = 1920;
 	public const int DefaultWindowHeight = 1080;
 
+	/// <summary>
+	/// Narrowest logical canvas the clubhouse layouts are built for. Wide
+	/// screens keep the design scale; on 16:9 and narrower windows the UI is
+	/// scaled down just enough that pages never clip horizontally.
+	/// </summary>
+	public const int MinimumLogicalWidth = 1440;
+
+	private static bool _fitHooked;
+
 	private const string AudioSection = "audio";
 	private const string AutosaveSection = "autosave";
 	private const string GameplaySection = "gameplay";
@@ -209,10 +218,14 @@ public static class GameSettings
 		Window window = tree.Root;
 		window.ContentScaleMode = Window.ContentScaleModeEnum.CanvasItems;
 		window.ContentScaleSize = new Vector2I(DesignWidth, DesignHeight);
-		window.ContentScaleFactor = _uiScale;
 		window.ContentScaleAspect = _scaleMode == DisplayScaleMode.Stretch
 			? Window.ContentScaleAspectEnum.Ignore
 			: Window.ContentScaleAspectEnum.Expand;
+		if (!_fitHooked)
+		{
+			_fitHooked = true;
+			window.SizeChanged += () => ApplyFitScale(window);
+		}
 
 		Vector2I size = ClampResolution(new Vector2I(_displayWidth, _displayHeight));
 		switch (_windowMode)
@@ -231,6 +244,27 @@ public static class GameSettings
 				window.MoveToCenter();
 				break;
 		}
+
+		ApplyFitScale(window);
+	}
+
+	/// <summary>
+	/// Content scale = user UI scale × a fit factor that guarantees at least
+	/// <see cref="MinimumLogicalWidth"/> logical pixels across.
+	/// </summary>
+	private static void ApplyFitScale(Window window)
+	{
+		Vector2I size = window.Size;
+		if (size.X <= 0 || size.Y <= 0 || _scaleMode == DisplayScaleMode.Stretch)
+		{
+			window.ContentScaleFactor = _uiScale;
+			return;
+		}
+
+		float baseScale = Mathf.Min(size.X / (float)DesignWidth, size.Y / (float)DesignHeight);
+		float logicalWidth = size.X / (baseScale * _uiScale);
+		float fit = logicalWidth < MinimumLogicalWidth ? logicalWidth / MinimumLogicalWidth : 1f;
+		window.ContentScaleFactor = _uiScale * fit;
 	}
 
 	public static IReadOnlyList<Vector2I> AvailableResolutions()
