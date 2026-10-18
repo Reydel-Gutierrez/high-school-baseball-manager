@@ -444,7 +444,7 @@ public partial class TryoutsPage : Control
 		var top = new HBoxContainer();
 		top.AddThemeConstantOverride("separation", 14);
 		var portrait = new PersonPortrait { CustomMinimumSize = new Vector2(108, 132) };
-		portrait.Appearance = player.Appearance;
+		portrait.SetPlayer(player);
 		top.AddChild(portrait);
 		var who = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		who.AddThemeConstantOverride("separation", 0);

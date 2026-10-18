@@ -617,6 +617,7 @@ public partial class CareerPage : Control
 			{
 				CustomMinimumSize = new Vector2(80, 100),
 			};
+			portrait.Age = _session.Coach.Age;
 			portrait.SetAppearance(appearance);
 			frame.AddChild(portrait);
 			return frame;

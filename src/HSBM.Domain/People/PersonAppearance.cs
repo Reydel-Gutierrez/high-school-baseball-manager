@@ -30,6 +30,13 @@ public sealed class PersonAppearance : IEquatable<PersonAppearance>
 
 	public int TeamSecondaryArgb { get; set; }
 
+	/// <summary>
+	/// Face sculpt sliders for the 3D head (-100..100 each; heritage slots
+	/// 0..100). Null or empty means "derive from <see cref="Seed"/>", which
+	/// is how every generated player and coach gets a unique face.
+	/// </summary>
+	public int[]? Sculpt { get; set; }
+
 	public PersonAppearance Clone() => new()
 	{
 		Seed = Seed,
@@ -50,6 +57,7 @@ public sealed class PersonAppearance : IEquatable<PersonAppearance>
 		OutfitColorway = OutfitColorway,
 		TeamPrimaryArgb = TeamPrimaryArgb,
 		TeamSecondaryArgb = TeamSecondaryArgb,
+		Sculpt = Sculpt == null ? null : (int[])Sculpt.Clone(),
 	};
 
 	public bool Equals(PersonAppearance? other)
@@ -76,7 +84,8 @@ public sealed class PersonAppearance : IEquatable<PersonAppearance>
 			&& OutfitStyle == other.OutfitStyle
 			&& OutfitColorway == other.OutfitColorway
 			&& TeamPrimaryArgb == other.TeamPrimaryArgb
-			&& TeamSecondaryArgb == other.TeamSecondaryArgb;
+			&& TeamSecondaryArgb == other.TeamSecondaryArgb
+			&& SculptEquals(Sculpt, other.Sculpt);
 	}
 
 	public override bool Equals(object? obj) => Equals(obj as PersonAppearance);
@@ -102,6 +111,26 @@ public sealed class PersonAppearance : IEquatable<PersonAppearance>
 		hash.Add(OutfitColorway);
 		hash.Add(TeamPrimaryArgb);
 		hash.Add(TeamSecondaryArgb);
+		if (Sculpt != null)
+		{
+			foreach (int value in Sculpt)
+			{
+				hash.Add(value);
+			}
+		}
+
 		return hash.ToHashCode();
+	}
+
+	private static bool SculptEquals(int[]? a, int[]? b)
+	{
+		bool emptyA = a == null || a.Length == 0;
+		bool emptyB = b == null || b.Length == 0;
+		if (emptyA || emptyB)
+		{
+			return emptyA == emptyB;
+		}
+
+		return a!.AsSpan().SequenceEqual(b);
 	}
 }

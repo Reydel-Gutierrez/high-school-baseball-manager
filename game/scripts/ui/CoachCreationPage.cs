@@ -213,6 +213,7 @@ public partial class CoachCreationPage : Control
 		_lastName.Text = Coach.LastName;
 		_hometown.Text = Coach.Hometown;
 		CareerCreationChrome.SetStepperValue(_ageStepper, Coach.Age.ToString());
+		_portrait.Age = Coach.Age;
 		_portrait.SetAppearance(Coach.Appearance);
 		_syncing = false;
 		RefreshEditorLabels();
@@ -242,6 +243,7 @@ public partial class CoachCreationPage : Control
 	{
 		CareerCreationSession.Current.RandomizeAppearance();
 		_portrait.Modulate = new Color(1f, 1f, 1f, 0.35f);
+		_portrait.Age = Coach.Age;
 		_portrait.SetAppearance(Coach.Appearance);
 		Tween tween = CreateTween();
 		tween.TweenProperty(_portrait, "modulate:a", 1f, 0.16f);
@@ -251,6 +253,7 @@ public partial class CoachCreationPage : Control
 	private void ResetAppearance()
 	{
 		CareerCreationSession.Current.ResetAppearance();
+		_portrait.Age = Coach.Age;
 		_portrait.SetAppearance(Coach.Appearance);
 		RefreshEditorLabels();
 	}
@@ -259,6 +262,7 @@ public partial class CoachCreationPage : Control
 
 	private void RefreshAppearance()
 	{
+		_portrait.Age = Coach.Age;
 		_portrait.SetAppearance(Coach.Appearance);
 		RefreshEditorLabels();
 	}
