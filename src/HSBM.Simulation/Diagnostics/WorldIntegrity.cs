@@ -90,7 +90,7 @@ public static class WorldIntegrity
 				issues.Add($"{game.Date:yyyy-MM-dd} {game.HomeTeamId}: tied {game.HomeScore}-{game.AwayScore}.");
 			}
 
-			if (game.InningsPlayed < 9)
+			if (game.InningsPlayed < BaseballSimulationConfig.Default.RegulationInnings)
 			{
 				issues.Add($"{game.Date:yyyy-MM-dd} {game.HomeTeamId}: finished in {game.InningsPlayed} innings.");
 			}

@@ -1064,7 +1064,7 @@ public sealed class CareerService : IDisposable
 			}
 		}
 
-		double era = outs == 0 ? 2.80 : earned * 27.0 / outs;
+		double era = outs == 0 ? 2.80 : earned * 21.0 / outs;
 		return ProgramHallOfFame.PitchingLine(Math.Max(wins, 8), Math.Max(losses, 2), era);
 	}
 

@@ -273,17 +273,17 @@ public class RosterGenerationTests
 public class GameSimulationTests
 {
 	[Fact]
-	public void Games_do_not_end_tied_and_last_at_least_nine_innings()
+	public void Games_do_not_end_tied_and_last_at_least_regulation()
 	{
 		(GeneratedWorld world, BaseballGameSimulator sim) = World();
 		for (int i = 0; i < 40; i++)
 		{
 			GameSimulationResult result = Play(world, sim, i);
 			Assert.NotEqual(result.HomeScore, result.AwayScore);
-			Assert.True(result.InningsPlayed >= 9);
+			Assert.True(result.InningsPlayed >= BaseballSimulationConfig.Default.RegulationInnings);
 			if (result.ExtraInnings)
 			{
-				Assert.True(result.InningsPlayed > 9);
+				Assert.True(result.InningsPlayed > BaseballSimulationConfig.Default.RegulationInnings);
 			}
 		}
 	}
@@ -310,7 +310,7 @@ public class GameSimulationTests
 			if (result.ExtraInnings)
 			{
 				extras++;
-				Assert.True(result.InningsPlayed > 9);
+				Assert.True(result.InningsPlayed > BaseballSimulationConfig.Default.RegulationInnings);
 			}
 		}
 
@@ -428,7 +428,7 @@ public class GameSimulationTests
 			new SeededRandom(11));
 		Assert.Equal(planned.BattingOrder[0].Player.Id, result.BoxScore.HomeBatting[0].PlayerId);
 		Assert.Equal(result.HomeScore + result.AwayScore, result.BoxScore.HomeInningRuns.Sum() + result.BoxScore.AwayInningRuns.Sum());
-		Assert.True(result.BoxScore.HomeInningRuns.Length >= 9);
+		Assert.True(result.BoxScore.HomeInningRuns.Length >= BaseballSimulationConfig.Default.RegulationInnings);
 		Assert.NotEmpty(result.Pitching);
 	}
 

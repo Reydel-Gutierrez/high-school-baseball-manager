@@ -22,7 +22,8 @@ public sealed class PitchingSeasonStats
 
 	public string InningsPitchedDisplay => $"{OutsRecorded / 3}.{OutsRecorded % 3}";
 
-	public double Era => OutsRecorded == 0 ? 0 : EarnedRuns * 27.0 / OutsRecorded;
+	/// <summary>High school ERA: earned runs per seven innings (21 outs).</summary>
+	public double Era => OutsRecorded == 0 ? 0 : EarnedRuns * 21.0 / OutsRecorded;
 
 	public double Whip => OutsRecorded == 0 ? 0 : (Walks + HitsAllowed) * 3.0 / OutsRecorded;
 

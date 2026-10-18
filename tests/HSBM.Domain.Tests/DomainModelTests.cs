@@ -64,7 +64,7 @@ public class SeasonStatsTests
 		};
 
 		Assert.Equal("6.2", stats.InningsPitchedDisplay);
-		Assert.Equal(4 * 27.0 / 20.0, stats.Era, 5);
+		Assert.Equal(4 * 21.0 / 20.0, stats.Era, 5);
 		Assert.Equal(8 * 3.0 / 20.0, stats.Whip, 5);
 	}
 

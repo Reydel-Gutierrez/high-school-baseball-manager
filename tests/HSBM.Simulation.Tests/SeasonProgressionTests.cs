@@ -26,7 +26,7 @@ public class SeasonProgressionTests
 		Assert.All(counting, game =>
 		{
 			Assert.NotEqual(game.HomeScore, game.AwayScore);
-			Assert.True(game.InningsPlayed >= 9);
+			Assert.True(game.InningsPlayed >= BaseballSimulationConfig.Default.RegulationInnings);
 			Assert.False(string.IsNullOrWhiteSpace(game.WinningTeamId));
 			Assert.NotNull(state.BoxScoreFor(game.Id));
 		});

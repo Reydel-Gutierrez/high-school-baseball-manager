@@ -495,7 +495,7 @@ public static class DistrictHubData
 			}
 		}
 
-		return outs == 0 ? 0 : earned * 27f / outs;
+		return outs == 0 ? 0 : earned * 21f / outs;
 	}
 
 	private static List<HubLeader> LiveLeaders(GameWorld world, string category, string stat)
