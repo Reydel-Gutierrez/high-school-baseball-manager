@@ -184,6 +184,25 @@ public sealed class CareerService : IDisposable
 		return ToAdvanceResult(tick);
 	}
 
+	/// <summary>
+	/// Prepare one of today's scheduled games for live play. The returned
+	/// game is detached from storage; finish it, then pass its result to
+	/// <see cref="AdvanceDay(GameSimulationResult)"/>.
+	/// </summary>
+	public LiveGame? StartLiveGame(Guid gameId)
+	{
+		CareerState state = _store.Load();
+		ScheduledGame? scheduled = state.Games.FirstOrDefault(game => game.Id == gameId && game.Status == GameStatus.Scheduled);
+		return scheduled == null ? null : WorldDayProcessor.PrepareLive(state, scheduled, _simulator);
+	}
+
+	/// <summary>Advance the day, applying a game the user already played live.</summary>
+	public AdvanceDayResult AdvanceDay(GameSimulationResult preplayed)
+	{
+		_simulator.Preload(preplayed);
+		return AdvanceDay();
+	}
+
 	public bool TryPlaceRecruitingOffer(
 		string organizationId,
 		Guid playerId,

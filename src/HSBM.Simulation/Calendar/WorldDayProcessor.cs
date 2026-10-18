@@ -131,6 +131,31 @@ public static class WorldDayProcessor
 		};
 	}
 
+	/// <summary>
+	/// Set up a scheduled game to be played live with exactly the rosters,
+	/// lineups, rotation, and random stream the day processor would use.
+	/// Returns null when a side cannot field a team (it will forfeit).
+	/// </summary>
+	public static LiveGame? PrepareLive(CareerState state, ScheduledGame scheduled, BaseballGameSimulator simulator)
+	{
+		DateOnly today = scheduled.Date;
+		List<Player> home = Roster(state, scheduled.HomeTeamId, today);
+		List<Player> away = Roster(state, scheduled.AwayTeamId, today);
+		if (home.Count == 0 || away.Count == 0)
+		{
+			return null;
+		}
+
+		ISeededRandom rng = new SeededRandom(SeededRandom.Mix(state.Career.RandomSeed, scheduled.Id));
+		return simulator.StartLive(
+			scheduled,
+			PlanFor(state, scheduled.HomeTeamId, today, home),
+			PlanFor(state, scheduled.AwayTeamId, today, away),
+			rng,
+			home,
+			away);
+	}
+
 	private static TeamGamePlan PlanFor(
 		CareerState state,
 		string teamId,
