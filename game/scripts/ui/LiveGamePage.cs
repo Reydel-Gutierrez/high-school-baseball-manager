@@ -61,7 +61,7 @@ public partial class LiveGamePage : Control
 	private Button _speedButton = null!;
 	private Button _simButton = null!;
 	private Button _finishButton = null!;
-	private Timer _autoTimer = null!;
+	private Godot.Timer _autoTimer = null!;
 	private int _speedIndex;
 	private int _feedCount;
 	private string _managerMode = "";
@@ -156,7 +156,7 @@ public partial class LiveGamePage : Control
 
 		shell.AddChild(BuildControls());
 
-		_autoTimer = new Timer { OneShot = false, WaitTime = Speeds[0] };
+		_autoTimer = new Godot.Timer { OneShot = false, WaitTime = Speeds[0] };
 		_autoTimer.Timeout += OnAutoTick;
 		AddChild(_autoTimer);
 	}
