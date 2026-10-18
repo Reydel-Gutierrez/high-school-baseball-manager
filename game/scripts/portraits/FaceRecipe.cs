@@ -101,6 +101,9 @@ public sealed class FaceRecipe
 	public float AgeLines;
 	public string Key = "";
 
+	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
+	public const string RenderVersion = "v3;";
+
 	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null)
 	{
 		var r = new FaceRecipe();
@@ -359,7 +362,7 @@ public sealed class FaceRecipe
 
 	private static string BuildKey(FaceRecipe r)
 	{
-		var sb = new StringBuilder();
+		var sb = new StringBuilder(RenderVersion);
 		var names = new List<string>(r.Weights.Keys);
 		names.Sort(StringComparer.Ordinal);
 		foreach (string n in names)
