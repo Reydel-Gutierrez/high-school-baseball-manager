@@ -183,7 +183,7 @@ public partial class PersonPortrait : Control
 			uvs[i] = (pt - dest.Position) / dest.Size;
 		}
 
-		DrawPolygon(pts, [Colors.White], uvs, _photo);
+		DrawPolygon(pts, new Color[] { Colors.White }, uvs, _photo);
 		if (Ring is { } ring)
 		{
 			DrawArc(c, r - 0.75f, 0, Mathf.Tau, 48, ring, 1.5f, true);
