@@ -8,7 +8,8 @@ public sealed class BaseballSimulationConfig
 {
 	public static BaseballSimulationConfig Default { get; } = new();
 
-	public int RegulationInnings { get; init; } = 9;
+	/// <summary>High school (NFHS) games are seven innings.</summary>
+	public int RegulationInnings { get; init; } = 7;
 	public int MaxInnings { get; init; } = 24;
 
 	public double BaseStrikeoutRate { get; init; } = 0.195;

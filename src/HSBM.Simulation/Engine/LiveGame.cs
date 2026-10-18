@@ -163,9 +163,14 @@ public sealed class LiveGame
 
 	public int PitchLimit(bool home) => (home ? _homeStaff : _awayStaff).PitchLimit;
 
-	/// <summary>0 = fresh, 1 = gassed. Mirrors the fatigue used by the plate-appearance model.</summary>
+	/// <summary>
+	/// How spent the pitcher is, 0 (fresh) to 1 (fully gassed), as a share of
+	/// the maximum fatigue the plate-appearance model applies.
+	/// </summary>
 	public double Fatigue(bool home) =>
-		Math.Min(_config.MaxFatigue, (home ? _homeStaff : _awayStaff).Pitches * _config.FatiguePerPitch);
+		_config.MaxFatigue <= 0
+			? 0
+			: Math.Min(_config.MaxFatigue, (home ? _homeStaff : _awayStaff).Pitches * _config.FatiguePerPitch) / _config.MaxFatigue;
 
 	public PlayerGameBatting? BattingLine(Guid playerId) =>
 		_batting.TryGetValue(playerId, out PlayerGameBatting? line) ? line : null;

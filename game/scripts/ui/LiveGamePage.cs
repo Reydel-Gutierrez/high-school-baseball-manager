@@ -65,6 +65,7 @@ public partial class LiveGamePage : Control
 	private int _speedIndex;
 	private int _feedCount;
 	private string _managerMode = "";
+	private bool _followFeed = true;
 
 	public event Action<SimulationRun>? Completed;
 
@@ -87,6 +88,7 @@ public partial class LiveGamePage : Control
 		_oppShort = DistrictHubData.GetTeam(contest.OpponentId).ShortName.ToUpperInvariant();
 		_feedCount = 0;
 		_managerMode = "";
+		_followFeed = true;
 		foreach (Node child in _feed.GetChildren())
 		{
 			child.QueueFree();
@@ -259,6 +261,20 @@ public partial class LiveGamePage : Control
 		_feed.AddThemeConstantOverride("separation", 4);
 		_feedScroll.AddChild(_feed);
 		box.AddChild(_feedScroll);
+		// Follow the newest play: when content grows, pin to the bottom
+		// (unless the coach has scrolled up to read back).
+		ScrollBar feedBar = _feedScroll.GetVScrollBar();
+		feedBar.Changed += () =>
+		{
+			if (_followFeed)
+			{
+				_feedScroll.ScrollVertical = (int)feedBar.MaxValue;
+			}
+		};
+		feedBar.Scrolling += () =>
+		{
+			_followFeed = feedBar.Value + feedBar.Page >= feedBar.MaxValue - 4;
+		};
 		card.AddChild(box);
 		return card;
 	}
@@ -658,7 +674,7 @@ public partial class LiveGamePage : Control
 			_feedCount++;
 		}
 
-		if (plays.Count > 0)
+		if (plays.Count > 0 && _followFeed)
 		{
 			CallDeferred(MethodName.ScrollFeedToBottom);
 		}
@@ -891,8 +907,8 @@ public partial class LiveGamePage : Control
 	{
 		var box = new VBoxContainer();
 		box.AddThemeConstantOverride("separation", 2);
-		Color color = fatigue >= 0.45 ? Urgent : pitches >= limit * 0.8 ? Accent : Green;
-		string status = pitches >= limit ? "  ·  OVER HIS LIMIT" : fatigue >= 0.45 ? "  ·  TIRING" : "";
+		Color color = pitches >= limit || fatigue >= 0.9 ? Urgent : pitches >= limit * 0.8 || fatigue >= 0.7 ? Accent : Green;
+		string status = pitches >= limit ? "  ·  OVER HIS LIMIT" : fatigue >= 0.7 ? "  ·  TIRING" : "";
 		box.AddChild(MakeText($"PITCHES {pitches} / ~{limit}{status}", _semibold, 12, color, HorizontalAlignment.Left));
 		var bar = new ProgressBar
 		{
