@@ -2432,7 +2432,7 @@ public partial class HomePage : Control
 			SizeFlagsStretchRatio = 1.7f,
 		};
 		matchup.AddThemeConstantOverride("separation", 10);
-		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, null, Accent, userId));
+		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, ClubhouseCalendar.OpponentMark(userId), Accent, userId));
 		var vs = MakeText("VS", _bold, 16, TextMuted, HorizontalAlignment.Center);
 		vs.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 		matchup.AddChild(vs);

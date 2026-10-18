@@ -75,6 +75,7 @@ public partial class StandingsPage : Control
 
 	public void SelectSchool(string teamId)
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		_selectedSchoolId = SchoolProfiles.NormalizeId(teamId);
 		HubTeam team = DistrictHubData.GetTeam(_selectedSchoolId);
 		_activeDistrict = team.DistrictId;
@@ -84,6 +85,7 @@ public partial class StandingsPage : Control
 
 	public void ShowDistrictTable(string districtId)
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		_activeDistrict = districtId;
 		_activeView = ViewDistrict;
 		Refresh();
@@ -97,6 +99,7 @@ public partial class StandingsPage : Control
 
 	public void ShowPlayoffBracket()
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		HubDistrict district = DistrictHubData.GetDistrict(DistrictHubData.GetTeam(_selectedSchoolId).DistrictId);
 		_activeRegional = string.Equals(district.Region, "West", System.StringComparison.OrdinalIgnoreCase)
 			? RegionalWest
@@ -206,8 +209,26 @@ public partial class StandingsPage : Control
 		row.AddChild(button);
 	}
 
+
+	private string _boundUserProgram = "";
+
+	/// <summary>Re-center on the user's school whenever the active career changes.</summary>
+	private void SyncUserSelection()
+	{
+		string user = UserProgram.OrganizationId;
+		if (_boundUserProgram == user)
+		{
+			return;
+		}
+
+		_boundUserProgram = user;
+		_selectedSchoolId = user;
+		_activeDistrict = UserProgram.DistrictId;
+	}
+
 	private void Refresh()
 	{
+		SyncUserSelection();
 		if (_bodyHost == null || _session == null)
 		{
 			return;

@@ -295,8 +295,25 @@ public partial class StatisticsPage : Control
 		return card;
 	}
 
+
+	private string _boundUserProgram = "";
+
+	/// <summary>Re-center on the user's school whenever the active career changes.</summary>
+	private void SyncUserSelection()
+	{
+		string user = UserProgram.OrganizationId;
+		if (_boundUserProgram == user)
+		{
+			return;
+		}
+
+		_boundUserProgram = user;
+		_activeDistrict = UserProgram.DistrictId;
+	}
+
 	private void Refresh()
 	{
+		SyncUserSelection();
 		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
 		string level = varsity ? "VARSITY" : "JV";
 		HubDistrict district = DistrictHubData.GetDistrict(_activeDistrict);

@@ -66,12 +66,30 @@ public partial class RankingsPage : Control
 
 	public void SelectSchool(string teamId)
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		_selectedSchoolId = SchoolProfiles.NormalizeId(teamId);
 		Refresh();
 	}
 
+
+	private string _boundUserProgram = "";
+
+	/// <summary>Re-center on the user's school whenever the active career changes.</summary>
+	private void SyncUserSelection()
+	{
+		string user = UserProgram.OrganizationId;
+		if (_boundUserProgram == user)
+		{
+			return;
+		}
+
+		_boundUserProgram = user;
+		_selectedSchoolId = user;
+	}
+
 	public void Refresh()
 	{
+		SyncUserSelection();
 		if (_rowsHost == null || _session == null)
 		{
 			return;

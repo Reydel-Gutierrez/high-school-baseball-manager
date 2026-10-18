@@ -67,6 +67,7 @@ public partial class LeagueOverviewPage : Control
 
 	public void ShowDistrict(string districtId)
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		_focusedDistrict = districtId;
 		List<HubStandingRow> rows = DistrictHubData.StandingsFor(districtId, Level());
 		if (rows.Count > 0)
@@ -92,6 +93,7 @@ public partial class LeagueOverviewPage : Control
 
 	public void SelectSchool(string teamId)
 	{
+		_boundUserProgram = UserProgram.OrganizationId;
 		_selectedSchoolId = SchoolProfiles.NormalizeId(teamId);
 		HubTeam team = DistrictHubData.GetTeam(_selectedSchoolId);
 		_focusedDistrict = team.DistrictId;
@@ -169,8 +171,25 @@ public partial class LeagueOverviewPage : Control
 		return header;
 	}
 
+
+	private string _boundUserProgram = "";
+
+	/// <summary>Re-center on the user's school whenever the active career changes.</summary>
+	private void SyncUserSelection()
+	{
+		string user = UserProgram.OrganizationId;
+		if (_boundUserProgram == user)
+		{
+			return;
+		}
+
+		_boundUserProgram = user;
+		_selectedSchoolId = user;
+	}
+
 	private void Refresh()
 	{
+		SyncUserSelection();
 		if (_bodyHost == null || _session == null)
 		{
 			return;
