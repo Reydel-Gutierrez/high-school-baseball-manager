@@ -37,6 +37,12 @@ public partial class PersonPortrait : Control
 
 	public Color BackdropColor { get; set; } = new(0.11f, 0.13f, 0.17f);
 
+	/// <summary>Editor mode: newest-only renders, nothing cached on disk.</summary>
+	public bool Live { get; set; }
+
+	/// <summary>Camera turn in degrees for the creator's turntable.</summary>
+	public float Yaw { get; set; }
+
 	public PersonAppearance Appearance
 	{
 		get => _appearance;
@@ -62,26 +68,38 @@ public partial class PersonPortrait : Control
 
 	public void Refresh()
 	{
-		FaceRecipe recipe = FaceRecipe.From(_appearance, Age, HeightInches, WeightLbs, Jersey, Trim);
+		FaceRecipe recipe = FaceRecipe.From(_appearance, Age, HeightInches, WeightLbs, Jersey, Trim, Yaw);
 		if (recipe.Key == _requested && _photo != null)
 		{
 			return;
 		}
 
 		_requested = recipe.Key;
-		_photo = null;
+		if (!Live)
+		{
+			_photo = null;
+		}
 		HeadshotStudio? studio = IsInsideTree() ? HeadshotStudio.Get(this) : null;
 		if (studio != null)
 		{
 			string key = recipe.Key;
-			studio.Request(recipe, tex =>
+			void Deliver(Texture2D tex)
 			{
-				if (IsInstanceValid(this) && key == _requested)
+				if (IsInstanceValid(this) && (key == _requested || Live))
 				{
 					_photo = tex;
 					QueueRedraw();
 				}
-			});
+			}
+
+			if (Live)
+			{
+				studio.RequestLive(recipe, Deliver);
+			}
+			else
+			{
+				studio.Request(recipe, Deliver);
+			}
 		}
 
 		QueueRedraw();

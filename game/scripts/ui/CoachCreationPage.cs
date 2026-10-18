@@ -77,7 +77,9 @@ public partial class CoachCreationPage : Control
 		};
 		body.AddThemeConstantOverride("separation", 16);
 		root.AddChild(body);
-		body.AddChild(BuildIdentityCard());
+		Control identity = BuildIdentityCard();
+		identity.SizeFlagsStretchRatio = 0.75f;
+		body.AddChild(identity);
 		body.AddChild(BuildAppearanceCard());
 		root.AddChild(BuildFooter());
 	}
@@ -124,45 +126,212 @@ public partial class CoachCreationPage : Control
 
 	private Control BuildAppearanceCard()
 	{
-		PanelContainer card = CareerCreationChrome.Card();
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 10);
-		card.AddChild(layout);
-		layout.AddChild(CareerCreationChrome.Heading("COACH APPEARANCE", _semibold, 13, CareerCreationChrome.Accent));
+		var wrap = new HBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 2.1f,
+		};
+		wrap.AddThemeConstantOverride("separation", 16);
 
+		// Centre: the studio headshot with a turntable.
+		PanelContainer photoCard = CareerCreationChrome.Card();
+		photoCard.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		var photoCol = new VBoxContainer();
+		photoCol.AddThemeConstantOverride("separation", 10);
+		photoCard.AddChild(photoCol);
+		photoCol.AddChild(CareerCreationChrome.Heading("COACH APPEARANCE", _semibold, 13, CareerCreationChrome.Accent));
 		_portrait = new PersonPortrait
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
-			CustomMinimumSize = new Vector2(220, 280),
+			CustomMinimumSize = new Vector2(300, 375),
+			Live = true,
 		};
-		layout.AddChild(_portrait);
+		photoCol.AddChild(_portrait);
+		var turn = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+		turn.AddThemeConstantOverride("separation", 6);
+		foreach ((string label, float yaw) in new[] { ("LEFT", -38f), ("FRONT", 0f), ("RIGHT", 38f), ("PROFILE", 80f) })
+		{
+			float y = yaw;
+			turn.AddChild(CareerCreationChrome.Ghost(label, _medium, () =>
+			{
+				_portrait.Yaw = y;
+				_portrait.Refresh();
+			}, UiClickSound.Select));
+		}
 
-		var actions = new HBoxContainer();
+		photoCol.AddChild(turn);
+		var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
 		actions.AddThemeConstantOverride("separation", 8);
 		actions.AddChild(CareerCreationChrome.Ghost("RANDOMIZE", _semibold, Randomize, UiClickSound.Select));
-		actions.AddChild(CareerCreationChrome.Ghost("EDIT APPEARANCE", _semibold, ToggleEditor, UiClickSound.Navigate));
-		layout.AddChild(actions);
+		actions.AddChild(CareerCreationChrome.Ghost("RESET", _semibold, ResetAppearance, UiClickSound.Back));
+		photoCol.AddChild(actions);
+		wrap.AddChild(photoCard);
 
-		_editor = new VBoxContainer { Visible = false };
-		_editor.AddThemeConstantOverride("separation", 6);
-		layout.AddChild(_editor);
-		AddCycle<SkinTone>("SKIN", () => Coach.Appearance.SkinTone, value => Coach.Appearance.SkinTone = value);
-		AddCycle<FaceShape>("FACE", () => Coach.Appearance.FaceShape, value => Coach.Appearance.FaceShape = value);
-		AddCycle<HairStyle>("HAIR", () => Coach.Appearance.HairStyle, value => Coach.Appearance.HairStyle = value);
-		AddCycle<HairColor>("HAIR COLOR", () => Coach.Appearance.HairColor, value => Coach.Appearance.HairColor = value);
-		AddCycle<EyeColor>("EYES", () => Coach.Appearance.EyeColor, value => Coach.Appearance.EyeColor = value);
-		AddCycle<FacialHairStyle>("FACIAL HAIR", () => Coach.Appearance.FacialHairStyle, value => Coach.Appearance.FacialHairStyle = value);
-		AddCycle<AccessoryStyle>("ACCESSORY", () => Coach.Appearance.Accessory, value => Coach.Appearance.Accessory = value);
-		AddCycle<BodyBuild>("BUILD", () => Coach.Appearance.BodyBuild, value => Coach.Appearance.BodyBuild = value);
-		AddCycle<OutfitStyle>("OUTFIT", () => Coach.Appearance.OutfitStyle, value => Coach.Appearance.OutfitStyle = value);
+		// Right: the face editor, grouped into tabs of sliders.
+		PanelContainer editCard = CareerCreationChrome.Card();
+		editCard.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		editCard.SizeFlagsStretchRatio = 1.05f;
+		var editCol = new VBoxContainer();
+		editCol.AddThemeConstantOverride("separation", 8);
+		editCard.AddChild(editCol);
+		editCol.AddChild(CareerCreationChrome.Heading("FACE CREATOR", _semibold, 13, CareerCreationChrome.Accent));
+		var tabs = new HFlowContainer();
+		tabs.AddThemeConstantOverride("h_separation", 4);
+		tabs.AddThemeConstantOverride("v_separation", 4);
+		editCol.AddChild(tabs);
+		var scroll = new ScrollContainer
+		{
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+		};
+		editCol.AddChild(scroll);
+		_editor = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_editor.AddThemeConstantOverride("separation", 8);
+		scroll.AddChild(_editor);
+		foreach (string group in EditorGroups)
+		{
+			string g = group;
+			var tab = new Button { Text = g.ToUpperInvariant(), ToggleMode = true };
+			tab.AddThemeFontOverride("font", _semibold);
+			tab.AddThemeFontSizeOverride("font_size", 12);
+			tab.Pressed += () => ShowGroup(g);
+			_tabs[g] = tab;
+			tabs.AddChild(tab);
+		}
 
-		var editorActions = new HBoxContainer();
-		editorActions.AddThemeConstantOverride("separation", 8);
-		editorActions.AddChild(CareerCreationChrome.Ghost("RANDOMIZE ALL", _medium, Randomize, UiClickSound.Select));
-		editorActions.AddChild(CareerCreationChrome.Ghost("RESET", _medium, ResetAppearance, UiClickSound.Back));
-		_editor.AddChild(editorActions);
-		return card;
+		wrap.AddChild(editCard);
+		ShowGroup(EditorGroups[0]);
+		return wrap;
+	}
+
+	private static readonly string[] EditorGroups = ["Skin & Heritage", "Head", "Jaw", "Eyes", "Nose", "Mouth", "Hair", "Build"];
+	private readonly Dictionary<string, Button> _tabs = new();
+	private readonly Dictionary<int, HSlider> _sliders = new();
+
+	private void ShowGroup(string group)
+	{
+		foreach ((string key, Button tab) in _tabs)
+		{
+			tab.SetPressedNoSignal(key == group);
+		}
+
+		foreach (Node child in _editor.GetChildren())
+		{
+			_editor.RemoveChild(child);
+			child.QueueFree();
+		}
+
+		_cycles.Clear();
+		_sliders.Clear();
+		switch (group)
+		{
+			case "Skin & Heritage":
+				AddCycle<SkinTone>("SKIN TONE", () => Coach.Appearance.SkinTone, value => Coach.Appearance.SkinTone = value);
+				AddCycle<EyeColor>("EYE COLOR", () => Coach.Appearance.EyeColor, value => Coach.Appearance.EyeColor = value);
+				AddSculptSliders("Heritage");
+				_editor.AddChild(Note("Heritage blends real facial structure from different populations. Mix freely."));
+				break;
+			case "Head":
+				AddCycle<FaceShape>("FACE SHAPE", () => Coach.Appearance.FaceShape, value => Coach.Appearance.FaceShape = value);
+				AddSculptSliders("Head");
+				AddSculptSliders("Cheeks");
+				break;
+			case "Hair":
+				AddCycle<HairStyle>("HAIRCUT", () => Coach.Appearance.HairStyle, value => Coach.Appearance.HairStyle = value);
+				AddCycle<HairColor>("HAIR COLOR", () => Coach.Appearance.HairColor, value => Coach.Appearance.HairColor = value);
+				AddCycle<FacialHairStyle>("FACIAL HAIR", () => Coach.Appearance.FacialHairStyle, value => Coach.Appearance.FacialHairStyle = value);
+				AddCycle<HairColor>("BEARD COLOR", () => Coach.Appearance.FacialHairColor, value => Coach.Appearance.FacialHairColor = value);
+				break;
+			case "Eyes":
+				AddCycle<EyeStyle>("EYE SHAPE", () => Coach.Appearance.EyeStyle, value => Coach.Appearance.EyeStyle = value);
+				AddSculptSliders("Eyes");
+				break;
+			case "Nose":
+				AddCycle<NoseStyle>("NOSE SHAPE", () => Coach.Appearance.NoseStyle, value => Coach.Appearance.NoseStyle = value);
+				AddSculptSliders("Nose");
+				break;
+			case "Mouth":
+				AddCycle<MouthStyle>("EXPRESSION", () => Coach.Appearance.MouthStyle, value => Coach.Appearance.MouthStyle = value);
+				AddSculptSliders("Mouth");
+				break;
+			case "Build":
+				AddCycle<BodyBuild>("BUILD", () => Coach.Appearance.BodyBuild, value => Coach.Appearance.BodyBuild = value);
+				AddSculptSliders("Build");
+				_editor.AddChild(Note("Age also changes the face: skin, jaw and hairline mature as the years go by."));
+				break;
+			default:
+				AddSculptSliders(group);
+				break;
+		}
+
+		RefreshEditorLabels();
+	}
+
+	private Label Note(string text)
+	{
+		Label note = CareerCreationChrome.Heading(text, _medium, 12, CareerCreationChrome.TextDim);
+		note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		return note;
+	}
+
+	private void AddSculptSliders(string group)
+	{
+		for (int i = 0; i < FaceSculpt.Count; i++)
+		{
+			FaceSculptSlot slot = FaceSculpt.Slots[i];
+			if (slot.Group != group)
+			{
+				continue;
+			}
+
+			int index = i;
+			var row = new VBoxContainer();
+			row.AddThemeConstantOverride("separation", 0);
+			row.AddChild(CareerCreationChrome.Heading(slot.Label.ToUpperInvariant(), _medium, 11, CareerCreationChrome.TextDim));
+			var slider = new HSlider
+			{
+				MinValue = slot.Heritage ? 0 : -100,
+				MaxValue = 100,
+				Step = 1,
+				SizeFlagsHorizontal = SizeFlags.ExpandFill,
+				CustomMinimumSize = new Vector2(0, 22),
+			};
+			slider.ValueChanged += value =>
+			{
+				if (_syncing)
+				{
+					return;
+				}
+
+				int[] sculpt = SculptValues();
+				sculpt[index] = (int)value;
+				Coach.Appearance.Sculpt = sculpt;
+				RefreshPortrait();
+			};
+			_sliders[index] = slider;
+			row.AddChild(slider);
+			_editor.AddChild(row);
+		}
+	}
+
+	/// <summary>The coach's current sculpt, seeded from the appearance the first time it's edited.</summary>
+	private int[] SculptValues()
+	{
+		PersonAppearance a = Coach.Appearance;
+		int[] values = FaceSculpt.FromSeed(a.Seed, a.SkinTone);
+		if (a.Sculpt is { Length: > 0 } saved)
+		{
+			Array.Copy(saved, values, Math.Min(saved.Length, values.Length));
+		}
+
+		return values;
+	}
+
+	private void RefreshPortrait()
+	{
+		_portrait.Age = Coach.Age;
+		_portrait.SetAppearance(Coach.Appearance);
 	}
 
 	private Control BuildFooter()
@@ -236,6 +405,7 @@ public partial class CoachCreationPage : Control
 	{
 		Coach.Age = CoachIdentity.ClampAge(Coach.Age + delta);
 		CareerCreationChrome.SetStepperValue(_ageStepper, Coach.Age.ToString());
+		RefreshPortrait();
 		RefreshValidation();
 	}
 
@@ -258,8 +428,6 @@ public partial class CoachCreationPage : Control
 		RefreshEditorLabels();
 	}
 
-	private void ToggleEditor() => _editor.Visible = !_editor.Visible;
-
 	private void RefreshAppearance()
 	{
 		_portrait.Age = Coach.Age;
@@ -270,15 +438,26 @@ public partial class CoachCreationPage : Control
 	private void RefreshEditorLabels()
 	{
 		PersonAppearance appearance = Coach.Appearance;
-		SetCycle("SKIN", AppearanceCatalog.DisplayName(appearance.SkinTone));
-		SetCycle("FACE", AppearanceCatalog.DisplayName(appearance.FaceShape));
-		SetCycle("HAIR", AppearanceCatalog.DisplayName(appearance.HairStyle));
+		SetCycle("SKIN TONE", AppearanceCatalog.DisplayName(appearance.SkinTone));
+		SetCycle("FACE SHAPE", AppearanceCatalog.DisplayName(appearance.FaceShape));
+		SetCycle("HAIRCUT", AppearanceCatalog.DisplayName(appearance.HairStyle));
 		SetCycle("HAIR COLOR", AppearanceCatalog.DisplayName(appearance.HairColor));
-		SetCycle("EYES", AppearanceCatalog.DisplayName(appearance.EyeColor));
+		SetCycle("BEARD COLOR", AppearanceCatalog.DisplayName(appearance.FacialHairColor));
+		SetCycle("EYE COLOR", AppearanceCatalog.DisplayName(appearance.EyeColor));
+		SetCycle("EYE SHAPE", AppearanceCatalog.DisplayName(appearance.EyeStyle));
+		SetCycle("NOSE SHAPE", AppearanceCatalog.DisplayName(appearance.NoseStyle));
+		SetCycle("EXPRESSION", AppearanceCatalog.DisplayName(appearance.MouthStyle));
 		SetCycle("FACIAL HAIR", AppearanceCatalog.DisplayName(appearance.FacialHairStyle));
-		SetCycle("ACCESSORY", AppearanceCatalog.DisplayName(appearance.Accessory));
 		SetCycle("BUILD", AppearanceCatalog.DisplayName(appearance.BodyBuild));
-		SetCycle("OUTFIT", AppearanceCatalog.DisplayName(appearance.OutfitStyle));
+		bool wasSyncing = _syncing;
+		_syncing = true;
+		int[] sculpt = SculptValues();
+		foreach ((int index, HSlider slider) in _sliders)
+		{
+			slider.Value = sculpt[index];
+		}
+
+		_syncing = wasSyncing;
 	}
 
 	private void SetCycle(string key, string value)

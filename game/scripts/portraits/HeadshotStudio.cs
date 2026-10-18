@@ -21,6 +21,8 @@ public partial class HeadshotStudio : Node
 	private readonly LinkedList<string> _lru = new();
 	private readonly Dictionary<string, List<Action<Texture2D>>> _waiting = new(StringComparer.Ordinal);
 	private readonly Queue<FaceRecipe> _queue = new();
+	private (FaceRecipe Recipe, Action<Texture2D> Done)? _live;
+	private Camera3D _camera = null!;
 
 	private SubViewport _viewport = null!;
 	private MeshInstance3D _head = null!;
@@ -76,6 +78,21 @@ public partial class HeadshotStudio : Node
 		return null;
 	}
 
+	/// <summary>
+	/// For editors: only the newest request matters and nothing is written
+	/// to disk, so dragging a slider doesn't queue a hundred renders.
+	/// </summary>
+	public void RequestLive(FaceRecipe recipe, Action<Texture2D> done)
+	{
+		if (_cache.TryGetValue(recipe.Key, out Texture2D? have))
+		{
+			done(have);
+			return;
+		}
+
+		_live = (recipe, done);
+	}
+
 	public void Request(FaceRecipe recipe, Action<Texture2D> done)
 	{
 		Texture2D? have = Peek(recipe);
@@ -113,16 +130,15 @@ public partial class HeadshotStudio : Node
 			BackgroundMode = Godot.Environment.BGMode.ClearColor,
 			TonemapMode = Godot.Environment.ToneMapper.Linear,
 		};
-		var camera = new Camera3D
+		_camera = new Camera3D
 		{
 			Fov = 15f,
 			Near = 0.05f,
 			Far = 10f,
 			Environment = env,
 		};
-		_viewport.AddChild(camera);
-		camera.Position = new Vector3(0.10f, 0.0f, 1.35f);
-		camera.LookAtFromPosition(camera.Position, new Vector3(0f, -0.055f, -0.04f), Vector3.Up);
+		_viewport.AddChild(_camera);
+		AimCamera(0f);
 
 		_skin = new ShaderMaterial { Shader = GD.Load<Shader>("res://assets/facekit/skin.gdshader") };
 		_skin.SetShaderParameter("masks", LoadMask("masks"));
@@ -145,12 +161,22 @@ public partial class HeadshotStudio : Node
 
 	public override void _Process(double delta)
 	{
-		if (!_ready || _busy || _queue.Count == 0)
+		if (!_ready || _busy)
 		{
 			return;
 		}
 
-		ShootNext();
+		if (_live is { } live)
+		{
+			_live = null;
+			ShootLive(live.Recipe, live.Done);
+			return;
+		}
+
+		if (_queue.Count > 0)
+		{
+			ShootNext();
+		}
 	}
 
 	private async void ShootNext()
@@ -186,8 +212,40 @@ public partial class HeadshotStudio : Node
 		}
 	}
 
+	private async void ShootLive(FaceRecipe recipe, Action<Texture2D> done)
+	{
+		_busy = true;
+		try
+		{
+			Pose(recipe);
+			_viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
+			await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+			await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+			Texture2D tex = ImageTexture.CreateFromImage(_viewport.GetTexture().GetImage());
+			Remember(recipe.Key, tex);
+			done(tex);
+		}
+		catch (Exception ex)
+		{
+			GD.PushError($"HeadshotStudio: {ex.Message}");
+		}
+		finally
+		{
+			_busy = false;
+		}
+	}
+
+	private static readonly Vector3 Pivot = new(0f, -0.055f, -0.04f);
+
+	private void AimCamera(float yaw)
+	{
+		Vector3 offset = new Vector3(0.10f, 0.055f, 1.39f).Rotated(Vector3.Up, Mathf.DegToRad(yaw));
+		_camera.LookAtFromPosition(Pivot + offset, Pivot, Vector3.Up);
+	}
+
 	private void Pose(FaceRecipe r)
 	{
+		AimCamera(r.Yaw);
 		FaceKit kit = FaceKit.Shared!;
 		Vector3[] p = kit.Morph(r.Weights);
 		Vector3[] n = kit.Normals(p);

@@ -39,7 +39,12 @@ public static class FaceSculpt
 		new("African", "Heritage", [], ["african"], Heritage: true),
 		new("East Asian", "Heritage", [], ["asian"], Heritage: true),
 		new("European", "Heritage", [], ["caucasian"], Heritage: true),
+		new("Body Weight", "Build", [], []),
+		new("Muscle", "Build", [], []),
 	];
+
+	public const int WeightSlot = 23;
+	public const int MuscleSlot = 24;
 
 	public const int HeritageStart = 20;
 
@@ -63,6 +68,8 @@ public static class FaceSculpt
 		values[HeritageStart] = african;
 		values[HeritageStart + 1] = asian;
 		values[HeritageStart + 2] = european;
+		values[WeightSlot] = (int)Math.Clamp(Math.Round((rng.NextDouble() - 0.4) * 90), -100, 100);
+		values[MuscleSlot] = (int)Math.Clamp(Math.Round((rng.NextDouble() - 0.5) * 80), -100, 100);
 		return values;
 	}
 
@@ -98,18 +105,23 @@ public sealed class FaceRecipe
 	public Color Jersey;
 	public Color Trim;
 	public bool ShowJersey = true;
+
+	/// <summary>Camera yaw in degrees (0 = the standard headshot angle).</summary>
+	public float Yaw;
 	public float AgeLines;
 	public string Key = "";
 
 	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
 	public const string RenderVersion = "v3;";
 
-	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null)
+	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f)
 	{
-		var r = new FaceRecipe();
-		int[] sculpt = appearance.Sculpt is { Length: > 0 } s && s.Length == FaceSculpt.Count
-			? s
-			: FaceSculpt.FromSeed(appearance.Seed, appearance.SkinTone);
+		var r = new FaceRecipe { Yaw = yaw };
+		int[] sculpt = FaceSculpt.FromSeed(appearance.Seed, appearance.SkinTone);
+		if (appearance.Sculpt is { Length: > 0 } saved)
+		{
+			Array.Copy(saved, sculpt, Math.Min(saved.Length, sculpt.Length));
+		}
 
 		// Macro shape: heritage x age, then muscle x weight.
 		double afr = Math.Max(0, sculpt[FaceSculpt.HeritageStart]);
@@ -152,9 +164,11 @@ public sealed class FaceRecipe
 			double bmi = 703.0 * weightLbs / (heightInches * heightInches);
 			weight = Math.Clamp(0.5 + (bmi - 22.5) / 13.0, 0.05, 0.98);
 		}
-		else if (appearance.BodyBuild == BodyBuild.Stocky)
+		else
 		{
-			weight = 0.68;
+			// No measured height/weight (coaches): the Build sliders decide.
+			weight = Math.Clamp(0.5 + sculpt[FaceSculpt.WeightSlot] / 200.0 + (appearance.BodyBuild == BodyBuild.Stocky ? 0.12 : 0), 0.02, 0.98);
+			muscle = Math.Clamp(muscle + sculpt[FaceSculpt.MuscleSlot] / 250.0, 0.02, 0.98);
 		}
 
 		(double mMin, double mAvg, double mMax) = Tri(muscle);
@@ -372,7 +386,7 @@ public sealed class FaceRecipe
 
 		sb.Append(r.Skin.ToHtml()).Append(r.Hair.ToHtml()).Append(r.Brow.ToHtml()).Append(r.Iris.ToHtml())
 			.Append(r.HairShape).Append(r.HairLength.ToString(CultureInfo.InvariantCulture)).Append(r.Beard)
-			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture));
+			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.Yaw.ToString("0", CultureInfo.InvariantCulture)).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture));
 		ulong h = 1469598103934665603UL;
 		foreach (char c in sb.ToString())
 		{
