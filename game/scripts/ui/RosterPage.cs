@@ -1309,6 +1309,16 @@ public partial class RosterPage : Control
 		wrap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 		wrap.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
 
+		PersonPortrait? face = PlayerFaces.For(player.SourceId, size, size, circle: true)
+			?? PlayerFaces.For(DistrictHubData.UserTeamId, $"{player.FirstName} {player.LastName}", size, size, circle: true);
+		if (face != null)
+		{
+			face.Ring = Accent;
+			face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			wrap.AddChild(face);
+			return wrap;
+		}
+
 		if (!string.IsNullOrEmpty(player.PortraitPath))
 		{
 			var portrait = new TextureRect

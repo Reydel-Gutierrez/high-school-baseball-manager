@@ -647,6 +647,15 @@ public partial class RotationPage : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		wrap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+		PersonPortrait? face = (player.PlayerId != System.Guid.Empty ? PlayerFaces.For(player.PlayerId, size, size, circle: true) : null)
+			?? PlayerFaces.For(DistrictHubData.UserTeamId, player.FullName, size, size, circle: true);
+		if (face != null)
+		{
+			face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			wrap.AddChild(face);
+			return wrap;
+		}
+
 		if (!string.IsNullOrEmpty(player.PortraitPath))
 		{
 			var portrait = new TextureRect

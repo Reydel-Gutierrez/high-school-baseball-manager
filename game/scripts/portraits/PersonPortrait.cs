@@ -37,6 +37,11 @@ public partial class PersonPortrait : Control
 
 	public Color BackdropColor { get; set; } = new(0.11f, 0.13f, 0.17f);
 
+	/// <summary>Clip to a circle (list rows, chips) with an optional ring.</summary>
+	public bool Circle { get; set; }
+
+	public Color? Ring { get; set; }
+
 	/// <summary>Editor mode: newest-only renders, nothing cached on disk.</summary>
 	public bool Live { get; set; }
 
@@ -127,6 +132,12 @@ public partial class PersonPortrait : Control
 			return;
 		}
 
+		if (Circle)
+		{
+			DrawRound(bounds);
+			return;
+		}
+
 		if (Backdrop)
 		{
 			DrawBackdrop(bounds);
@@ -141,6 +152,42 @@ public partial class PersonPortrait : Control
 		Vector2 drawn = tex * scale;
 		var dest = new Rect2(new Vector2((bounds.Size.X - drawn.X) / 2f, 0f), drawn);
 		DrawTextureRect(_photo, dest, false);
+	}
+
+	/// <summary>Head-and-collar crop inside a circle, like a broadcast lineup chip.</summary>
+	private void DrawRound(Rect2 bounds)
+	{
+		float d = Mathf.Min(bounds.Size.X, bounds.Size.Y);
+		Vector2 c = bounds.GetCenter();
+		float r = d / 2f;
+		Color bg = Backdrop ? BackdropColor : new Color(0.11f, 0.13f, 0.17f);
+		DrawCircle(c, r, bg.Darkened(0.2f));
+		DrawCircle(c + new Vector2(0, -r * 0.25f), r * 0.75f, bg.Lightened(0.08f));
+
+		// The render is 400x500; the face fills roughly the middle 60% of
+		// its width, so scale that span to the circle and sit the eyes a
+		// touch above centre.
+		Vector2 tex = _photo!.GetSize();
+		float scale = d / (tex.X * 0.62f);
+		Vector2 drawn = tex * scale;
+		var dest = new Rect2(new Vector2(c.X - drawn.X / 2f, c.Y - drawn.Y * 0.40f), drawn);
+
+		const int segments = 40;
+		var pts = new Vector2[segments];
+		var uvs = new Vector2[segments];
+		for (int i = 0; i < segments; i++)
+		{
+			float a = Mathf.Tau * i / segments;
+			Vector2 pt = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+			pts[i] = pt;
+			uvs[i] = (pt - dest.Position) / dest.Size;
+		}
+
+		DrawPolygon(pts, [Colors.White], uvs, _photo);
+		if (Ring is { } ring)
+		{
+			DrawArc(c, r - 0.75f, 0, Mathf.Tau, 48, ring, 1.5f, true);
+		}
 	}
 
 	private void DrawBackdrop(Rect2 bounds)

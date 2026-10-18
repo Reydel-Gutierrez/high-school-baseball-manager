@@ -241,7 +241,22 @@ public static class PlayerProfiles
 			pitching,
 			seasons,
 			BuildHistory(firstName, lastName, year, seasons, captain, status, seed),
-			BuildScoutReport(firstName, lastName, position, year, overall, potential, pitcher, seed));
+			BuildScoutReport(firstName, lastName, position, year, overall, potential, pitcher, seed),
+			Appearance: HSBM.Simulation.PersonAppearanceGenerator.GeneratePlayer(
+				seed,
+				pitcher ? BodyBuild.Athletic : (BodyBuild)(Math.Abs(seed >> 9) % 4)),
+			Age: AgeForYear(year),
+			HeightInches: 68 + (Math.Abs(seed) % 10));
+	}
+
+	private static int AgeForYear(string year)
+	{
+		string y = (year ?? "").Trim().ToUpperInvariant();
+		if (y.StartsWith("FR", StringComparison.Ordinal)) return 15;
+		if (y.StartsWith("SO", StringComparison.Ordinal)) return 16;
+		if (y.StartsWith("JR", StringComparison.Ordinal) || y.StartsWith("JU", StringComparison.Ordinal)) return 17;
+		if (y.StartsWith("SR", StringComparison.Ordinal) || y.StartsWith("SE", StringComparison.Ordinal)) return 18;
+		return 16;
 	}
 
 	private static string TeamShortFor(GameWorld world, Player player)

@@ -303,6 +303,12 @@ public partial class SeasonReviewPage : Control
 
 	private Control BuildPortrait(SeasonReviewPlayer player)
 	{
+		PersonPortrait? face = PlayerFaces.For(DistrictHubData.UserTeamId, player.Name, 56, 72);
+		if (face != null)
+		{
+			return face;
+		}
+
 		if (!string.IsNullOrEmpty(player.PortraitPath))
 		{
 			var texture = GD.Load<Texture2D>(player.PortraitPath);

@@ -821,9 +821,18 @@ public partial class PlayerProfileCard : PanelContainer
 		wrap.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 		if (player.Appearance != null)
 		{
+			(Color jersey, Color trim) = TeamColors.For(player.TeamId);
 			var portrait = new PersonPortrait
 			{
 				CustomMinimumSize = new Vector2(size, size),
+				Circle = true,
+				Ring = Accent,
+				BackdropColor = jersey.Darkened(0.55f),
+				Age = player.Age > 0 ? player.Age : 16,
+				HeightInches = player.HeightInches,
+				WeightLbs = player.WeightLbs,
+				Jersey = jersey,
+				Trim = trim,
 			};
 			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			portrait.SetAppearance(player.Appearance);

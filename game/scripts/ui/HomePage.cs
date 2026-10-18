@@ -2506,7 +2506,17 @@ public partial class HomePage : Control
 		chip.AddChild(box);
 
 		box.AddChild(MakeText(pitcher.Hand, _semibold, 9, pitcher.Accent, HorizontalAlignment.Center));
-		box.AddChild(BuildPortrait(pitcher.Portrait, pitcher.LastName[..1], 44));
+		PersonPortrait? face = PlayerFaces.For(pitcher.TeamId, pitcher.PlayerName, 52, 52, circle: true, level: _session.ActiveTeam.Level);
+		if (face != null)
+		{
+			face.Ring = pitcher.Accent;
+			face.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+			box.AddChild(face);
+		}
+		else
+		{
+			box.AddChild(BuildPortrait(pitcher.Portrait, pitcher.LastName[..1], 44));
+		}
 		box.AddChild(MakeText(pitcher.LastName, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 		box.AddChild(MakeText(pitcher.FirstName, _medium, 10, TextMuted, HorizontalAlignment.Center));
 
