@@ -170,7 +170,9 @@ public static class PlayerProfiles
 				seed),
 			Fogged: fogged,
 			RecruitingHook: player.Priorities.Hook,
-			Appearance: player.Appearance);
+			Appearance: player.Appearance,
+			Age: player.Age,
+			HeightInches: player.Physical.HeightInches);
 	}
 
 	public static PlayerProfileSnapshot From(
@@ -627,7 +629,9 @@ public sealed record PlayerProfileSnapshot(
 	string? StatsHeader = null,
 	string? RecruitingHook = null,
 	string? SchoolInterest = null,
-	PersonAppearance? Appearance = null)
+	PersonAppearance? Appearance = null,
+	int Age = 0,
+	int HeightInches = 0)
 {
 	public string FullName => $"{FirstName} {LastName}";
 

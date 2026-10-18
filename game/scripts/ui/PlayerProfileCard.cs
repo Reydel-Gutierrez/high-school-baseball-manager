@@ -116,7 +116,6 @@ public partial class PlayerProfileCard : PanelContainer
 		}
 
 		_root.AddChild(BuildHeader(_snapshot));
-		_root.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
 		_root.AddChild(BuildTabs());
 
 		var scroll = new ScrollContainer
@@ -158,51 +157,226 @@ public partial class PlayerProfileCard : PanelContainer
 
 	private Control BuildHeader(PlayerProfileSnapshot player)
 	{
-		var header = new MarginContainer();
-		header.AddThemeConstantOverride("margin_left", 12);
-		header.AddThemeConstantOverride("margin_top", 10);
-		header.AddThemeConstantOverride("margin_right", 12);
-		header.AddThemeConstantOverride("margin_bottom", 8);
+		(Color primary, Color secondary) = TeamColors.For(player.TeamId);
+		var hero = new Control
+		{
+			CustomMinimumSize = new Vector2(0, 186),
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			ClipContents = true,
+		};
+		string number = player.Jersey > 0 ? player.Jersey.ToString(CultureInfo.InvariantCulture) : "";
+		hero.Draw += () => DrawHeroBackdrop(hero, primary, secondary, number);
+		hero.Resized += hero.QueueRedraw;
+
 		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 10);
-		header.AddChild(row);
-		row.AddChild(BuildPortrait(player, 64));
+		row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		row.AddThemeConstantOverride("separation", 14);
+		hero.AddChild(row);
+
+		// Headshot sits on the bottom edge, like a broadcast graphic.
+		var shot = new Control
+		{
+			CustomMinimumSize = new Vector2(150, 0),
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		if (player.Appearance != null)
+		{
+			var portrait = new PersonPortrait
+			{
+				Backdrop = false,
+				Age = player.Age > 0 ? player.Age : 16,
+				HeightInches = player.HeightInches,
+				WeightLbs = player.WeightLbs,
+				Jersey = primary,
+				Trim = secondary,
+			};
+			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			portrait.OffsetLeft = 10;
+			portrait.OffsetTop = 6;
+			portrait.SetAppearance(player.Appearance);
+			shot.AddChild(portrait);
+		}
+		else
+		{
+			Control fallback = BuildPortrait(player, 96);
+			fallback.SetAnchorsAndOffsetsPreset(LayoutPreset.Center);
+			shot.AddChild(fallback);
+		}
+
+		row.AddChild(shot);
 
 		var identity = new VBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			Alignment = BoxContainer.AlignmentMode.Center,
 		};
-		identity.AddThemeConstantOverride("separation", 1);
-		var name = MakeText(player.DisplayName, _bold, 22, TextPrimary, HorizontalAlignment.Left);
-		name.AutowrapMode = TextServer.AutowrapMode.Word;
-		identity.AddChild(name);
-		identity.AddChild(MakeText(
-			$"{player.Position}  |  {player.YearLabel}  |  {player.BatsThrows}",
-			_semibold,
-			13,
-			TextPrimary,
-			HorizontalAlignment.Left));
-		var school = MakeText(player.TeamShort.ToUpperInvariant(), _medium, 11, Accent, HorizontalAlignment.Left);
+		identity.AddThemeConstantOverride("separation", 0);
+		identity.AddChild(MakeText(player.FirstName.ToUpperInvariant(), _semibold, 15, new Color(1, 1, 1, 0.85f), HorizontalAlignment.Left));
+		var last = MakeText(player.LastName.ToUpperInvariant(), _bold, 34, Colors.White, HorizontalAlignment.Left);
+		last.ClipText = true;
+		identity.AddChild(last);
+		string lead = player.Jersey > 0 ? $"#{player.Jersey}  ·  " : "";
+		identity.AddChild(MakeText($"{lead}{player.Position}  ·  {player.YearLabel.ToUpperInvariant()}", _semibold, 14, secondary.Lightened(0.15f), HorizontalAlignment.Left));
+
+		var bio = new HFlowContainer();
+		bio.AddThemeConstantOverride("h_separation", 6);
+		bio.AddThemeConstantOverride("v_separation", 4);
+		bio.AddChild(BioChip("B/T", player.BatsThrows));
+		if (!player.Fogged && player.HeightLabel != "?")
+		{
+			bio.AddChild(BioChip("HT/WT", $"{player.HeightLabel}  {player.WeightLbs}"));
+		}
+
+		if (player.Age > 0)
+		{
+			bio.AddChild(BioChip("AGE", player.Age.ToString(CultureInfo.InvariantCulture)));
+		}
+
+		identity.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
+		identity.AddChild(bio);
+		var school = MakeText(player.TeamShort.ToUpperInvariant(), _medium, 12, new Color(1, 1, 1, 0.75f), HorizontalAlignment.Left);
 		if (!string.IsNullOrEmpty(player.TeamId))
 		{
 			SchoolLinks.MakeClickable(school, player.TeamId);
 		}
 
+		identity.AddChild(new Control { CustomMinimumSize = new Vector2(0, 4) });
 		identity.AddChild(school);
 		row.AddChild(identity);
 
+		var actions = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkBegin };
+		actions.AddThemeConstantOverride("separation", 6);
+		var actionPad = new MarginContainer();
+		actionPad.AddThemeConstantOverride("margin_top", 10);
+		actionPad.AddThemeConstantOverride("margin_right", 10);
+		actionPad.AddChild(actions);
 		if (_closeHandler != null)
 		{
-			row.AddChild(MakeCloseButton());
+			actions.AddChild(MakeCloseButton());
 		}
 
 		if (!string.IsNullOrEmpty(_actionText) && _actionHandler != null)
 		{
-			row.AddChild(BuildActionButton(_actionText, _actionHandler));
+			actions.AddChild(BuildActionButton(_actionText, _actionHandler));
 		}
 
-		return header;
+		row.AddChild(actionPad);
+
+		var stack = new VBoxContainer();
+		stack.AddThemeConstantOverride("separation", 0);
+		stack.AddChild(hero);
+		stack.AddChild(BuildStatStrip(player, primary));
+		return stack;
+	}
+
+	private Control BioChip(string label, string value)
+	{
+		var chip = new PanelContainer();
+		chip.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0, 0, 0, 0.32f),
+			ContentMarginLeft = 8,
+			ContentMarginRight = 8,
+			ContentMarginTop = 3,
+			ContentMarginBottom = 3,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomLeft = 3,
+			CornerRadiusBottomRight = 3,
+		});
+		var line = new HBoxContainer();
+		line.AddThemeConstantOverride("separation", 5);
+		line.AddChild(MakeText(label, _medium, 10, new Color(1, 1, 1, 0.6f), HorizontalAlignment.Left));
+		line.AddChild(MakeText(value, _semibold, 12, Colors.White, HorizontalAlignment.Left));
+		chip.AddChild(line);
+		return chip;
+	}
+
+	private void DrawHeroBackdrop(Control hero, Color primary, Color secondary, string number)
+	{
+		Vector2 size = hero.Size;
+		Color top = primary.Lightened(0.08f);
+		Color bottom = primary.Darkened(0.55f);
+		const int bands = 24;
+		for (int i = 0; i < bands; i++)
+		{
+			float t0 = i / (float)bands;
+			float t1 = (i + 1) / (float)bands;
+			hero.DrawRect(new Rect2(0, size.Y * t0, size.X, size.Y * (t1 - t0) + 1), top.Lerp(bottom, t0), true);
+		}
+
+		// broadcast-style diagonal sash in the trim color
+		var sash = new Vector2[]
+		{
+			new(size.X * 0.58f, 0), new(size.X * 0.66f, 0), new(size.X * 0.50f, size.Y), new(size.X * 0.42f, size.Y),
+		};
+		hero.DrawColoredPolygon(sash, new Color(secondary, 0.10f));
+		if (!string.IsNullOrEmpty(number))
+		{
+			int fontSize = (int)(size.Y * 1.05f);
+			Vector2 textSize = _bold.GetStringSize(number, HorizontalAlignment.Left, -1, fontSize);
+			hero.DrawString(_bold, new Vector2(size.X - textSize.X - 12, size.Y * 0.92f), number, HorizontalAlignment.Left, -1, fontSize, new Color(1, 1, 1, 0.07f));
+		}
+
+		hero.DrawRect(new Rect2(0, size.Y - 3, size.X, 3), secondary, true);
+	}
+
+	/// <summary>The four numbers a broadcast puts under a player's name.</summary>
+	private Control BuildStatStrip(PlayerProfileSnapshot player, Color primary)
+	{
+		var strip = new PanelContainer();
+		strip.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0.045f, 0.05f, 0.065f, 0.98f),
+			ContentMarginTop = 8,
+			ContentMarginBottom = 8,
+			ContentMarginLeft = 8,
+			ContentMarginRight = 8,
+		});
+		HubPlayerSeason? season = player.Seasons.Count > 0 ? player.Seasons[^1] : null;
+		List<(string Value, string Label)> stats;
+		if (season?.Pitching is { } p && (player.IsPitcher || season.Hitting == null))
+		{
+			stats =
+			[
+				($"{p.Wins}-{p.Losses}", "W-L"),
+				(p.Era.ToString("0.00", CultureInfo.InvariantCulture), "ERA"),
+				(p.Strikeouts.ToString(CultureInfo.InvariantCulture), "SO"),
+				(p.Whip.ToString("0.00", CultureInfo.InvariantCulture), "WHIP"),
+			];
+		}
+		else if (season?.Hitting is { } h)
+		{
+			stats =
+			[
+				(h.Average.ToString(".000", CultureInfo.InvariantCulture), "AVG"),
+				(h.HomeRuns.ToString(CultureInfo.InvariantCulture), "HR"),
+				(h.Rbi.ToString(CultureInfo.InvariantCulture), "RBI"),
+				(h.Ops.ToString(".000", CultureInfo.InvariantCulture), "OPS"),
+			];
+		}
+		else
+		{
+			stats =
+			[
+				(player.OverallLabel ?? player.Overall.ToString(CultureInfo.InvariantCulture), "OVR"),
+				(player.PotentialLabel ?? player.Potential.ToString(CultureInfo.InvariantCulture), "POT"),
+				(player.Fogged ? "?" : player.Personality, "MAKEUP"),
+				(player.Health, "STATUS"),
+			];
+		}
+
+		var col = new VBoxContainer();
+		col.AddThemeConstantOverride("separation", 2);
+		col.AddChild(MakeText(
+			season == null ? "PLAYER SNAPSHOT" : $"{season.Year} SEASON",
+			_medium,
+			10,
+			primary.Lightened(0.45f),
+			HorizontalAlignment.Center));
+		col.AddChild(BuildHeadline(stats));
+		strip.AddChild(col);
+		return strip;
 	}
 
 	private Button MakeCloseButton()
