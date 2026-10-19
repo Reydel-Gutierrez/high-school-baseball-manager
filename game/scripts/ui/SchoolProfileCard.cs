@@ -212,7 +212,7 @@ public partial class SchoolProfileCard : PanelContainer
 
 		var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
 		names.AddThemeConstantOverride("separation", -2);
-		names.AddChild(MakeText($"{_snapshot.DistrictName.ToUpperInvariant()} DISTRICT  ·  {brand.LocationShort.ToUpperInvariant()}", _semibold, 10, new Color(brand.SecondaryHex), HorizontalAlignment.Left));
+		names.AddChild(MakeText($"{_snapshot.DistrictName.ToUpperInvariant()} DISTRICT  ·  {brand.LocationShort.ToUpperInvariant()}", _semibold, 10, new Color(brand.SecondaryHex).Lightened(0.35f), HorizontalAlignment.Left));
 		var title = MakeText(TeamBrands.TeamName(_snapshot.TeamId).ToUpperInvariant(), _bold, 26, Colors.White, HorizontalAlignment.Left);
 		title.ClipText = true;
 		names.AddChild(title);
