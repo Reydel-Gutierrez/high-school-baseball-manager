@@ -910,6 +910,7 @@ public partial class AppNavigator : MarginContainer
 	private PanelContainer _shellPhase = null!;
 	private Label _shellPhaseText = null!;
 	private Button _continueButton = null!;
+	private MenuButton _simMenu = null!;
 	private string? _tabOverride;
 	private string _lastSection = ShellRail.Home;
 
@@ -965,6 +966,25 @@ public partial class AppNavigator : MarginContainer
 		rightCluster.AddChild(_continueButton);
 		rightCluster.AddThemeConstantOverride("separation", 12);
 
+		// Simulate options live under a small arrow beside CONTINUE.
+		_simMenu = new MenuButton { Text = "▾", FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(44, 48), TooltipText = "Simulate ahead" };
+		_simMenu.AddThemeFontOverride("font", UiKit.Bold);
+		_simMenu.AddThemeFontSizeOverride("font_size", 20);
+		_simMenu.AddThemeColorOverride("font_color", UiKit.Gold);
+		_simMenu.AddThemeColorOverride("font_hover_color", UiKit.Text);
+		_simMenu.AddThemeStyleboxOverride("normal", UiKit.Box(UiKit.Selected, 10, 8, 6, UiKit.Line, 1));
+		_simMenu.AddThemeStyleboxOverride("hover", UiKit.Box(new Color("#232838"), 10, 8, 6, UiKit.Line, 1));
+		_simMenu.AddThemeStyleboxOverride("pressed", UiKit.Box(new Color("#232838"), 10, 8, 6, UiKit.Line, 1));
+		_simMenu.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+		PopupMenu sim = _simMenu.GetPopup();
+		sim.AddItem("Simulate day", 1);
+		sim.AddItem("Simulate week", 7);
+		sim.AddItem("Simulate to next event", 0);
+		sim.AddThemeFontOverride("font", UiKit.Semibold);
+		sim.AddThemeFontSizeOverride("font_size", 16);
+		sim.IdPressed += OnSimulatePicked;
+		rightCluster.AddChild(_simMenu);
+
 		var timer = new Godot.Timer { WaitTime = 0.5, Autostart = true };
 		timer.Timeout += RefreshShellStatus;
 		AddChild(timer);
@@ -986,6 +1006,7 @@ public partial class AppNavigator : MarginContainer
 
 		bool canContinue = !_unsignedLock && _homeView is HomePage;
 		_continueButton.Visible = canContinue;
+		_simMenu.Visible = canContinue;
 		if (canContinue && _homeView is HomePage home)
 		{
 			string label = home.ContinueLabel;
@@ -1006,6 +1027,30 @@ public partial class AppNavigator : MarginContainer
 		}
 
 		home.Continue();
+		RefreshShellStatus();
+	}
+
+	private void OnSimulatePicked(long id)
+	{
+		if (_homeView is not HomePage home)
+		{
+			return;
+		}
+
+		if (_activeView != HomeViewKey)
+		{
+			ShowHome();
+		}
+
+		if (id == 0)
+		{
+			home.SimulateToNextEvent();
+		}
+		else
+		{
+			home.Simulate((int)id);
+		}
+
 		RefreshShellStatus();
 	}
 

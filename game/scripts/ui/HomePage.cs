@@ -182,24 +182,17 @@ public partial class HomePage : Control
 	private void ApplyActiveTeam()
 	{
 		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
-		_seasonKicker.Text = $"HOME  ·  {GameSession.SeasonYear}  ·  {_session.SeasonStatus.ToUpperInvariant()}";
-		_title.Text = _session.Organization.Name.ToUpperInvariant();
-		_subtitle.Text = varsity
-			? $"VARSITY  ·  {_session.SeasonStatus.ToUpperInvariant()}  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
-			: $"JV  ·  {_session.SeasonStatus.ToUpperInvariant()}  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
 		SchoolSnapshot school = SchoolProfiles.For(
 			_session.CatalogOrganizationId,
 			varsity ? TeamLevel.Varsity : TeamLevel.JuniorVarsity,
 			_session);
 		_recordValue.Text = school.RecordLabel;
-		_districtValue.Text = Ordinal.Format(school.DistrictPlace).ToUpperInvariant();
-		_districtValue.AddThemeColorOverride("font_color", school.DistrictPlace <= 2 ? Green : school.DistrictPlace <= 4 ? Accent : Urgent);
+		_districtValue.Text = Ordinal.Format(school.DistrictPlace);
+		_districtValue.AddThemeColorOverride("font_color", school.DistrictPlace <= 2 ? UiKit.Green : Colors.White);
 		_boardValue.Text = _session.BoardSatisfactionScore.ToString(CultureInfo.InvariantCulture);
 		_boardValue.AddThemeColorOverride("font_color", BoardSatisfactionColor(_session.BoardSatisfaction));
-		if (_programMark != null)
-		{
-			_programMark.Refresh();
-		}
+		_programMark?.Refresh();
+		RefreshHero(school, varsity);
 
 		RebuildWeek();
 		RefreshAdvanceButton();
@@ -213,10 +206,10 @@ public partial class HomePage : Control
 	{
 		var margin = new MarginContainer();
 		margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 8);
-		margin.AddThemeConstantOverride("margin_top", 8);
-		margin.AddThemeConstantOverride("margin_right", 8);
-		margin.AddThemeConstantOverride("margin_bottom", 8);
+		margin.AddThemeConstantOverride("margin_left", 22);
+		margin.AddThemeConstantOverride("margin_top", 6);
+		margin.AddThemeConstantOverride("margin_right", 22);
+		margin.AddThemeConstantOverride("margin_bottom", 16);
 		AddChild(margin);
 		AddChild(BuildModalLayer());
 		_boxScoreOverlay = new BoxScoreOverlay();
@@ -233,184 +226,18 @@ public partial class HomePage : Control
 		AddChild(_recapOverlay);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
+		BuildDashboard(layout);
 
-		layout.AddChild(BuildHeader());
+		// Kept off-screen: the shell's CONTINUE reads its label, and the
+		// ticker/job-offer plumbing still feeds the overlays.
+		_advanceButton = new Button { Visible = false, Text = "ADVANCE DAY" };
+		AddChild(_advanceButton);
 		_jobOfferBanner = new Control { Visible = false };
-
-		var body = new HBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		body.AddThemeConstantOverride("separation", 8);
-		layout.AddChild(body);
-
-		var week = BuildWeekCard();
-		week.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		week.SizeFlagsVertical = SizeFlags.ExpandFill;
-		week.SizeFlagsStretchRatio = 1.7f;
-		body.AddChild(week);
-
-		_contestHost = new VBoxContainer
-		{
-			CustomMinimumSize = new Vector2(340, 0),
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 1f,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		_contestHost.AddThemeConstantOverride("separation", 0);
-		body.AddChild(_contestHost);
-	}
-
-	private Control BuildHeader()
-	{
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 14);
-
-		_programMark = UserProgram.MakeHeaderMark();
-		header.AddChild(_programMark);
-		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
-
-		var identity = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.Fill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", -2);
-
-		_seasonKicker = MakeText($"HOME  ·  {GameSession.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left);
-		identity.AddChild(_seasonKicker);
-		_title = MakeText("CASCADE REGIONAL HIGH SCHOOL", _bold, 26, TextPrimary, HorizontalAlignment.Left);
-		identity.AddChild(_title);
-		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
-		identity.AddChild(_subtitle);
-		header.AddChild(identity);
-
-		_newsTickerSlot = new HBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		_newsTickerSlot.AddThemeConstantOverride("separation", 14);
-		_newsTickerSlot.AddChild(TeamLogos.MakeHeaderRule(Hairline));
+		_newsTickerSlot = new HBoxContainer { Visible = false };
 		_newsTicker = BuildNewsTicker();
 		_newsTickerSlot.AddChild(_newsTicker);
-		_newsTickerSlot.AddChild(TeamLogos.MakeHeaderRule(Hairline));
-		header.AddChild(_newsTickerSlot);
-
-		var metrics = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		metrics.AddThemeConstantOverride("separation", 4);
-		metrics.AddChild(MakeText("PROGRAM PULSE", _medium, 10, Accent, HorizontalAlignment.Right));
-
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 16);
-		row.Alignment = BoxContainer.AlignmentMode.End;
-
-		_recordValue = AddMetric(row, "18-4", "RECORD", TextPrimary);
-		_districtValue = AddMetric(row, "1ST", "DISTRICT", Green);
-		_boardValue = AddMetric(row, "62", "BOARD", Accent);
-		metrics.AddChild(row);
-		header.AddChild(metrics);
-
-		return header;
-	}
-
-	private Label AddMetric(HBoxContainer row, string value, string label, Color valueColor)
-	{
-		var col = new VBoxContainer();
-		col.AddThemeConstantOverride("separation", -4);
-		col.Alignment = BoxContainer.AlignmentMode.Center;
-		var amount = MakeText(value, _bold, 28, valueColor, HorizontalAlignment.Right);
-		col.AddChild(amount);
-		col.AddChild(MakeText(label, _semibold, 11, TextMuted, HorizontalAlignment.Right));
-		row.AddChild(col);
-		return amount;
-	}
-
-	private Control BuildWeekCard()
-	{
-		var card = MakeCard();
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
-		card.AddChild(layout);
-
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 8);
-
-		var titles = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			SizeFlagsStretchRatio = 1f,
-		};
-		titles.AddThemeConstantOverride("separation", -2);
-		titles.AddChild(MakeText("THIS WEEK", _semibold, 12, TextPrimary, HorizontalAlignment.Left));
-		_weekRangeLabel = MakeText("", _medium, 11, TextMuted, HorizontalAlignment.Left);
-		titles.AddChild(_weekRangeLabel);
-		header.AddChild(titles);
-
-		(string name, string when, Color color) milestone = NextMilestone();
-		var next = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			SizeFlagsStretchRatio = 1f,
-			Alignment = BoxContainer.AlignmentMode.Center,
-		};
-		next.AddThemeConstantOverride("separation", -2);
-		next.AddChild(MakeText("NEXT MILESTONE", _medium, 10, Accent, HorizontalAlignment.Center));
-		_milestoneLabel = MakeText($"{milestone.name}  ·  {milestone.when}", _semibold, 12, milestone.color, HorizontalAlignment.Center);
-		next.AddChild(_milestoneLabel);
-		header.AddChild(next);
-
-		var actions = new HBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			SizeFlagsStretchRatio = 1f,
-			Alignment = BoxContainer.AlignmentMode.End,
-		};
-		actions.AddThemeConstantOverride("separation", 6);
-		actions.AddChild(MakeMonthlyCalendarButton());
-		actions.AddChild(MakeSeasonScheduleButton());
-		header.AddChild(actions);
-		layout.AddChild(header);
-		layout.AddChild(MakeAccentLine());
-
-		var gridWrap = new PanelContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		gridWrap.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(0.04f, 0.045f, 0.055f, 0.55f),
-			BorderColor = Hairline,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 4,
-			ContentMarginTop = 4,
-			ContentMarginRight = 4,
-			ContentMarginBottom = 4,
-		});
-		layout.AddChild(gridWrap);
-
-		var days = new HBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		days.AddThemeConstantOverride("separation", 4);
-		gridWrap.AddChild(days);
-		_weekDaysHost = days;
-		RebuildWeekDays();
-
-		layout.AddChild(BuildActions());
-		return card;
+		AddChild(_newsTickerSlot);
 	}
 
 	private void RebuildWeek()
@@ -423,11 +250,12 @@ public partial class HomePage : Control
 		DateOnly sunday = WeekStart(_session.CurrentDate);
 		DateOnly saturday = sunday.AddDays(6);
 		_weekRangeLabel.Text =
-			$"{sunday.ToString("MMMM d", CultureInfo.InvariantCulture)}  –  {saturday.ToString("MMMM d", CultureInfo.InvariantCulture)}".ToUpperInvariant();
+			$"{sunday.ToString("MMM d", CultureInfo.InvariantCulture)} – {saturday.ToString("MMM d", CultureInfo.InvariantCulture)}";
 		(string name, string when, Color color) milestone = NextMilestone();
-		_milestoneLabel.Text = $"{milestone.name}  ·  {milestone.when}";
+		_milestoneLabel.Text = $"Next    {milestone.name}  ·  {milestone.when}";
 		_milestoneLabel.AddThemeColorOverride("font_color", milestone.color);
 		RebuildWeekDays();
+		RefreshWeekSummary();
 	}
 
 	private void RebuildWeekDays()
@@ -442,215 +270,8 @@ public partial class HomePage : Control
 		DateOnly sunday = WeekStart(_session.CurrentDate);
 		for (int i = 0; i < 7; i++)
 		{
-			_weekDaysHost.AddChild(BuildDayColumn(sunday.AddDays(i)));
+			_weekDaysHost.AddChild(BuildDayTile(sunday.AddDays(i)));
 		}
-	}
-
-	private Control BuildDayColumn(DateOnly date)
-	{
-		IReadOnlyList<SeasonEvent> events = SeasonCalendar.On(GameSession.SeasonYear, date);
-		IReadOnlyList<CalendarContest> games = _session.ContestsOn(date);
-		CalendarContest? game = PrimaryGame(games);
-		bool today = date == _session.CurrentDate;
-
-		var column = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		column.AddThemeConstantOverride("separation", 4);
-
-		var dayHeader = new HBoxContainer();
-		dayHeader.Alignment = BoxContainer.AlignmentMode.Center;
-		dayHeader.AddThemeConstantOverride("separation", 4);
-		dayHeader.AddChild(MakeText(
-			date.ToString("ddd d", CultureInfo.InvariantCulture).ToUpperInvariant(),
-			_semibold,
-			11,
-			today ? Accent : new Color(0.78f, 0.82f, 0.88f),
-			HorizontalAlignment.Center));
-		if (events.Count > 0)
-		{
-			SeasonEvent first = FeaturedOrFirst(events);
-			dayHeader.AddChild(MakeIcon(first.Featured ? _iconStar : _iconCalendar, 11, Important));
-		}
-
-		column.AddChild(dayHeader);
-
-		var card = new PanelContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			ClipContents = true,
-			MouseDefaultCursorShape = CursorShape.PointingHand,
-		};
-		_weekBinds.Add(new WeekBind(card, date, game?.Level));
-		ApplyWeekDayStyle(card, date);
-		DateOnly captured = date;
-		card.GuiInput += ev => OnWeekDayInput(ev, captured, events, game);
-		card.MouseEntered += () => ApplyWeekDayStyle(card, captured, hovered: true);
-		card.MouseExited += () => ApplyWeekDayStyle(card, captured);
-
-		var shell = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		shell.AddThemeConstantOverride("separation", 6);
-		card.AddChild(shell);
-
-		var content = new VBoxContainer
-		{
-			Alignment = BoxContainer.AlignmentMode.Center,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		content.AddThemeConstantOverride("separation", 2);
-		shell.AddChild(content);
-
-		if (game != null)
-		{
-			BindGameDay(content, game);
-		}
-		else if (events.Count > 0)
-		{
-			SeasonEvent first = FeaturedOrFirst(events);
-			content.AddChild(MakeIcon(first.Featured ? _iconStar : _iconCalendar, 26, Important));
-			var title = MakeText(first.Name.ToUpperInvariant(), _semibold, 12, TextPrimary, HorizontalAlignment.Center);
-			title.AutowrapMode = TextServer.AutowrapMode.Word;
-			content.AddChild(title);
-			content.AddChild(MakeText(first.FormatDates().ToUpperInvariant(), _medium, 10, Important, HorizontalAlignment.Center));
-			content.AddChild(MakeText(date.DayOfWeek == DayOfWeek.Sunday ? "OFF DAY" : "PRACTICE", _medium, 10, TextMuted, HorizontalAlignment.Center));
-			if (date.DayOfWeek is not DayOfWeek.Sunday)
-			{
-				content.AddChild(MakeText("3:30 PM", _medium, 10, TextMuted, HorizontalAlignment.Center));
-			}
-		}
-		else
-		{
-			bool off = date.DayOfWeek == DayOfWeek.Sunday;
-			content.AddChild(new TextureRect
-			{
-				Texture = off ? _iconOff : _iconPractice,
-				CustomMinimumSize = new Vector2(28, 28),
-				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-				StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-				SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-				MouseFilter = MouseFilterEnum.Ignore,
-			});
-			content.AddChild(MakeText(off ? "OFF DAY" : "PRACTICE", _semibold, 12, TextPrimary, HorizontalAlignment.Center));
-			if (!off)
-			{
-				content.AddChild(MakeText("3:30 PM", _medium, 10, TextMuted, HorizontalAlignment.Center));
-			}
-		}
-
-		if (game != null && events.Count > 0)
-		{
-			shell.AddChild(BuildImportantChip(date, events));
-		}
-		else if (events.Count > 0 && game == null)
-		{
-			content.AddChild(MakeText("TAP FOR DETAILS", _medium, 9, Important, HorizontalAlignment.Center));
-		}
-
-		column.AddChild(card);
-		return column;
-	}
-
-	private void BindGameDay(VBoxContainer content, CalendarContest game)
-	{
-		HubTeam opponent = DistrictHubData.GetTeam(game.OpponentId);
-
-		var identity = new VBoxContainer
-		{
-			Alignment = BoxContainer.AlignmentMode.Center,
-			SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", 2);
-		identity.AddChild(MakeTeamMark(game.OpponentId, 40, game.Level == TeamLevel.JuniorVarsity ? TextMuted : Accent));
-
-		var gameTitle = MakeText((game.Home ? "VS " : "@ ") + opponent.ShortName, _semibold, 11, TextPrimary, HorizontalAlignment.Center);
-		gameTitle.AutowrapMode = TextServer.AutowrapMode.Word;
-		identity.AddChild(gameTitle);
-		if (game.Completed)
-		{
-			identity.AddChild(MakeResultMark(game));
-		}
-
-		content.AddChild(identity);
-		content.AddChild(MakeText(game.Time, _medium, 10, TextMuted, HorizontalAlignment.Center));
-		content.AddChild(MakeText(game.VenueLabel, _semibold, 10, game.Home ? Green : Accent, HorizontalAlignment.Center));
-		content.AddChild(MakeText(game.Exhibition ? "EXHIBITION" : game.Level.ToLabel().ToUpperInvariant(), _medium, 9, TextMuted, HorizontalAlignment.Center));
-		if (game.Completed)
-		{
-			content.AddChild(MakeBoxScoreButton(game));
-		}
-	}
-
-	private Control BuildImportantChip(DateOnly date, IReadOnlyList<SeasonEvent> events)
-	{
-		SeasonEvent first = FeaturedOrFirst(events);
-		var chip = new PanelContainer
-		{
-			MouseDefaultCursorShape = CursorShape.PointingHand,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		chip.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(Important.R, Important.G, Important.B, 0.14f),
-			BorderColor = Important,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 6,
-			ContentMarginTop = 4,
-			ContentMarginRight = 6,
-			ContentMarginBottom = 4,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
-		});
-		chip.GuiInput += ev =>
-		{
-			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
-			{
-				SelectWeekDay(date);
-				OpenEventModal(date, events);
-				GetViewport().SetInputAsHandled();
-			}
-		};
-
-		var row = new HBoxContainer
-		{
-			Alignment = BoxContainer.AlignmentMode.Center,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		row.AddThemeConstantOverride("separation", 4);
-		row.AddChild(MakeIcon(first.Featured ? _iconStar : _iconCalendar, 11, Important));
-		var name = MakeText(first.Name.ToUpperInvariant(), _semibold, 9, Important, HorizontalAlignment.Center);
-		name.AutowrapMode = TextServer.AutowrapMode.Word;
-		name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		row.AddChild(name);
-		chip.AddChild(row);
-		return chip;
-	}
-
-	private Control BuildActions()
-	{
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 6);
-		_advanceButton = MakeAction("ADVANCE DAY", true, 1.35f, OnAdvancePressed);
-		row.AddChild(_advanceButton);
-		row.AddChild(MakeAction("SIMULATE DAY", false, 1f, () => OnSimulatePressed(1)));
-		row.AddChild(MakeAction("SIMULATE WEEK", false, 1f, () => OnSimulatePressed(7)));
-		row.AddChild(MakeAction("SIMULATE UNTIL", false, 1.15f, OnSimulateUntilPressed));
-		RefreshAdvanceButton();
-		return row;
 	}
 
 	/// <summary>Label for the shell's gold CONTINUE button (PLAY, TRYOUTS, ADVANCE DAY…).</summary>
@@ -796,50 +417,11 @@ public partial class HomePage : Control
 	private void ApplyWeekDayStyle(PanelContainer cell, DateOnly date, bool hovered = false)
 	{
 		bool today = date == _session.CurrentDate;
-		bool selected = date == _selectedDate;
+		bool selected = date == _selectedDate && !today;
 		bool past = date < _session.CurrentDate;
-		WeekBind? bind = null;
-		foreach (WeekBind item in _weekBinds)
-		{
-			if (item.Date == date)
-			{
-				bind = item;
-				break;
-			}
-		}
-
-		int borderWidth = selected ? 3 : today || hovered ? 2 : 1;
-		Color border = today ? Accent : selected ? TextPrimary : hovered ? new Color(0.72f, 0.76f, 0.82f) : Hairline;
-		cell.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = CardInner,
-			BorderColor = border,
-			BorderWidthLeft = borderWidth,
-			BorderWidthTop = borderWidth,
-			BorderWidthRight = borderWidth,
-			BorderWidthBottom = borderWidth,
-			ContentMarginLeft = 6,
-			ContentMarginTop = 8,
-			ContentMarginRight = 6,
-			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
-			CornerDetail = 3,
-		});
-
-		float alpha = 1f;
-		if (past)
-		{
-			alpha = hovered || selected ? 0.72f : 0.52f;
-		}
-		else if (bind?.Level != null && bind.Level != _session.ActiveTeam.Level)
-		{
-			alpha = 0.48f;
-		}
-
-		cell.Modulate = new Color(1f, 1f, 1f, alpha);
+		Color bg = today ? UiKit.Gold : hovered ? new Color("#1d2230") : UiKit.Selected;
+		cell.AddThemeStyleboxOverride("panel", UiKit.Box(bg, 10, 4, 6, selected ? UiKit.Text : null, selected ? 1 : 0));
+		cell.Modulate = new Color(1f, 1f, 1f, past && !hovered ? 0.55f : 1f);
 	}
 
 	private Control BuildModalLayer()
@@ -2274,44 +1856,7 @@ public partial class HomePage : Control
 	private Control BuildUpcomingContest()
 	{
 		CalendarContest? game = PreviewContest();
-		if (game == null)
-		{
-			return BuildEmptyContest();
-		}
-
-		GamePreviewSheet sheet = GamePreviewDesk.For(game, _session);
-		string userId = _session.CatalogOrganizationId;
-		bool userHome = game.Home;
-		string userName = userHome ? sheet.HomeName : sheet.AwayName;
-		string userRecord = userHome ? sheet.HomeRecord : sheet.AwayRecord;
-		Texture2D? userLogo = TeamLogos.Load(userId);
-		string oppId = game.OpponentId;
-		string oppName = userHome ? sheet.AwayName : sheet.HomeName;
-		string oppRecord = userHome ? sheet.AwayRecord : sheet.HomeRecord;
-		Texture2D? oppLogo = TeamLogos.Load(oppId);
-		GamePreviewStarter userArm = userHome ? sheet.HomeStarter : sheet.AwayStarter;
-		GamePreviewStarter oppArm = userHome ? sheet.AwayStarter : sheet.HomeStarter;
-		string when = $"{game.Date.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}  ·  {game.Time}";
-		string homeId = game.Home ? userId : oppId;
-		string homeShort = game.Home ? _session.Organization.ShortName : DistrictHubData.GetTeam(oppId).ShortName;
-		string venue = TeamBrands.For(homeId) is { } homeBrand
-			? $"{homeBrand.HomeField.ToUpperInvariant()}  ·  {homeBrand.LocationShort.ToUpperInvariant()}"
-			: $"{homeShort.ToUpperInvariant()} FIELD";
-		return BuildContestCard(
-			ContestKicker(game),
-			when,
-			venue,
-			game.Home ? "HOME" : "AWAY",
-			userName,
-			userRecord,
-			userLogo,
-			oppName,
-			oppRecord,
-			oppLogo,
-			ClubhouseCalendar.OpponentMark(oppId),
-			ToPitcher(userArm, Accent, userId),
-			ToPitcher(oppArm, LakesBlue, oppId),
-			oppId);
+		return game == null ? BuildNoGameCard() : BuildNextGameCard(game);
 	}
 
 	private Control BuildEmptyContest()
@@ -2397,113 +1942,12 @@ public partial class HomePage : Control
 		return BuildUpcomingContest();
 	}
 
-	private Control BuildContestCard(
-		string kicker,
-		string when,
-		string venue,
-		string homeAway,
-		string homeName,
-		string homeRecord,
-		Texture2D homeLogo,
-		string awayName,
-		string awayRecord,
-		Texture2D? awayLogo,
-		string awayInitial,
-		PitcherCard homePitcher,
-		PitcherCard awayPitcher,
-		string? opponentId = null)
-	{
-		string userId = _session.CatalogOrganizationId;
-		string awayId = opponentId ?? "great-lakes";
-		var card = MakeCard();
-		card.SizeFlagsVertical = SizeFlags.ExpandFill;
-		var layout = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		layout.AddThemeConstantOverride("separation", 8);
-		card.AddChild(layout);
-
-		var header = new HBoxContainer();
-		var titles = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		titles.AddThemeConstantOverride("separation", -2);
-		titles.AddChild(MakeText(kicker, _medium, 10, Accent, HorizontalAlignment.Left));
-		titles.AddChild(MakeText("NEXT CONTEST", _semibold, 12, TextPrimary, HorizontalAlignment.Left));
-		header.AddChild(titles);
-		header.AddChild(MakeText(homeAway, _semibold, 11, homeAway == "HOME" ? Green : Accent, HorizontalAlignment.Right));
-		layout.AddChild(header);
-		layout.AddChild(MakeAccentLine());
-
-		var matchup = new HBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 1.7f,
-		};
-		matchup.AddThemeConstantOverride("separation", 10);
-		matchup.AddChild(BuildTeamBlock(homeName, homeRecord, homeLogo, ClubhouseCalendar.OpponentMark(userId), Accent, userId));
-		var vs = MakeText("VS", _bold, 16, TextMuted, HorizontalAlignment.Center);
-		vs.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-		matchup.AddChild(vs);
-		matchup.AddChild(BuildTeamBlock(awayName, awayRecord, awayLogo, awayInitial, LakesBlue, awayId));
-		layout.AddChild(matchup);
-
-		layout.AddChild(BuildMetaRow(_iconClock, when));
-		layout.AddChild(BuildMetaRow(_iconPin, venue));
-		layout.AddChild(MakeHairline());
-
-		var pitchersTitle = MakeText("PROBABLE PITCHERS", _semibold, 11, TextMuted, HorizontalAlignment.Left);
-		layout.AddChild(pitchersTitle);
-
-		var pitchers = new HBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 1.25f,
-		};
-		pitchers.AddThemeConstantOverride("separation", 8);
-		pitchers.AddChild(BuildPitcherChip(homePitcher));
-		pitchers.AddChild(BuildPitcherChip(awayPitcher));
-		layout.AddChild(pitchers);
-
-		layout.AddChild(MakeAction("VIEW MATCHUP PREVIEW", false, 1f, OpenMatchupPreview));
-		return card;
-	}
-
-	private Control BuildTeamBlock(string name, string record, Texture2D? logo, string? initial, Color accent, string? teamId = null)
-	{
-		var box = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			Alignment = BoxContainer.AlignmentMode.Center,
-		};
-		box.AddThemeConstantOverride("separation", 6);
-		if (logo != null)
-		{
-			box.AddChild(MakeShowcaseLogo(logo, 128));
-		}
-		else
-		{
-			box.AddChild(BuildTinyLogo(initial ?? "?", accent, 96));
-		}
-
-		var nameLabel = MakeText(name, _bold, 16, TextPrimary, HorizontalAlignment.Center);
-		nameLabel.AutowrapMode = TextServer.AutowrapMode.Word;
-		box.AddChild(nameLabel);
-		box.AddChild(MakeText(record, _medium, 11, TextMuted, HorizontalAlignment.Center));
-		if (!string.IsNullOrEmpty(teamId))
-		{
-			SchoolLinks.MakeClickable(box, teamId);
-		}
-
-		return box;
-	}
-
 	/// <summary>
 	/// Probable starter as a mini broadcast banner: team-color backdrop with
 	/// the jersey number, the capped headshot standing on the trim stripe,
 	/// name and line on the right.
 	/// </summary>
-	private Control BuildPitcherChip(PitcherCard pitcher)
+	private Control BuildPitcherChip(PitcherCard pitcher, string kicker = "")
 	{
 		(Color primary, Color secondary) = TeamColors.For(pitcher.TeamId);
 		Player? player = string.IsNullOrWhiteSpace(pitcher.TeamId)
@@ -2517,7 +1961,7 @@ public partial class HomePage : Control
 			Number = player is { JerseyNumber: > 0 } ? player.JerseyNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : "",
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
-			CustomMinimumSize = new Vector2(0, 150),
+			CustomMinimumSize = new Vector2(0, 118),
 			MouseDefaultCursorShape = CursorShape.PointingHand,
 		};
 		PlayerLinks.MakeClickable(chip, pitcher.TeamId, pitcher.PlayerName);
@@ -2575,7 +2019,7 @@ public partial class HomePage : Control
 			CornerRadiusBottomLeft = 3,
 			CornerRadiusBottomRight = 3,
 		});
-		hand.AddChild(MakeText(pitcher.Hand, _semibold, 10, pitcher.Accent, HorizontalAlignment.Left));
+		hand.AddChild(MakeText(string.IsNullOrEmpty(kicker) ? pitcher.Hand : $"{kicker}  ·  {pitcher.Hand}", _semibold, 10, UiKit.Gold, HorizontalAlignment.Left));
 		info.AddChild(hand);
 		info.AddChild(MakeText(pitcher.FirstName.ToUpperInvariant(), _semibold, 11, new Color(1, 1, 1, 0.8f), HorizontalAlignment.Left));
 		var last = MakeText(pitcher.LastName.ToUpperInvariant(), _bold, 22, Colors.White, HorizontalAlignment.Left);
