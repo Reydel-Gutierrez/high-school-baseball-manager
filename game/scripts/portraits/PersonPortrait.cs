@@ -71,7 +71,7 @@ public partial class PersonPortrait : Control
 	{
 		bool hasTeam = !string.IsNullOrWhiteSpace(player.OrganizationId) && !player.IsUnsigned;
 		Cap = cap && hasTeam;
-		Monogram = hasTeam ? ProgramMark.Monogram(player.OrganizationId) : "";
+		Monogram = hasTeam ? ProgramMark.CapMonogram(player.OrganizationId) : "";
 		if (jersey == null && hasTeam)
 		{
 			(Color j, Color t) = TeamColors.For(player.OrganizationId);

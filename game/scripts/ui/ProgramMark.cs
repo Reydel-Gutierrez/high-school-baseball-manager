@@ -103,6 +103,13 @@ public partial class ProgramMark : Control
 		DrawString(_font, baseline, _monogram, HorizontalAlignment.Left, -1, fontSize, BadgeText);
 	}
 
+	/// <summary>Cap-front letters: one or two, like a big-league cap ("N", "DV").</summary>
+	public static string CapMonogram(string organizationId)
+	{
+		string m = Monogram(organizationId);
+		return m.Length >= 3 ? m[..1] : m;
+	}
+
 	public static string Monogram(string organizationId)
 	{
 		string name;

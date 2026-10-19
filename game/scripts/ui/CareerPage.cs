@@ -625,7 +625,7 @@ public partial class CareerPage : Control
 				portrait.Jersey = jersey;
 				portrait.Trim = trim;
 				portrait.Cap = true;
-				portrait.Monogram = ProgramMark.Monogram(org);
+				portrait.Monogram = ProgramMark.CapMonogram(org);
 			}
 
 			portrait.SetAppearance(appearance);

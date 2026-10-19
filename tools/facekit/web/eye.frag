@@ -25,7 +25,7 @@ void main(){
   float irisR = 0.56, pupilR = 0.21;
   // sclera
   float angS = acos(clamp(c0, -1.0, 1.0));
-  vec3 sclera = toLin(vec3(0.80, 0.76, 0.72));
+  vec3 sclera = toLin(vec3(0.72, 0.68, 0.64));
   float vessels = smoothstep(0.62, 0.9, vnoise(vec2(phi * 7.0, angS * 22.0)) * vnoise(vec2(phi * 23.0, angS * 9.0)) * 2.0);
   sclera = mix(sclera, toLin(vec3(0.78, 0.40, 0.38)), vessels * smoothstep(0.7, 1.3, angS) * 0.35);
   float side = abs(dot(d, rt));

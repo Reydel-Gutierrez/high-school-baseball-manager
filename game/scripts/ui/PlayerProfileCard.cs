@@ -203,7 +203,7 @@ public partial class PlayerProfileCard : PanelContainer
 				Jersey = primary,
 				Trim = secondary,
 				Cap = Capped(player.TeamId),
-				Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
+				Monogram = Capped(player.TeamId) ? ProgramMark.CapMonogram(player.TeamId) : "",
 			};
 			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			portrait.OffsetLeft = 10;
@@ -849,7 +849,7 @@ public partial class PlayerProfileCard : PanelContainer
 				Jersey = jersey,
 				Trim = trim,
 				Cap = Capped(player.TeamId),
-				Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
+				Monogram = Capped(player.TeamId) ? ProgramMark.CapMonogram(player.TeamId) : "",
 			};
 			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			portrait.SetAppearance(player.Appearance);
@@ -929,7 +929,7 @@ public partial class PlayerProfileCard : PanelContainer
 			Jersey = primary,
 			Trim = secondary,
 			Cap = Capped(player.TeamId),
-			Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
+			Monogram = Capped(player.TeamId) ? ProgramMark.CapMonogram(player.TeamId) : "",
 			Yaw = _showcaseYaw,
 		};
 		portrait.SetAppearance(player.Appearance!);

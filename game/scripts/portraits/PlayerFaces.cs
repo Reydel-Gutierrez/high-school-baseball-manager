@@ -69,7 +69,7 @@ public static class PlayerFaces
 			Jersey = jersey,
 			Trim = trim,
 			Cap = true,
-			Monogram = ProgramMark.Monogram(teamId),
+			Monogram = ProgramMark.CapMonogram(teamId),
 		};
 		portrait.SetAppearance(HSBM.Simulation.PersonAppearanceGenerator.GeneratePlayer(seed, (BodyBuild)(System.Math.Abs(seed >> 7) % 4)));
 		return portrait;
