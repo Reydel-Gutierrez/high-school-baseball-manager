@@ -127,9 +127,59 @@ public partial class LineupsPage : Control
 		body.AddThemeConstantOverride("separation", 6);
 		layout.AddChild(body);
 
+		body.AddChild(BuildFieldCard());
 		body.AddChild(BuildLineupCard());
-		body.AddChild(BuildBenchCard());
-		layout.AddChild(BuildDetailCard());
+		var side = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 1f,
+		};
+		side.AddThemeConstantOverride("separation", 6);
+		side.AddChild(BuildBenchCard());
+		side.AddChild(BuildDetailCard());
+		body.AddChild(side);
+	}
+
+	private DepthChartField _field = null!;
+
+	private Control BuildFieldCard()
+	{
+		var frame = new PanelContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 0.95f,
+			ClipChildren = ClipChildrenMode.Only,
+		};
+		frame.AddThemeStyleboxOverride("panel", UiKit.Box(new Color("#24502a"), 16, 0, 0, UiKit.Line, 1));
+		_field = new DepthChartField();
+		_field.SlotPressed += OnLineupGloveClicked;
+		frame.AddChild(_field);
+		var hint = UiKit.Text_("* out of position  ·  click two fielders to swap positions", UiKit.Medium, 11, new Color(1, 1, 1, 0.6f));
+		hint.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+		hint.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+		var pad = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+		pad.AddThemeConstantOverride("margin_left", 12);
+		pad.AddThemeConstantOverride("margin_bottom", 8);
+		pad.AddChild(hint);
+		frame.AddChild(pad);
+		return frame;
+	}
+
+	private void RebindField()
+	{
+		if (_field == null)
+		{
+			return;
+		}
+
+		_field.Bind(
+			ClubhouseBoard.GetLineup(_session.ActiveTeam),
+			_session.CatalogOrganizationId,
+			_session.ActiveTeam.Level,
+			ClubhouseBoard.GetLikelyStarter(_session.ActiveTeam),
+			_gloveSlot);
 	}
 
 	private Control BuildHeader()
@@ -147,7 +197,7 @@ public partial class LineupsPage : Control
 		};
 		identity.AddThemeConstantOverride("separation", -2);
 		identity.AddChild(MakeText($"CLUBHOUSE  ·  {CurrentSeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("LINEUP", _bold, 36, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("DEPTH CHART & LINEUP", _bold, 36, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("CASCADE REGIONAL HIGH SCHOOL", _medium, 11, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -168,7 +218,7 @@ public partial class LineupsPage : Control
 	private Control BuildLineupCard()
 	{
 		var card = MakeCard();
-		card.SizeFlagsStretchRatio = 1.45f;
+		card.SizeFlagsStretchRatio = 1.25f;
 		var layout = new VBoxContainer();
 		layout.AddThemeConstantOverride("separation", 4);
 		card.AddChild(layout);
@@ -380,6 +430,7 @@ public partial class LineupsPage : Control
 		RebuildLineup();
 		RebuildBench();
 		BindDetail();
+		RebindField();
 	}
 
 	private void RefreshHeaderMeta()

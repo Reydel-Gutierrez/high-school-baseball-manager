@@ -106,6 +106,7 @@ public partial class RotationPage : Control
 		layout.AddThemeConstantOverride("separation", 8);
 		margin.AddChild(layout);
 		layout.AddChild(BuildHeader());
+		layout.AddChild(BuildKpis());
 
 		var body = new HBoxContainer
 		{
@@ -118,6 +119,51 @@ public partial class RotationPage : Control
 		body.AddChild(BuildSeatCard("BULLPEN", "Closer and support roles for the week.", out _bullpenRows, 1.05f));
 		body.AddChild(BuildSeatCard("AVAILABLE ARMS", "Pitchers not in the rotation or bullpen.", out _availableRows, 1f));
 		layout.AddChild(BuildDetailCard());
+	}
+
+	private Label _kArms = null!, _kArmsCap = null!, _kRot = null!, _kRotCap = null!, _kStr = null!, _kStrCap = null!, _kNext = null!, _kNextCap = null!;
+
+	private Control BuildKpis()
+	{
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 10);
+		row.AddChild(UiKit.KpiLive("ARMS ON STAFF", out _kArms, out _kArmsCap));
+		row.AddChild(UiKit.KpiLive("ROTATION", out _kRot, out _kRotCap));
+		row.AddChild(UiKit.KpiLive("STAFF STRENGTH", out _kStr, out _kStrCap));
+		row.AddChild(UiKit.KpiLive("NEXT START", out _kNext, out _kNextCap));
+		return row;
+	}
+
+	private void RefreshKpis(int starters)
+	{
+		TeamLevel level = _session.ActiveTeam.Level;
+		int arms = 0;
+		foreach (ClubhousePlayer player in ClubhouseSquad.ForTeam(level))
+		{
+			if (player.IsPitcher)
+			{
+				arms++;
+			}
+		}
+
+		_kArms.Text = FormatInt(arms);
+		_kArms.AddThemeColorOverride("font_color", arms >= 7 ? UiKit.Green : arms >= 5 ? UiKit.Gold : UiKit.Red);
+		_kArmsCap.Text = "A full week of games needs about 7";
+		_kRot.Text = $"{FormatInt(starters)}/5";
+		_kRot.AddThemeColorOverride("font_color", starters >= 3 ? UiKit.Text : UiKit.Gold);
+		_kRotCap.Text = starters >= 3 ? "Starters set" : "Fill at least three starter seats";
+
+		SchoolSnapshot school = SchoolProfiles.For(_session.CatalogOrganizationId, level, _session);
+		_kStr.Text = FormatInt(school.Pitching);
+		_kStrCap.Text = "Pitching rating";
+
+		ClubhousePlayer? starter = ClubhouseBoard.GetLikelyStarter(_session.ActiveTeam);
+		CalendarContest? next = _session.NextContest(level);
+		_kNext.Text = starter == null ? "TBD" : starter.LastName.ToUpperInvariant()
+			+ (next == null ? "" : "  ·  " + next.Date.ToString("MMM d", CultureInfo.InvariantCulture).ToUpperInvariant());
+		_kNextCap.Text = next == null
+			? "No game scheduled"
+			: $"{(next.Home ? "vs" : "@")} {DistrictHubData.GetTeam(next.OpponentId).ShortName}";
 	}
 
 	private Control BuildHeader()
@@ -135,7 +181,7 @@ public partial class RotationPage : Control
 		};
 		identity.AddThemeConstantOverride("separation", -2);
 		identity.AddChild(MakeText($"CLUBHOUSE  ·  {CurrentSeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("PITCHING ROTATION", _bold, 36, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("PITCHING STAFF", _bold, 36, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("CASCADE REGIONAL HIGH SCHOOL", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -231,6 +277,7 @@ public partial class RotationPage : Control
 
 		_status.Text = $"{FormatInt(starters)}/5 STARTERS  ·  {FormatInt(rotation.AssignedCount)} ARMS SET";
 		_status.AddThemeColorOverride("font_color", starters >= 3 ? Green : Accent);
+		RefreshKpis(starters);
 
 		if (!string.IsNullOrEmpty(_selectedSeat) && _selectedSeat != AvailableKey)
 		{
