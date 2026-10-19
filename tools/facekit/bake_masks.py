@@ -92,15 +92,25 @@ brows = np.clip(band * (0.55 + 0.5 * strand), 0, 1) * (~ear)
 
 # ---- beard zone (cheeks below cheekbone, jaw, chin, upper lip, under jaw)
 theta = np.degrees(np.arctan2(x, z + 0.075))
-cheek_top = -0.020 - 0.012 * smooth(0.02, 0.05, ax_)
+# beard line: low on the cheek (below the cheekbone), rising to meet the sideburn
+cheek_top = -0.046 + 0.010 * smooth(0.015, 0.035, ax_) + 0.040 * smooth(0.045, 0.066, ax_)
 beard = smooth(0.0, 0.012, cheek_top - y)  # below the cheek line
 beard *= 1 - smooth(55, 68, np.abs(theta))  # stop at the sideburn, in front of the ear
 beard *= 1 - lips * 1.2
 beard *= smooth(-0.135, -0.105, y + 0.02 * smooth(0.0, 0.06, -z))  # stop under the jaw
 beard = np.clip(beard * (~ear) * (~mouth_in), 0, 1)
-mustache = (smooth(-0.066, -0.060, y) * (1 - smooth(-0.050, -0.045, y)) * (1 - smooth(0.020, 0.028, ax_)) * front)
+# mustache: follows the upper lip, thickest at the philtrum, tapering past the corners
+lip_top = -0.0605 - 0.0035 * smooth(0.0, 0.024, ax_)          # upper-lip line dips toward the corners
+must_top = -0.0475 - 0.006 * smooth(0.010, 0.030, ax_)        # nose base, sloping down the cheeks
+mustache = smooth(lip_top - 0.001, lip_top + 0.002, y) * (1 - smooth(must_top - 0.003, must_top, y))
+mustache *= 1 - smooth(0.022, 0.031, ax_ + 0.15 * np.maximum(0, lip_top - y))
+mustache *= front * (0.75 + 0.25 * vnoise(x, y, 900))
 mustache = np.clip(mustache * (1 - lips * 1.5), 0, 1)
-goatee = (1 - smooth(-0.090, -0.080, y)) * smooth(-0.125, -0.110, y) * (1 - smooth(0.016, 0.026, ax_)) * front
+# goatee: chin oval plus a soul patch up to the lower lip
+chin = 1 - smooth(0.7, 1.15, np.sqrt((x / 0.0165) ** 2 + ((y + 0.098) / 0.019) ** 2))
+soul = (1 - smooth(0.004, 0.008, ax_)) * smooth(-0.090, -0.086, -y - 0.0 + -0.0) * 0
+soul = (1 - smooth(0.004, 0.007, ax_)) * (1 - smooth(-0.079, -0.076, y)) * smooth(-0.092, -0.086, y)
+goatee = np.clip((chin + soul) * front * (0.75 + 0.25 * vnoise(x, y, 900)), 0, 1)
 goatee = np.clip(goatee * (1 - lips * 1.5), 0, 1)
 
 # ---- redness / cavity / pores

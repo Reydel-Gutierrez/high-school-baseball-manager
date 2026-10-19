@@ -109,14 +109,21 @@ public sealed class FaceRecipe
 	/// <summary>Camera yaw in degrees (0 = the standard headshot angle).</summary>
 	public float Yaw;
 	public float AgeLines;
+
+	/// <summary>Age in years: drives creases, beard shadow and skin character.</summary>
+	public int Age = 17;
+
+	/// <summary>MLB-style capped headshot in team colors with a front monogram.</summary>
+	public bool Cap;
+	public string Monogram = "";
 	public string Key = "";
 
 	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
-	public const string RenderVersion = "v3;";
+	public const string RenderVersion = "v4;";
 
-	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f)
+	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f, bool cap = false, string? monogram = null)
 	{
-		var r = new FaceRecipe { Yaw = yaw };
+		var r = new FaceRecipe { Yaw = yaw, Age = Math.Clamp(age, 12, 85), Cap = cap, Monogram = cap ? (monogram ?? "").Trim().ToUpperInvariant() : "" };
 		int[] sculpt = FaceSculpt.FromSeed(appearance.Seed, appearance.SkinTone);
 		if (appearance.Sculpt is { Length: > 0 } saved)
 		{
@@ -386,7 +393,8 @@ public sealed class FaceRecipe
 
 		sb.Append(r.Skin.ToHtml()).Append(r.Hair.ToHtml()).Append(r.Brow.ToHtml()).Append(r.Iris.ToHtml())
 			.Append(r.HairShape).Append(r.HairLength.ToString(CultureInfo.InvariantCulture)).Append(r.Beard)
-			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.Yaw.ToString("0", CultureInfo.InvariantCulture)).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture));
+			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.Yaw.ToString("0", CultureInfo.InvariantCulture)).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture))
+			.Append(r.Age).Append(r.Cap).Append(r.Monogram);
 		ulong h = 1469598103934665603UL;
 		foreach (char c in sb.ToString())
 		{

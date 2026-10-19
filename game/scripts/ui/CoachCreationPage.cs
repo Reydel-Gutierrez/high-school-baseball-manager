@@ -160,6 +160,11 @@ public partial class CoachCreationPage : Control
 			}, UiClickSound.Select));
 		}
 
+		turn.AddChild(CareerCreationChrome.Ghost("CAP", _medium, () =>
+		{
+			_portrait.Cap = !_portrait.Cap;
+			_portrait.Refresh();
+		}, UiClickSound.Select));
 		photoCol.AddChild(turn);
 		var actions = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
 		actions.AddThemeConstantOverride("separation", 8);

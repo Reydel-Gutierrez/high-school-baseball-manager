@@ -618,6 +618,16 @@ public partial class CareerPage : Control
 				CustomMinimumSize = new Vector2(80, 100),
 			};
 			portrait.Age = _session.Coach.Age;
+			string org = _session.CatalogOrganizationId;
+			if (!string.IsNullOrWhiteSpace(org))
+			{
+				(Color jersey, Color trim) = TeamColors.For(org);
+				portrait.Jersey = jersey;
+				portrait.Trim = trim;
+				portrait.Cap = true;
+				portrait.Monogram = ProgramMark.Monogram(org);
+			}
+
 			portrait.SetAppearance(appearance);
 			frame.AddChild(portrait);
 			return frame;

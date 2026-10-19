@@ -204,7 +204,10 @@ public sealed class FaceKit
 		return n;
 	}
 
-	public ArrayMesh BuildSkin(Vector3[] p, Vector3[] n)
+	public ArrayMesh BuildSkin(Vector3[] p, Vector3[] n) => BuildSurface("skin", p, n);
+
+	/// <summary>One named surface of the kit ("skin", "lashes") over morphed positions.</summary>
+	public ArrayMesh BuildSurface(string surface, Vector3[] p, Vector3[] n)
 	{
 		int count = RenderSub.Length;
 		var verts = new Vector3[count];
@@ -220,7 +223,7 @@ public sealed class FaceKit
 		arrays[(int)Mesh.ArrayType.Vertex] = verts;
 		arrays[(int)Mesh.ArrayType.Normal] = norms;
 		arrays[(int)Mesh.ArrayType.TexUV] = RenderUv;
-		arrays[(int)Mesh.ArrayType.Index] = Surfaces["skin"];
+		arrays[(int)Mesh.ArrayType.Index] = Surfaces[surface];
 		var mesh = new ArrayMesh();
 		mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
 		return mesh;

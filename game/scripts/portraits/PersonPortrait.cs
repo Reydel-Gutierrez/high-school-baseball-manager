@@ -32,6 +32,12 @@ public partial class PersonPortrait : Control
 
 	public Color? Trim { get; set; }
 
+	/// <summary>Wear the team ball cap (MLB-style headshot).</summary>
+	public bool Cap { get; set; }
+
+	/// <summary>Letters stitched on the cap front (school monogram).</summary>
+	public string Monogram { get; set; } = "";
+
 	/// <summary>Draw a soft studio backdrop behind the cut-out headshot.</summary>
 	public bool Backdrop { get; set; } = true;
 
@@ -61,8 +67,18 @@ public partial class PersonPortrait : Control
 	}
 
 	/// <summary>Bind a player: appearance, age, height and weight in one call.</summary>
-	public void SetPlayer(Player player, Color? jersey = null, Color? trim = null)
+	public void SetPlayer(Player player, Color? jersey = null, Color? trim = null, bool cap = true)
 	{
+		bool hasTeam = !string.IsNullOrWhiteSpace(player.OrganizationId) && !player.IsUnsigned;
+		Cap = cap && hasTeam;
+		Monogram = hasTeam ? ProgramMark.Monogram(player.OrganizationId) : "";
+		if (jersey == null && hasTeam)
+		{
+			(Color j, Color t) = TeamColors.For(player.OrganizationId);
+			jersey = j;
+			trim ??= t;
+		}
+
 		Age = player.Age > 0 ? player.Age : player.Grade.TypicalAge();
 		HeightInches = player.Physical.HeightInches;
 		WeightLbs = player.Physical.WeightLbs;
@@ -73,7 +89,7 @@ public partial class PersonPortrait : Control
 
 	public void Refresh()
 	{
-		FaceRecipe recipe = FaceRecipe.From(_appearance, Age, HeightInches, WeightLbs, Jersey, Trim, Yaw);
+		FaceRecipe recipe = FaceRecipe.From(_appearance, Age, HeightInches, WeightLbs, Jersey, Trim, Yaw, Cap, Monogram);
 		if (recipe.Key == _requested && _photo != null)
 		{
 			return;

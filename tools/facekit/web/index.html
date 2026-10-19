@@ -1,42 +1,55 @@
 <!doctype html><html><body style="margin:0;background:#111">
 <canvas id="c" width="512" height="640"></canvas>
 <script type="module">
+// Harness for the headshot renderer. Mirrors HeadshotStudio.cs: skin pass,
+// eyes, lashes, hair/beard shells, ball cap. Same shaders as the Godot port.
 import { loadKit, weightsFor, morph } from './kit.js';
 import { buildCap } from './cap.js';
-const gl = document.getElementById('c').getContext('webgl2', { antialias: true, preserveDrawingBuffer: true });
+const W = 512, Hh = 640;
+const gl = document.getElementById('c').getContext('webgl2', { antialias: true, preserveDrawingBuffer: true, premultipliedAlpha: false });
 const kit = await loadKit('../out/facekit.bin');
 window.kit = kit;
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s); return s; }
 function prog(vs, fs) { const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw gl.getProgramInfoLog(p); return p; }
-const VS = await (await fetch('skin.vert')).text();
-const FS = await (await fetch('skin.frag')).text();
-const P = prog(VS, FS);
-const PE = prog(VS, await (await fetch('eye.frag')).text());
-const PL = prog(VS, await (await fetch('lash.frag')).text());
-const PC = prog(VS.replace('uniform sampler2D ucloth;','uniform sampler2D ucloth; uniform float uNoCloth;').replace('float j = textureLod','float j = uNoCloth > 0.5 ? 0.0 : textureLod'), await (await fetch('cap.frag')).text());
+const txt = async (f) => (await fetch(f + '?' + Date.now())).text();
+const VS = await txt('skin.vert');
+const P = prog(VS, await txt('skin.frag'));
+const PE = prog(VS, await txt('eye.frag'));
+const PL = prog(VS, await txt('lash.frag'));
+const PS = prog(await txt('shell.vert'), await txt('shell.frag'));
+const PC = prog(await txt('cap.vert'), await txt('cap.frag'));
 function sphere(nu, nv){ const pos=[], nor=[], idx=[]; for(let j=0;j<=nv;j++){ const th=j/nv*Math.PI; for(let i=0;i<=nu;i++){ const ph=i/nu*2*Math.PI; const x=Math.sin(th)*Math.sin(ph), y=Math.cos(th), z=Math.sin(th)*Math.cos(ph); pos.push(x,y,z); nor.push(x,y,z);} } for(let j=0;j<nv;j++) for(let i=0;i<nu;i++){ const a=j*(nu+1)+i, b=a+nu+1; idx.push(a,b,a+1, a+1,b,b+1);} return {pos:new Float32Array(pos), nor:new Float32Array(nor), idx:new Uint32Array(idx)}; }
-const SPH = sphere(48, 32);
-
+const SPH = sphere(64, 48);
 function mat4Persp(fovy, aspect, n, f) { const t = 1 / Math.tan(fovy / 2); return [t/aspect,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0]; }
 function lookAt(e, c, u) { const z=norm(sub(e,c)), x=norm(cross(u,z)), y=cross(z,x); return [x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,e),-dot(y,e),-dot(z,e),1]; }
 const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l)};
-
 const tex = {};
-async function loadTex(name, url) { const img = new Image(); img.src = url; await img.decode(); const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); tex[name]=t; }
-for (const n of ['masks','detail','hair','cloth']) { try { await loadTex(n, '../out/'+n+'.png?'+Date.now()); } catch (e) { console.warn('no '+n); } }
+async function loadTex(name, url) { const img = new Image(); img.src = url; await img.decode(); const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); tex[name]=t; }
+const TEX = ['masks','detail','hair','cloth','light','wrinkle','tone','logo'];
+for (const n of TEX) { try { await loadTex(n, '../out/'+n+'.png?'+Date.now()); } catch (e) { console.warn('no '+n); } }
+
+function bindAttr(pr, data, loc, size) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const l = gl.getAttribLocation(pr, loc); if (l < 0) return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); }
+function bindIdx(idx) { const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW); }
+function u(pr, name) { return gl.getUniformLocation(pr, name); }
+function common(pr, cam) {
+  gl.useProgram(pr);
+  for (let i = 0; i < 8; i++) { const l = gl.getAttribLocation(pr, ['aPos','aNor','aUv'][i] || 'x'); }
+  gl.uniformMatrix4fv(u(pr,'uProj'), false, cam.proj); gl.uniformMatrix4fv(u(pr,'uView'), false, cam.view);
+  gl.uniform3fv(u(pr,'uEye'), cam.eye);
+  TEX.forEach((n,i)=>{ gl.activeTexture(gl.TEXTURE0+i); gl.bindTexture(gl.TEXTURE_2D, tex[n]||null); gl.uniform1i(u(pr,'u'+n),i); });
+}
+function lin(c) { return c; }
 
 window.render = function (spec, look) {
+  look = look || {};
   const p = morph(kit, weightsFor(spec));
-  // Frame on the eyes: the macro targets move the whole head with body height.
   const mid = [0,0,0]; let cnt = 0;
   for (const g of ['eye_l','eye_r']) for (const s of kit.groups[g]) { mid[0]+=p[s*3]; mid[1]+=p[s*3+1]; mid[2]+=p[s*3+2]; cnt++; }
   for (let k=0;k<3;k++) mid[k]/=cnt;
   for (let i = 0; i < kit.nSub; i++) { p[i*3]-=mid[0]; p[i*3+1]-=mid[1]; p[i*3+2]-=mid[2]; }
-  window.lastMorph = p;
   const baseRel = new Float32Array(kit.base.length);
   { const bm=[0,0,0]; let c2=0; for (const g of ['eye_l','eye_r']) for (const s2 of kit.groups[g]) { bm[0]+=kit.base[s2*3]; bm[1]+=kit.base[s2*3+1]; bm[2]+=kit.base[s2*3+2]; c2++; }
     for (let i=0;i<kit.nSub;i++){ baseRel[i*3]=kit.base[i*3]-bm[0]/c2; baseRel[i*3+1]=kit.base[i*3+1]-bm[1]/c2; baseRel[i*3+2]=kit.base[i*3+2]-bm[2]/c2; } }
-  // normals on welded sub verts
   const nrm = new Float32Array(kit.nSub * 3);
   const tris = kit.surfaces.skin;
   for (let t = 0; t < tris.length; t += 3) {
@@ -45,72 +58,93 @@ window.render = function (spec, look) {
     const n = cross(e2, e1);
     for (const i of [a,b,c]) { nrm[i]+=n[0]; nrm[i+1]+=n[1]; nrm[i+2]+=n[2]; }
   }
+  for (let i=0;i<kit.nSub;i++){ const l=Math.hypot(nrm[i*3],nrm[i*3+1],nrm[i*3+2])||1; nrm[i*3]/=l; nrm[i*3+1]/=l; nrm[i*3+2]/=l; }
   const pos = new Float32Array(kit.nR * 3), nor = new Float32Array(kit.nR * 3);
-  for (let i = 0; i < kit.nR; i++) { const s = kit.rSub[i]*3; pos.set([p[s],p[s+1],p[s+2]], i*3); nor.set(norm([nrm[s],nrm[s+1],nrm[s+2]]), i*3); }
-  gl.viewport(0,0,512,640); gl.clearColor(0.08,0.1,0.14,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST);
-  gl.useProgram(P);
-  const buf = (data, loc, size) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const l = gl.getAttribLocation(P, loc); if (l<0) return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); };
-  buf(pos,'aPos',3); buf(nor,'aNor',3); buf(kit.uv,'aUv',2);
-  const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(tris), gl.STATIC_DRAW);
-  look = look || {};
+  for (let i = 0; i < kit.nR; i++) { const s = kit.rSub[i]*3; pos.set([p[s],p[s+1],p[s+2]], i*3); nor.set([nrm[s],nrm[s+1],nrm[s+2]], i*3); }
+
+  const bg = look.bg || [0.08,0.1,0.14];
+  gl.viewport(0,0,W,Hh); gl.clearColor(bg[0],bg[1],bg[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST);
+  const yaw = (look.yaw || 0) * Math.PI / 180;
   const center = look.center || [0, -0.055, -0.04];
-  const eye = look.eye || [0.12, 0.0, 1.35];
-  gl.uniformMatrix4fv(gl.getUniformLocation(P,'uProj'), false, mat4Persp((look.fov||15)*Math.PI/180, 512/640, 0.1, 10));
-  gl.uniformMatrix4fv(gl.getUniformLocation(P,'uView'), false, lookAt(eye, center, [0,1,0]));
-  gl.uniform3fv(gl.getUniformLocation(P,'uEye'), eye);
-  gl.uniform3fv(gl.getUniformLocation(P,'uSkin'), spec.skin || [0.80,0.60,0.48]);
-  ['masks','detail','hair','cloth'].forEach((n,i)=>{ gl.activeTexture(gl.TEXTURE0+i); gl.bindTexture(gl.TEXTURE_2D, tex[n]); gl.uniform1i(gl.getUniformLocation(P,'u'+n),i); });
-  gl.uniform1f(gl.getUniformLocation(P,'uDebug'), look.debug||0);
-  gl.uniform3fv(gl.getUniformLocation(P,'uHairColor'), spec.hairColor || [0.10,0.07,0.05]);
-  gl.uniform3fv(gl.getUniformLocation(P,'uBrowColor'), spec.browColor || spec.hairColor || [0.10,0.07,0.05]);
-  gl.uniform4fv(gl.getUniformLocation(P,'uHairStyle'), spec.hairStyle || [0.0, 0.6, 0.0, 0.0]); // hairline offset, density, fade, balding
-  gl.uniform4fv(gl.getUniformLocation(P,'uBeard'), spec.beard || [0.15,0,0,0]); // stubble, full, mustache, goatee
-  gl.uniform1f(gl.getUniformLocation(P,'uHairLen'), spec.hairLen ?? 0.006);
-  gl.uniform3fv(gl.getUniformLocation(P,'uJersey'), spec.jersey || [0.08,0.12,0.35]);
-  gl.uniform3fv(gl.getUniformLocation(P,'uTrim'), spec.trim || [0.9,0.6,0.1]);
+  const off = [0.10, 0.055, 1.39];
+  const eye = [center[0] + off[0]*Math.cos(yaw) + off[2]*Math.sin(yaw), center[1] + off[1], center[2] - off[0]*Math.sin(yaw) + off[2]*Math.cos(yaw)];
+  const cam = { eye, proj: mat4Persp((look.fov||15)*Math.PI/180, W/Hh, 0.05, 10), view: lookAt(eye, center, [0,1,0]) };
+  const age = spec.age || 30;
+  const capOn = !!spec.cap;
+  const hairStyle = spec.hairStyle || [0.0, 0.6, 0.0, 0.0];
+  const beard = spec.beard || [0.15,0,0,0];
+  const hairColor = spec.hairColor || [0.10,0.07,0.05];
+
+  // ---- skin
+  common(P, cam);
+  bindAttr(P, pos,'aPos',3); bindAttr(P, nor,'aNor',3); bindAttr(P, kit.uv,'aUv',2); bindIdx(new Uint32Array(tris));
+  gl.uniform3fv(u(P,'uSkin'), spec.skin || [0.80,0.60,0.48]);
+  gl.uniform1f(u(P,'uDebug'), look.debug||0);
+  gl.uniform3fv(u(P,'uHairColor'), hairColor);
+  gl.uniform3fv(u(P,'uBrowColor'), spec.browColor || hairColor);
+  gl.uniform4fv(u(P,'uHairStyle'), capOn ? [hairStyle[0], hairStyle[1], 1.0, 1.0] : hairStyle);
+  gl.uniform4fv(u(P,'uBeard'), beard);
+  gl.uniform1f(u(P,'uHairLen'), 0.0);
+  gl.uniform1f(u(P,'uAge'), age);
+  gl.uniform1f(u(P,'uCap'), capOn ? 1 : 0);
+  gl.uniform3fv(u(P,'uJersey'), spec.jersey || [0.08,0.12,0.35]);
+  gl.uniform3fv(u(P,'uTrim'), spec.trim || [0.9,0.6,0.1]);
+  gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(gl.CW);
   gl.drawElements(gl.TRIANGLES, tris.length, gl.UNSIGNED_INT, 0);
-  // eyeballs
+  gl.disable(gl.CULL_FACE);
+
+  // ---- eyes
   for (const g of ['eye_l','eye_r']) {
     const c=[0,0,0]; const ids=kit.groups[g]; for(const s2 of ids){c[0]+=p[s2*3];c[1]+=p[s2*3+1];c[2]+=p[s2*3+2];} for(let k=0;k<3;k++) c[k]/=ids.length;
     let rad=0; for(const s2 of ids){ rad+=Math.hypot(p[s2*3]-c[0],p[s2*3+1]-c[1],p[s2*3+2]-c[2]); } rad/=ids.length; rad*=0.96;
     const ep=new Float32Array(SPH.pos.length); for(let i=0;i<ep.length;i+=3){ ep[i]=c[0]+SPH.pos[i]*rad; ep[i+1]=c[1]+SPH.pos[i+1]*rad; ep[i+2]=c[2]+SPH.pos[i+2]*rad; }
-    gl.useProgram(PE);
-    const bufE=(data,loc,size)=>{const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW); const l=gl.getAttribLocation(PE,loc); if(l<0)return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);};
-    bufE(ep,'aPos',3); bufE(SPH.nor,'aNor',3); const l2=gl.getAttribLocation(PE,'aUv'); if(l2>=0) gl.disableVertexAttribArray(l2);
-    const ib2=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib2); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, SPH.idx, gl.STATIC_DRAW);
-    gl.uniformMatrix4fv(gl.getUniformLocation(PE,'uProj'), false, mat4Persp((look.fov||15)*Math.PI/180, 512/640, 0.1, 10));
-    gl.uniformMatrix4fv(gl.getUniformLocation(PE,'uView'), false, lookAt(eye, center, [0,1,0]));
-    gl.uniform3fv(gl.getUniformLocation(PE,'uEye'), eye); gl.uniform3fv(gl.getUniformLocation(PE,'uCenter'), c);
-    gl.uniform3fv(gl.getUniformLocation(PE,'uIris'), spec.iris || [0.35,0.22,0.12]);
-    gl.uniform3fv(gl.getUniformLocation(PE,'uLook'), norm([ -c[0]*0.4, 0.0, 1.0 ]));
+    common(PE, cam);
+    bindAttr(PE, ep,'aPos',3); bindAttr(PE, SPH.nor,'aNor',3); const l2=gl.getAttribLocation(PE,'aUv'); if(l2>=0) gl.disableVertexAttribArray(l2);
+    bindIdx(SPH.idx);
+    gl.uniform3fv(u(PE,'uCenter'), c); gl.uniform1f(u(PE,'uRadius'), rad);
+    gl.uniform3fv(u(PE,'uIris'), spec.iris || [0.35,0.22,0.12]);
+    gl.uniform3fv(u(PE,'uLook'), norm([ -c[0]*0.35 + (eye[0]-c[0])*0.02, 0.0, 1.0 ]));
+    gl.uniform1f(u(PE,'uCap'), capOn ? 1 : 0);
     gl.drawElements(gl.TRIANGLES, SPH.idx.length, gl.UNSIGNED_INT, 0);
   }
-  if (spec.cap) {
-    const nn = new Float32Array(kit.nSub*3); for (let i=0;i<kit.nSub;i++){ const l=Math.hypot(nrm[i*3],nrm[i*3+1],nrm[i*3+2])||1; nn[i*3]=nrm[i*3]/l; nn[i*3+1]=nrm[i*3+1]/l; nn[i*3+2]=nrm[i*3+2]/l; }
-    const cap = buildCap(kit, baseRel, p, nn);
-    gl.useProgram(PC); gl.disable(gl.CULL_FACE);
-    const bufC=(data,loc,size)=>{const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW); const l=gl.getAttribLocation(PC,loc); if(l<0)return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);};
-    bufC(cap.pos,'aPos',3); bufC(cap.nor,'aNor',3); bufC(cap.uv,'aUv',2);
-    const ibc=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibc); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, cap.idx, gl.STATIC_DRAW);
-    gl.uniformMatrix4fv(gl.getUniformLocation(PC,'uProj'), false, mat4Persp((look.fov||15)*Math.PI/180, 512/640, 0.1, 10));
-    gl.uniformMatrix4fv(gl.getUniformLocation(PC,'uView'), false, lookAt(eye, center, [0,1,0]));
-    gl.uniform3fv(gl.getUniformLocation(PC,'uEye'), eye); gl.uniform1f(gl.getUniformLocation(PC,'uNoCloth'),1);
-    gl.uniform3fv(gl.getUniformLocation(PC,'uCap'), spec.jersey || [0.08,0.12,0.35]);
-    gl.uniform3fv(gl.getUniformLocation(PC,'uLogo'), spec.trim || [0.9,0.6,0.1]);
-    gl.drawElements(gl.TRIANGLES, cap.idx.length, gl.UNSIGNED_INT, 0);
+
+  // ---- shells: hair, beard, brows (alpha-blended, inner to outer)
+  gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  common(PS, cam);
+  bindAttr(PS, pos,'aPos',3); bindAttr(PS, nor,'aNor',3); bindAttr(PS, kit.uv,'aUv',2); bindIdx(new Uint32Array(tris));
+  gl.uniform3fv(u(PS,'uHairColor'), hairColor);
+  gl.uniform3fv(u(PS,'uBrowColor'), spec.browColor || hairColor);
+  gl.uniform4fv(u(PS,'uHairStyle'), hairStyle);
+  gl.uniform4fv(u(PS,'uBeard'), beard);
+  gl.uniform1f(u(PS,'uHairLen'), spec.hairLen ?? 0.008);
+  gl.uniform1f(u(PS,'uCap'), capOn ? 1 : 0);
+  gl.uniform1f(u(PS,'uAge'), age);
+  const SHELLS = 16;
+  gl.uniform1f(u(PS,'uShells'), SHELLS);
+  for (let i = 1; i <= SHELLS; i++) {
+    gl.uniform1f(u(PS,'uShell'), i);
+    gl.drawElements(gl.TRIANGLES, tris.length, gl.UNSIGNED_INT, 0);
   }
-  if (false) {
-  // lashes
-  gl.useProgram(PL); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-  const lt = kit.surfaces.lashes;
-  const bufL=(data,loc,size)=>{const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW); const l=gl.getAttribLocation(PL,loc); if(l<0)return; gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);};
-  bufL(pos,'aPos',3); bufL(nor,'aNor',3); bufL(kit.uv,'aUv',2);
-  const ib3=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib3); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(lt), gl.STATIC_DRAW);
-  gl.uniformMatrix4fv(gl.getUniformLocation(PL,'uProj'), false, mat4Persp((look.fov||15)*Math.PI/180, 512/640, 0.1, 10));
-  gl.uniformMatrix4fv(gl.getUniformLocation(PL,'uView'), false, lookAt(eye, center, [0,1,0]));
-  gl.uniform3fv(gl.getUniformLocation(PL,'uLashColor'), [0.03,0.02,0.015]);
-  gl.drawElements(gl.TRIANGLES, lt.length, gl.UNSIGNED_INT, 0);
-  gl.disable(gl.BLEND); gl.depthMask(true);
+
+  // ---- lashes
+  if (!look.noLash) {
+  common(PL, cam);
+  bindAttr(PL, pos,'aPos',3); bindAttr(PL, nor,'aNor',3); bindAttr(PL, kit.uv,'aUv',2); bindIdx(new Uint32Array(kit.surfaces.lashes));
+  gl.uniform3fv(u(PL,'uLashColor'), [0.025,0.018,0.014]);
+  gl.depthMask(false);
+  gl.drawElements(gl.TRIANGLES, kit.surfaces.lashes.length, gl.UNSIGNED_INT, 0);
+  gl.depthMask(true);
+  }
+  gl.disable(gl.BLEND);
+
+  // ---- cap
+  if (capOn) {
+    const cap = buildCap(kit, baseRel, p, nrm);
+    common(PC, cam);
+    bindAttr(PC, cap.pos,'aPos',3); bindAttr(PC, cap.nor,'aNor',3); bindAttr(PC, cap.uv,'aUv',2); bindIdx(cap.idx);
+    gl.uniform3fv(u(PC,'uCap'), spec.capColor || spec.jersey || [0.08,0.12,0.35]);
+    gl.uniform3fv(u(PC,'uLogo'), spec.trim || [0.9,0.6,0.1]); gl.uniform1f(u(PC,'uHasLogo'), tex.logo ? 1 : 0);
+    gl.drawElements(gl.TRIANGLES, cap.idx.length, gl.UNSIGNED_INT, 0);
   }
   return 'ok';
 };
