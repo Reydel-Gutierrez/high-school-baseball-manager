@@ -418,12 +418,21 @@ public partial class GamePreviewPage : Control
 
 	private Control BuildPortrait(GamePreviewStarter starter)
 	{
-		const float size = 64f;
+		const float size = 84f;
 		var wrap = new Control
 		{
 			CustomMinimumSize = new Vector2(size, size),
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
+
+		PersonPortrait? face = PlayerFaces.For(starter.TeamId, starter.Name, size, size, circle: true, level: _session.ActiveTeam.Level);
+		if (face != null)
+		{
+			face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+			face.MouseFilter = MouseFilterEnum.Ignore;
+			wrap.AddChild(face);
+			return wrap;
+		}
 
 		Texture2D? texture = string.IsNullOrEmpty(starter.PortraitPath)
 			? null

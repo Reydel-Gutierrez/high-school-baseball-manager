@@ -153,9 +153,19 @@ public partial class LiveGamePage : Control
 		var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
 		body.AddThemeConstantOverride("separation", 10);
 		shell.AddChild(body);
-		body.AddChild(BuildFieldColumn());
-		body.AddChild(BuildFeedColumn());
-		body.AddChild(BuildManagerColumn());
+		// Broadcast layout from the concepts: pitcher left, field center, batter right.
+		BuildFieldColumn();
+		var left = new VBoxContainer { CustomMinimumSize = new Vector2(380, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		left.AddThemeConstantOverride("separation", 10);
+		left.AddChild(_pitcherPanel);
+		left.AddChild(BuildManagerColumn());
+		body.AddChild(left);
+		body.AddChild(_fieldCard);
+		var right = new VBoxContainer { CustomMinimumSize = new Vector2(380, 0), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		right.AddThemeConstantOverride("separation", 10);
+		right.AddChild(_batterPanel);
+		right.AddChild(BuildFeedColumn());
+		body.AddChild(right);
 
 		shell.AddChild(BuildControls());
 
@@ -204,37 +214,25 @@ public partial class LiveGamePage : Control
 		return card;
 	}
 
-	private Control BuildFieldColumn()
-	{
-		var column = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
-		column.AddThemeConstantOverride("separation", 10);
+	private PanelContainer _fieldCard = null!;
 
-		var fieldCard = MakeCard(12, 10);
+	private void BuildFieldColumn()
+	{
+		_fieldCard = MakeCard(12, 10);
+		_fieldCard.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		_fieldCard.SizeFlagsVertical = SizeFlags.ExpandFill;
+		_fieldCard.SizeFlagsStretchRatio = 1.1f;
+		_fieldCard.AddThemeStyleboxOverride("panel", UiKit.Box(new Color("#1d3d22"), 16, 12, 10, UiKit.Line, 1));
 		var fieldBox = new VBoxContainer();
 		fieldBox.AddThemeConstantOverride("separation", 4);
-		_situation = MakeText("", _bold, 15, TextPrimary, HorizontalAlignment.Center);
+		_situation = MakeText("", _bold, 22, TextPrimary, HorizontalAlignment.Center);
 		fieldBox.AddChild(_situation);
-		_diamond = new DiamondView { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		_diamond = new DiamondView { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
 		fieldBox.AddChild(_diamond);
-		fieldCard.AddChild(fieldBox);
-		column.AddChild(fieldCard);
-
-		var matchupScroll = new ScrollContainer
-		{
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-		};
-		var matchup = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		matchup.AddThemeConstantOverride("separation", 10);
-		matchupScroll.AddChild(matchup);
+		_fieldCard.AddChild(fieldBox);
 
 		(_batterPanel, _batterCard, _batterFace) = BuildPlayerBanner();
-		matchup.AddChild(_batterPanel);
 		(_pitcherPanel, _pitcherCard, _pitcherFace) = BuildPlayerBanner();
-		matchup.AddChild(_pitcherPanel);
-
-		column.AddChild(matchupScroll);
-		return column;
 	}
 
 	private BroadcastPanel _batterPanel = null!;
@@ -245,7 +243,7 @@ public partial class LiveGamePage : Control
 	/// <summary>Broadcast banner for the batter or pitcher: team art, headshot on the right, line on the left.</summary>
 	private static (BroadcastPanel Panel, VBoxContainer Body, Control Face) BuildPlayerBanner()
 	{
-		var panel = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 150), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		var panel = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 205), SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		var face = new Control { MouseFilter = MouseFilterEnum.Ignore, AnchorLeft = 0.60f, AnchorRight = 1f, AnchorTop = 0f, AnchorBottom = 1f, OffsetTop = 8, OffsetBottom = -3 };
 		panel.AddChild(face);
 		var body = new VBoxContainer
@@ -269,7 +267,7 @@ public partial class LiveGamePage : Control
 	private void SetBannerFace(Control host, Player player)
 	{
 		Clear(host);
-		PersonPortrait? face = PlayerFaces.For(player, 130, 160);
+		PersonPortrait? face = PlayerFaces.For(player, 160, 200);
 		if (face == null)
 		{
 			return;
@@ -321,7 +319,6 @@ public partial class LiveGamePage : Control
 	private Control BuildManagerColumn()
 	{
 		var card = MakeCard(14, 12);
-		card.CustomMinimumSize = new Vector2(300, 0);
 		card.SizeFlagsVertical = SizeFlags.ExpandFill;
 		var box = new VBoxContainer();
 		box.AddThemeConstantOverride("separation", 8);
