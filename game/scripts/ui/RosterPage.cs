@@ -83,6 +83,7 @@ public partial class RosterPage : Control
 		_jvValue = GetNode<Label>("%JvValue");
 		_varsityValue = GetNode<Label>("%VarsityValue");
 		_injuredValue = GetNode<Label>("%InjuredValue");
+		BuildCoverageStrip();
 
 		RegisterFilter("%FilterAll", FilterAll);
 		RegisterFilter("%FilterPitchers", FilterPitchers);
@@ -396,6 +397,166 @@ public partial class RosterPage : Control
 		_varsityValue.Text = FormatCap(varsity, RosterCapVarsity);
 		_injuredValue.Text = FormatInt(injured);
 		_injuredValue.AddThemeColorOverride("font_color", injured > 0 ? Urgent : Green);
+		UpdateCoverage();
+	}
+
+	// ---- Position coverage --------------------------------------------------
+	// How many players on the active squad can field each spot. Each player is
+	// counted once at his primary position (the big number); players who list
+	// it as their secondary show as "+N" backups, so two-way kids are visible
+	// without being double-counted. Injured players don't count toward cover.
+
+	private static readonly Color Caution = new(0.98f, 0.72f, 0.20f, 1f);
+	private static readonly (string Code, PlayerPosition[] Positions)[] CoverageSlots =
+	[
+		("P", [PlayerPosition.StartingPitcher, PlayerPosition.ReliefPitcher]),
+		("C", [PlayerPosition.Catcher]),
+		("1B", [PlayerPosition.FirstBase]),
+		("2B", [PlayerPosition.SecondBase]),
+		("3B", [PlayerPosition.ThirdBase]),
+		("SS", [PlayerPosition.Shortstop]),
+		("LF", [PlayerPosition.LeftField]),
+		("CF", [PlayerPosition.CenterField]),
+		("RF", [PlayerPosition.RightField]),
+	];
+
+	private readonly List<(Label Value, Label Backup, PanelContainer Cell)> _coverageCells = [];
+	private Control? _coverageStrip;
+
+	private void BuildCoverageStrip()
+	{
+		Node? countBlock = GetNodeOrNull("PageMargin/PageLayout/HeaderBar/CountBlock");
+		if (countBlock?.GetParent() is not HBoxContainer header)
+		{
+			return;
+		}
+
+		var block = new VBoxContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
+		block.AddThemeConstantOverride("separation", 4);
+		var kicker = MakeText("POSITION COVERAGE", _semibold, 10, Accent, HorizontalAlignment.Left);
+		kicker.TooltipText = "Big number: players whose main position is this spot.\n+N: players who list it as their second position.\nRed = nobody healthy can play it. Amber = no backup (or too few arms).";
+		kicker.MouseFilter = MouseFilterEnum.Stop;
+		block.AddChild(kicker);
+		var cells = new HBoxContainer();
+		cells.AddThemeConstantOverride("separation", 3);
+		block.AddChild(cells);
+		foreach ((string code, PlayerPosition[] _) in CoverageSlots)
+		{
+			var cell = new PanelContainer { CustomMinimumSize = new Vector2(38, 0), MouseFilter = MouseFilterEnum.Stop };
+			var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+			col.AddThemeConstantOverride("separation", -3);
+			col.AddChild(MakeText(code, _semibold, 10, TextMuted, HorizontalAlignment.Center));
+			Label value = MakeText("0", _bold, 22, TextPrimary, HorizontalAlignment.Center);
+			col.AddChild(value);
+			Label backup = MakeText("", _medium, 9, TextMuted, HorizontalAlignment.Center);
+			col.AddChild(backup);
+			cell.AddChild(col);
+			cells.AddChild(cell);
+			_coverageCells.Add((value, backup, cell));
+		}
+
+		header.AddChild(block);
+		header.MoveChild(block, countBlock.GetIndex());
+		var rule = new ColorRect { Color = new Color(0.28f, 0.30f, 0.35f, 1f), CustomMinimumSize = new Vector2(1, 0), MouseFilter = MouseFilterEnum.Ignore };
+		header.AddChild(rule);
+		header.MoveChild(rule, countBlock.GetIndex());
+		_coverageStrip = block;
+	}
+
+	private void UpdateCoverage()
+	{
+		if (_coverageStrip == null || _coverageCells.Count != CoverageSlots.Length)
+		{
+			return;
+		}
+
+		_coverageStrip.Visible = _session.World != null;
+		if (_session.World == null)
+		{
+			return;
+		}
+
+		TeamLevel level = _session.ActiveTeam.Level;
+		var squad = new List<Player>();
+		foreach (Player p in _session.OrganizationRoster())
+		{
+			if (p.TeamLevel == level)
+			{
+				squad.Add(p);
+			}
+		}
+
+		for (int i = 0; i < CoverageSlots.Length; i++)
+		{
+			(string code, PlayerPosition[] spots) = CoverageSlots[i];
+			bool pitching = code == "P";
+			var mains = new List<string>();
+			var backs = new List<string>();
+			var hurt = new List<string>();
+			int healthyMain = 0;
+			int healthyBack = 0;
+			foreach (Player p in squad)
+			{
+				bool main = Array.IndexOf(spots, p.PrimaryPosition) >= 0;
+				bool back = !main && p.SecondaryPosition is { } sec && Array.IndexOf(spots, sec) >= 0;
+				if (!main && !back)
+				{
+					continue;
+				}
+
+				bool injured = p.Injury != null && p.Injury.ActiveOn(_session.CurrentDate);
+				string name = p.FirstName.Length > 0 ? $"{p.FirstName[0]}. {p.LastName}" : p.LastName;
+				if (injured)
+				{
+					hurt.Add(name);
+				}
+				else if (main)
+				{
+					healthyMain++;
+				}
+				else
+				{
+					healthyBack++;
+				}
+
+				(main ? mains : backs).Add(injured ? name + " (inj)" : name);
+			}
+
+			int cover = healthyMain + healthyBack;
+			Color color;
+			string status;
+			if (pitching)
+			{
+				// A high school staff needs about seven arms to get through a week with pitch-count rest.
+				color = cover >= 7 ? Green : cover >= 5 ? Caution : Urgent;
+				status = cover >= 7 ? "Enough arms for a full week." : cover >= 5 ? "Thin staff: pitch counts will bite." : "Not enough pitchers.";
+			}
+			else
+			{
+				color = cover == 0 ? Urgent : cover == 1 || healthyMain == 0 ? Caution : Green;
+				status = cover == 0 ? "Nobody healthy can play here." : healthyMain == 0 ? "Only covered by a player out of position." : cover == 1 ? "No backup." : "Covered with depth.";
+			}
+
+			(Label value, Label backup, PanelContainer cell) = _coverageCells[i];
+			value.Text = healthyMain.ToString(CultureInfo.InvariantCulture);
+			value.AddThemeColorOverride("font_color", color);
+			backup.Text = healthyBack > 0 ? $"+{healthyBack}" : " ";
+			cell.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+			{
+				BgColor = new Color(color, 0.10f),
+				BorderColor = new Color(color, 0.55f),
+				BorderWidthBottom = 2,
+				ContentMarginLeft = 4,
+				ContentMarginRight = 4,
+				ContentMarginTop = 3,
+				ContentMarginBottom = 2,
+				CornerRadiusTopLeft = 3,
+				CornerRadiusTopRight = 3,
+			});
+			string Join(List<string> names) => names.Count == 0 ? "none" : string.Join(", ", names);
+			cell.TooltipText = $"{code}: {status}\nPrimary: {Join(mains)}\nCan also play: {Join(backs)}"
+				+ (hurt.Count > 0 ? $"\nInjured: {string.Join(", ", hurt)}" : "");
+		}
 	}
 
 	private void BindSelectedPlayer()
