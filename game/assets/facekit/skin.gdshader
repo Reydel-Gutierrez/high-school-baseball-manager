@@ -110,8 +110,8 @@ void fragment() {
 	float shadow_amt = M.b * mix(0.0, 0.55, ramp(15.0, 22.0, age)) * (0.5 + beard.x);
 	skin = mix(skin, skin * vec3(0.80, 0.82, 0.86), shadow_amt * 0.6);
 	float lip_lines = 0.85 + 0.15 * vnoise(vec2(raw.x * 1800.0, raw.y * 120.0));
-	vec3 lip = base * mix(vec3(0.80, 0.46, 0.47), vec3(0.72, 0.52, 0.56), 1.0 - smoothstep(0.08, 0.3, lum)) * lip_lines;
-	vec3 alb = mix(skin, lip, smoothstep(0.15, 0.85, M.r));
+	vec3 lip = base * mix(vec3(0.84, 0.58, 0.57), vec3(0.72, 0.56, 0.57), 1.0 - smoothstep(0.08, 0.3, lum)) * lip_lines;
+	vec3 alb = mix(skin, lip, smoothstep(0.15, 0.85, M.r) * 0.85);
 	vec3 hair_lin = to_lin(hair_color);
 	float hair_noise = vnoise(raw * 1400.0) * 0.6 + vnoise(raw * 3000.0) * 0.4;
 	float beard_amt = M.b * max(beard.x * 0.55, beard.y) + M.a * beard.z + D.b * beard.w;

@@ -120,7 +120,7 @@ public sealed class FaceRecipe
 	public string Key = "";
 
 	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
-	public const string RenderVersion = "v8;";
+	public const string RenderVersion = "v9;";
 
 	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f, bool cap = false, string? monogram = null)
 	{
@@ -309,8 +309,8 @@ public sealed class FaceRecipe
 	{
 		Color c = tone switch
 		{
-			SkinTone.Fair => new Color(0.93f, 0.78f, 0.69f),
-			SkinTone.Light => new Color(0.88f, 0.70f, 0.58f),
+			SkinTone.Fair => new Color(0.92f, 0.75f, 0.65f),
+			SkinTone.Light => new Color(0.87f, 0.67f, 0.54f),
 			SkinTone.LightMedium => new Color(0.82f, 0.62f, 0.48f),
 			SkinTone.Medium => new Color(0.74f, 0.54f, 0.40f),
 			SkinTone.Tan => new Color(0.64f, 0.45f, 0.31f),

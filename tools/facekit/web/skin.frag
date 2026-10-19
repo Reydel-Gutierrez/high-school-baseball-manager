@@ -62,8 +62,8 @@ void main(){
   skin = mix(skin, skin * vec3(0.80, 0.82, 0.86), shadowAmt * 0.6);
   // lips: deeper, redder, with vertical texture
   float lipLines = 0.85 + 0.15 * vnoise(vec2(vUv.x * 1800.0, vUv.y * 120.0));
-  vec3 lip = base * mix(vec3(0.80, 0.46, 0.47), vec3(0.72, 0.52, 0.56), 1.0 - smoothstep(0.08, 0.3, lum)) * lipLines;
-  vec3 alb = mix(skin, lip, smoothstep(0.15, 0.85, M.r));
+  vec3 lip = base * mix(vec3(0.84, 0.58, 0.57), vec3(0.72, 0.56, 0.57), 1.0 - smoothstep(0.08, 0.3, lum)) * lipLines;
+  vec3 alb = mix(skin, lip, smoothstep(0.15, 0.85, M.r) * 0.85);
   // beard and stubble (painted under the shells)
   vec3 hairLin = toLin(uHairColor);
   float hairNoise = vnoise(vUv * 1400.0) * 0.6 + vnoise(vUv * 3000.0) * 0.4;

@@ -10,8 +10,8 @@ using Godot;
 /// </summary>
 public partial class HeadshotStudio : Node
 {
-	public const int Width = 400;
-	public const int Height = 500;
+	public const int Width = 560;
+	public const int Height = 700;
 	private const int MemoryCacheLimit = 400;
 	private const string DiskDir = "user://headshots";
 
@@ -391,7 +391,7 @@ public partial class HeadshotStudio : Node
 		eye.Position = c;
 		eye.Scale = Vector3.One * radius;
 		mat.SetShaderParameter("iris_color", iris);
-		mat.SetShaderParameter("look_dir", new Vector3(-c.X * 0.35f + (camera.X - c.X) * 0.02f, 0f, 1f).Normalized());
+		mat.SetShaderParameter("look_dir", new Vector3(-c.X * 0.35f + (camera.X - c.X) * 0.02f, -0.10f, 1f).Normalized());
 	}
 
 	private static ImageTexture LoadMask(string name)

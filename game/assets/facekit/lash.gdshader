@@ -22,8 +22,10 @@ void fragment() {
 	float s = fract(x) - 0.5 + (hash(i) - 0.5) * 0.5 + along * (hash(i + 7.0) - 0.5) * 0.8;
 	float width = mix(0.30, 0.06, along);
 	float a = 1.0 - smoothstep(width * 0.5, width, abs(s));
-	float len = 0.55 + 0.45 * hash(i + 3.0);
+	float len = 0.40 + 0.35 * hash(i + 3.0);
 	a *= 1.0 - smoothstep(len - 0.15, len, along);
 	ALBEDO = pow(lash_color, vec3(1.0 / 2.2));
-	ALPHA = a * 0.95;
+	// soft lash line: strands only near the root, fading quickly
+	a = mix(a, 1.0, 0.35) * pow(1.0 - along, 2.0);
+	ALPHA = a * 0.65;
 }

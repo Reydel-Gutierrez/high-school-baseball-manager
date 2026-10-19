@@ -103,7 +103,7 @@ window.render = function (spec, look) {
     bindIdx(SPH.idx);
     gl.uniform3fv(u(PE,'uCenter'), c); gl.uniform1f(u(PE,'uRadius'), rad);
     gl.uniform3fv(u(PE,'uIris'), spec.iris || [0.35,0.22,0.12]);
-    gl.uniform3fv(u(PE,'uLook'), norm([ -c[0]*0.35 + (eye[0]-c[0])*0.02, 0.0, 1.0 ]));
+    gl.uniform3fv(u(PE,'uLook'), norm([ -c[0]*0.35 + (eye[0]-c[0])*0.02, -0.10, 1.0 ]));
     gl.uniform1f(u(PE,'uCap'), capOn ? 1 : 0);
     gl.drawElements(gl.TRIANGLES, SPH.idx.length, gl.UNSIGNED_INT, 0);
   }

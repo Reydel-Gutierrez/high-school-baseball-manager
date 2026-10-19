@@ -42,10 +42,10 @@ void fragment() {
 	vec3 di = normalize(d + refr * depth);
 	float ang = acos(clamp(dot(di, fwd), -1.0, 1.0));
 	float phi = atan(dot(di, u2), dot(di, rt));
-	float iris_r = 0.56;
+	float iris_r = 0.53;
 	float pupil_r = 0.21;
 	float ang_s = acos(clamp(c0, -1.0, 1.0));
-	vec3 sclera = to_lin(vec3(0.72, 0.68, 0.64));
+	vec3 sclera = to_lin(vec3(0.66, 0.62, 0.58));
 	float vessels = smoothstep(0.62, 0.9, vnoise(vec2(phi * 7.0, ang_s * 22.0)) * vnoise(vec2(phi * 23.0, ang_s * 9.0)) * 2.0);
 	sclera = mix(sclera, to_lin(vec3(0.78, 0.40, 0.38)), vessels * smoothstep(0.7, 1.3, ang_s) * 0.35);
 	float side = abs(dot(d, rt));
@@ -63,8 +63,8 @@ void fragment() {
 	alb = mix(alb, vec3(0.006), 1.0 - smoothstep(pupil_r - 0.02, pupil_r + 0.008, ang));
 	vec3 key_dir = normalize(vec3(0.55, 0.45, 0.75));
 	vec3 fill_dir = normalize(vec3(-0.8, 0.05, 0.55));
-	float lid = smoothstep(0.05, 0.55, dot(d, u2));
-	float lid_shadow = 1.0 - lid * 0.75;
+	float lid = smoothstep(-0.12, 0.50, dot(d, u2));
+	float lid_shadow = (1.0 - lid * 0.78) * (1.0 - smoothstep(-0.25, -0.6, dot(d, u2)) * 0.35);
 	float socket = 0.55 + 0.45 * smoothstep(0.55, 1.0, c0);
 	float brim = cap * 0.45;
 	vec3 col = alb * (max(dot(d, key_dir), 0.0) * vec3(1.0, 0.95, 0.88) * 2.2 * (1.0 - brim) + max(dot(d, fill_dir), 0.0) * 0.6 + 0.30) * lid_shadow * socket;

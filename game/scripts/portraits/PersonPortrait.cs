@@ -180,13 +180,13 @@ public partial class PersonPortrait : Control
 		DrawCircle(c, r, bg.Darkened(0.2f));
 		DrawCircle(c + new Vector2(0, -r * 0.25f), r * 0.75f, bg.Lightened(0.08f));
 
-		// The render is 400x500; the face fills roughly the middle 60% of
-		// its width, so scale that span to the circle and sit the eyes a
-		// touch above centre.
+		// Show the whole head: cap crown at the top of the circle, jersey
+		// collar and shoulders at the bottom (the render is 4:5; cap top sits
+		// near 3% of its height and the collar near 72%).
 		Vector2 tex = _photo!.GetSize();
-		float scale = d / (tex.X * 0.62f);
+		float scale = d / (tex.X * 0.84f);
 		Vector2 drawn = tex * scale;
-		var dest = new Rect2(new Vector2(c.X - drawn.X / 2f, c.Y - drawn.Y * 0.40f), drawn);
+		var dest = new Rect2(new Vector2(c.X - drawn.X / 2f, c.Y - drawn.Y * 0.39f), drawn);
 
 		const int segments = 40;
 		var pts = new Vector2[segments];

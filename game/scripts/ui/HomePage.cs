@@ -2447,9 +2447,9 @@ public partial class HomePage : Control
 		var pitchers = new HBoxContainer
 		{
 			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 0.85f,
+			SizeFlagsStretchRatio = 1.25f,
 		};
-		pitchers.AddThemeConstantOverride("separation", 6);
+		pitchers.AddThemeConstantOverride("separation", 8);
 		pitchers.AddChild(BuildPitcherChip(homePitcher));
 		pitchers.AddChild(BuildPitcherChip(awayPitcher));
 		layout.AddChild(pitchers);
@@ -2488,45 +2488,118 @@ public partial class HomePage : Control
 		return box;
 	}
 
+	/// <summary>
+	/// Probable starter as a mini broadcast banner: team-color backdrop with
+	/// the jersey number, the capped headshot standing on the trim stripe,
+	/// name and line on the right.
+	/// </summary>
 	private Control BuildPitcherChip(PitcherCard pitcher)
 	{
-		var chip = new PanelContainer
+		(Color primary, Color secondary) = TeamColors.For(pitcher.TeamId);
+		Player? player = string.IsNullOrWhiteSpace(pitcher.TeamId)
+			? null
+			: _session.FindWorldPlayer(pitcher.TeamId, pitcher.PlayerName, _session.ActiveTeam.Level);
+		var chip = new BroadcastPanel
 		{
+			Primary = primary,
+			Secondary = secondary,
+			Number = player is { JerseyNumber: > 0 } ? player.JerseyNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : "",
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
+			CustomMinimumSize = new Vector2(0, 150),
+			MouseDefaultCursorShape = CursorShape.PointingHand,
 		};
-		chip.AddThemeStyleboxOverride("panel", MakeInnerCard(8, 8));
 		PlayerLinks.MakeClickable(chip, pitcher.TeamId, pitcher.PlayerName);
 
-		var box = new VBoxContainer
-		{
-			Alignment = BoxContainer.AlignmentMode.Center,
-		};
-		box.AddThemeConstantOverride("separation", 3);
-		chip.AddChild(box);
-
-		box.AddChild(MakeText(pitcher.Hand, _semibold, 9, pitcher.Accent, HorizontalAlignment.Center));
-		PersonPortrait? face = PlayerFaces.For(pitcher.TeamId, pitcher.PlayerName, 52, 52, circle: true, level: _session.ActiveTeam.Level);
+		// Headshot: bottom-left, full height, standing on the stripe.
+		PersonPortrait? face = PlayerFaces.For(pitcher.TeamId, pitcher.PlayerName, 120, 150, circle: false, level: _session.ActiveTeam.Level);
 		if (face != null)
 		{
-			face.Ring = pitcher.Accent;
-			face.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-			box.AddChild(face);
+			face.Backdrop = false;
+			face.AnchorLeft = 0;
+			face.AnchorRight = 0.46f;
+			face.AnchorTop = 0;
+			face.AnchorBottom = 1;
+			face.OffsetLeft = 2;
+			face.OffsetTop = 8;
+			face.OffsetRight = 0;
+			face.OffsetBottom = -3;
+			face.CustomMinimumSize = Vector2.Zero;
+			chip.AddChild(face);
 		}
 		else
 		{
-			box.AddChild(BuildPortrait(pitcher.Portrait, pitcher.LastName[..1], 44));
+			Control fallback = BuildPortrait(pitcher.Portrait, pitcher.LastName[..1], 64);
+			fallback.SetAnchorsAndOffsetsPreset(LayoutPreset.CenterLeft);
+			fallback.OffsetLeft = 18;
+			chip.AddChild(fallback);
 		}
-		box.AddChild(MakeText(pitcher.LastName, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
-		box.AddChild(MakeText(pitcher.FirstName, _medium, 10, TextMuted, HorizontalAlignment.Center));
 
-		var stats = new HBoxContainer();
-		stats.AddThemeConstantOverride("separation", 0);
-		stats.AddChild(BuildMiniStat(pitcher.Record, "W-L"));
-		stats.AddChild(BuildMiniStat(pitcher.Era, "ERA"));
-		stats.AddChild(BuildMiniStat(pitcher.Strikeouts, "K"));
-		box.AddChild(stats);
+		var info = new VBoxContainer
+		{
+			AnchorLeft = 0.46f,
+			AnchorRight = 1,
+			AnchorTop = 0,
+			AnchorBottom = 1,
+			OffsetLeft = 6,
+			OffsetTop = 10,
+			OffsetRight = -10,
+			OffsetBottom = -10,
+			Alignment = BoxContainer.AlignmentMode.Center,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		info.AddThemeConstantOverride("separation", 0);
+		chip.AddChild(info);
+
+		var hand = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ShrinkBegin, MouseFilter = MouseFilterEnum.Ignore };
+		hand.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0, 0, 0, 0.35f),
+			ContentMarginLeft = 6,
+			ContentMarginRight = 6,
+			ContentMarginTop = 1,
+			ContentMarginBottom = 1,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomLeft = 3,
+			CornerRadiusBottomRight = 3,
+		});
+		hand.AddChild(MakeText(pitcher.Hand, _semibold, 10, pitcher.Accent, HorizontalAlignment.Left));
+		info.AddChild(hand);
+		info.AddChild(MakeText(pitcher.FirstName.ToUpperInvariant(), _semibold, 11, new Color(1, 1, 1, 0.8f), HorizontalAlignment.Left));
+		var last = MakeText(pitcher.LastName.ToUpperInvariant(), _bold, 22, Colors.White, HorizontalAlignment.Left);
+		last.ClipText = true;
+		info.AddChild(last);
+		info.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6), MouseFilter = MouseFilterEnum.Ignore });
+
+		var stats = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		stats.AddThemeConstantOverride("separation", 4);
+		stats.AddChild(BuildBannerStat(pitcher.Record, "W-L"));
+		stats.AddChild(BuildBannerStat(pitcher.Era, "ERA"));
+		stats.AddChild(BuildBannerStat(pitcher.Strikeouts, "K"));
+		info.AddChild(stats);
 		return chip;
+	}
+
+	private Control BuildBannerStat(string value, string label)
+	{
+		var cell = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore };
+		cell.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		{
+			BgColor = new Color(0, 0, 0, 0.32f),
+			ContentMarginTop = 3,
+			ContentMarginBottom = 3,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomLeft = 3,
+			CornerRadiusBottomRight = 3,
+		});
+		var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		col.AddThemeConstantOverride("separation", -2);
+		col.AddChild(MakeText(value, _bold, 15, Colors.White, HorizontalAlignment.Center));
+		col.AddChild(MakeText(label, _medium, 9, new Color(1, 1, 1, 0.6f), HorizontalAlignment.Center));
+		cell.AddChild(col);
+		return cell;
 	}
 
 	private Control BuildMiniStat(string value, string label)
