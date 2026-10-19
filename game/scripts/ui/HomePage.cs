@@ -653,6 +653,14 @@ public partial class HomePage : Control
 		return row;
 	}
 
+	/// <summary>Label for the shell's gold CONTINUE button (PLAY, TRYOUTS, ADVANCE DAY…).</summary>
+	public string ContinueLabel => _advanceButton?.Text ?? "ADVANCE DAY";
+
+	/// <summary>The shell's CONTINUE: same as the old Advance Day button.</summary>
+	public void Continue() => OnAdvancePressed();
+
+	public void RefreshContinue() => RefreshAdvanceButton();
+
 	private void RefreshAdvanceButton()
 	{
 		if (_advanceButton == null)

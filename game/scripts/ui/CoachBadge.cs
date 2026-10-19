@@ -19,6 +19,9 @@ public partial class CoachBadge : PanelContainer
 	private StyleBoxFlat _normal = null!;
 	private StyleBoxFlat _hover = null!;
 
+	/// <summary>Headshot only (left rail); otherwise headshot + name + job.</summary>
+	public bool Compact { get; set; }
+
 	public CoachBadge()
 		: this(() => { })
 	{
@@ -45,7 +48,7 @@ public partial class CoachBadge : PanelContainer
 
 		_portrait = new PersonPortrait
 		{
-			CustomMinimumSize = new Vector2(38, 38),
+			CustomMinimumSize = Compact ? new Vector2(56, 56) : new Vector2(38, 38),
 			Circle = true,
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
@@ -58,6 +61,17 @@ public partial class CoachBadge : PanelContainer
 		text.AddChild(_name);
 		text.AddChild(_role);
 		row.AddChild(text);
+		text.Visible = !Compact;
+		if (Compact)
+		{
+			_normal = Style(new Color(0, 0, 0, 0));
+			_normal.ContentMarginLeft = 0;
+			_normal.ContentMarginRight = 0;
+			_hover = (StyleBoxFlat)_normal.Duplicate();
+			_hover.BgColor = new Color(1, 1, 1, 0.06f);
+			_hover.SetCornerRadiusAll(30);
+			AddThemeStyleboxOverride("panel", _normal);
+		}
 
 		MouseEntered += () => AddThemeStyleboxOverride("panel", _hover);
 		MouseExited += () => AddThemeStyleboxOverride("panel", _normal);

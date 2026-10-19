@@ -113,45 +113,45 @@ public partial class AppNavigator : MarginContainer
 
 	public override void _Ready()
 	{
-		_topBar = GetNode<TopBarNavigation>("AppLayout/TopBar");
-		_homeView = GetNode<Control>("AppLayout/ContentArea/ContentRoot");
-		_calendarView = GetNode<Control>("AppLayout/ContentArea/CalendarView");
-		_scheduleView = GetNode<Control>("AppLayout/ContentArea/ScheduleView");
-		_rosterView = GetNode<Control>("AppLayout/ContentArea/RosterView");
-		_transactionsView = GetNode<Control>("AppLayout/ContentArea/TransactionsView");
-		_goalsView = GetNode<Control>("AppLayout/ContentArea/GoalsView");
-		_tryoutsView = GetNode<Control>("AppLayout/ContentArea/TryoutsView");
-		_graduationView = GetNode<Control>("AppLayout/ContentArea/GraduationView");
-		_lineupsView = GetNode<Control>("AppLayout/ContentArea/LineupsView");
-		_rotationView = GetNode<Control>("AppLayout/ContentArea/RotationView");
-		_injuriesView = GetNode<Control>("AppLayout/ContentArea/InjuriesView");
-		_leagueOverviewPage = GetNode<LeagueOverviewPage>("AppLayout/ContentArea/LeagueOverviewView");
-		_standingsPage = GetNode<StandingsPage>("AppLayout/ContentArea/StandingsView");
-		_rankingsPage = GetNode<RankingsPage>("AppLayout/ContentArea/RankingsView");
-		_leadersView = GetNode<Control>("AppLayout/ContentArea/LeadersView");
-		_awardsPage = GetNode<AwardsPage>("AppLayout/ContentArea/AwardsView");
+		_topBar = GetNode<TopBarNavigation>("Shell/AppLayout/TopBar");
+		_homeView = GetNode<Control>("Shell/AppLayout/ContentArea/ContentRoot");
+		_calendarView = GetNode<Control>("Shell/AppLayout/ContentArea/CalendarView");
+		_scheduleView = GetNode<Control>("Shell/AppLayout/ContentArea/ScheduleView");
+		_rosterView = GetNode<Control>("Shell/AppLayout/ContentArea/RosterView");
+		_transactionsView = GetNode<Control>("Shell/AppLayout/ContentArea/TransactionsView");
+		_goalsView = GetNode<Control>("Shell/AppLayout/ContentArea/GoalsView");
+		_tryoutsView = GetNode<Control>("Shell/AppLayout/ContentArea/TryoutsView");
+		_graduationView = GetNode<Control>("Shell/AppLayout/ContentArea/GraduationView");
+		_lineupsView = GetNode<Control>("Shell/AppLayout/ContentArea/LineupsView");
+		_rotationView = GetNode<Control>("Shell/AppLayout/ContentArea/RotationView");
+		_injuriesView = GetNode<Control>("Shell/AppLayout/ContentArea/InjuriesView");
+		_leagueOverviewPage = GetNode<LeagueOverviewPage>("Shell/AppLayout/ContentArea/LeagueOverviewView");
+		_standingsPage = GetNode<StandingsPage>("Shell/AppLayout/ContentArea/StandingsView");
+		_rankingsPage = GetNode<RankingsPage>("Shell/AppLayout/ContentArea/RankingsView");
+		_leadersView = GetNode<Control>("Shell/AppLayout/ContentArea/LeadersView");
+		_awardsPage = GetNode<AwardsPage>("Shell/AppLayout/ContentArea/AwardsView");
 		_awardsPage.Closed += OnAwardsClosed;
 		_awardsPage.Continued += OnAwardsContinued;
-		_statisticsView = GetNode<Control>("AppLayout/ContentArea/StatisticsView");
-		_newsView = GetNode<Control>("AppLayout/ContentArea/NewsView");
-		_messagesView = GetNode<Control>("AppLayout/ContentArea/MessagesView");
-		_playerSearchView = GetNode<Control>("AppLayout/ContentArea/PlayerSearchView");
-		_targetsView = GetNode<Control>("AppLayout/ContentArea/TargetsView");
-		_budgetView = GetNode<Control>("AppLayout/ContentArea/BudgetView");
-		_sponsorsView = GetNode<Control>("AppLayout/ContentArea/SponsorsView");
-		_careerView = GetNode<Control>("AppLayout/ContentArea/CareerView");
-		_settingsView = GetNode<Control>("AppLayout/ContentArea/SettingsView");
+		_statisticsView = GetNode<Control>("Shell/AppLayout/ContentArea/StatisticsView");
+		_newsView = GetNode<Control>("Shell/AppLayout/ContentArea/NewsView");
+		_messagesView = GetNode<Control>("Shell/AppLayout/ContentArea/MessagesView");
+		_playerSearchView = GetNode<Control>("Shell/AppLayout/ContentArea/PlayerSearchView");
+		_targetsView = GetNode<Control>("Shell/AppLayout/ContentArea/TargetsView");
+		_budgetView = GetNode<Control>("Shell/AppLayout/ContentArea/BudgetView");
+		_sponsorsView = GetNode<Control>("Shell/AppLayout/ContentArea/SponsorsView");
+		_careerView = GetNode<Control>("Shell/AppLayout/ContentArea/CareerView");
+		_settingsView = GetNode<Control>("Shell/AppLayout/ContentArea/SettingsView");
 
 		_placeholderView = BuildPlaceholderView();
-		GetNode("AppLayout/ContentArea").AddChild(_placeholderView);
+		GetNode("Shell/AppLayout/ContentArea").AddChild(_placeholderView);
 
 		_profileDock = new ProfileDock
 		{
 			Name = "ProfileDock",
 		};
-		GetNode("AppLayout/ContentArea").AddChild(_profileDock);
+		GetNode("Shell/AppLayout/ContentArea").AddChild(_profileDock);
 
-		_gamePreviewPage = GetNode<GamePreviewPage>("AppLayout/ContentArea/GamePreviewView");
+		_gamePreviewPage = GetNode<GamePreviewPage>("Shell/AppLayout/ContentArea/GamePreviewView");
 		_gamePreviewPage.Closed += ReturnFromGamePreview;
 		_gamePreviewPage.EditLineupRequested += ShowLineups;
 		_gamePreviewPage.EditRotationRequested += ShowRotation;
@@ -178,14 +178,14 @@ public partial class AppNavigator : MarginContainer
 		};
 		_lineupsView.GetParent().AddChild(_trainingPage);
 
-		_championshipPage = GetNode<ChampionshipCelebrationPage>("AppLayout/ContentArea/ChampionshipView");
+		_championshipPage = GetNode<ChampionshipCelebrationPage>("Shell/AppLayout/ContentArea/ChampionshipView");
 		_championshipPage.Closed += ReturnFromFullscreenDesk;
 		_championshipPage.Continued += OnChampionshipContinued;
 
-		_seasonReviewPage = GetNode<SeasonReviewPage>("AppLayout/ContentArea/SeasonReviewView");
+		_seasonReviewPage = GetNode<SeasonReviewPage>("Shell/AppLayout/ContentArea/SeasonReviewView");
 		_seasonReviewPage.Closed += ReturnFromFullscreenDesk;
 		_seasonReviewPage.Continued += OnSeasonReviewContinued;
-		_hallOfFamePage = GetNode<HallOfFameInductionPage>("AppLayout/ContentArea/HallOfFameView");
+		_hallOfFamePage = GetNode<HallOfFameInductionPage>("Shell/AppLayout/ContentArea/HallOfFameView");
 		_hallOfFamePage.Closed += ReturnFromFullscreenDesk;
 		_hallOfFamePage.Continued += OnHallOfFameContinued;
 
@@ -196,7 +196,7 @@ public partial class AppNavigator : MarginContainer
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
-		GetNode("AppLayout/ContentArea").AddChild(_seasonRolloverPage);
+		GetNode("Shell/AppLayout/ContentArea").AddChild(_seasonRolloverPage);
 		_seasonRolloverPage.Closed += ReturnFromFullscreenDesk;
 		_seasonRolloverPage.Continued += OnSeasonRolloverContinued;
 
@@ -590,6 +590,7 @@ public partial class AppNavigator : MarginContainer
 
 	public void ShowPlayoffs()
 	{
+		_tabOverride = "PLAYOFFS";
 		_standingsPage.ShowPlayoffBracket();
 		ShowView(StandingsViewKey, TopBarNavigation.LeagueKey);
 	}
@@ -861,48 +862,282 @@ public partial class AppNavigator : MarginContainer
 
 	private void ConnectChrome()
 	{
-		Button calendarButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CalendarButton");
+		Button calendarButton = GetNode<Button>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CalendarButton");
 		calendarButton.Pressed += ShowCalendar;
 
-		Button homeButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/HomeButton");
+		Button homeButton = GetNode<Button>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/HomeButton");
 		homeButton.Pressed += ShowHome;
 
-		Button messagesButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/MessagesButton");
+		Button messagesButton = GetNode<Button>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/MessagesButton");
 		messagesButton.Pressed += ShowMessages;
 
-		MenuButton organizationMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/OrganizationMenu");
+		MenuButton organizationMenu = GetNode<MenuButton>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/OrganizationMenu");
 		organizationMenu.GetPopup().IdPressed += OnOrganizationItemPressed;
 
-		MenuButton clubhouseMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/ClubhouseMenu");
+		MenuButton clubhouseMenu = GetNode<MenuButton>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/ClubhouseMenu");
 		clubhouseMenu.GetPopup().IdPressed += OnClubhouseItemPressed;
 		if (clubhouseMenu.GetPopup().GetItemIndex(ClubhouseTrainingId) < 0)
 		{
 			clubhouseMenu.GetPopup().AddItem("TRAINING", ClubhouseTrainingId);
 		}
 
-		MenuButton leagueMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/DistrictHubMenu");
+		MenuButton leagueMenu = GetNode<MenuButton>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/DistrictHubMenu");
 		leagueMenu.GetPopup().IdPressed += OnLeagueItemPressed;
 
-		MenuButton scoutingMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/ScoutingMenu");
+		MenuButton scoutingMenu = GetNode<MenuButton>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/ScoutingMenu");
 		scoutingMenu.GetPopup().IdPressed += OnScoutingItemPressed;
 
-		MenuButton financesMenu = GetNode<MenuButton>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/FinancesMenu");
+		MenuButton financesMenu = GetNode<MenuButton>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/FinancesMenu");
 		financesMenu.GetPopup().IdPressed += OnFinancesItemPressed;
 
-		Button careerButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CareerButton");
+		Button careerButton = GetNode<Button>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow/CareerButton");
 		careerButton.Pressed += ShowCareer;
 
-		HBoxContainer rightCluster = GetNode<HBoxContainer>("AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster");
-		Button settingsButton = GetNode<Button>("AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster/SettingsButton");
+		HBoxContainer rightCluster = GetNode<HBoxContainer>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster");
+		Button settingsButton = GetNode<Button>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster/SettingsButton");
 		var soundtrack = new SoundtrackControls { Name = "SoundtrackControls" };
 		rightCluster.AddChild(soundtrack);
 		rightCluster.MoveChild(soundtrack, settingsButton.GetIndex());
 		settingsButton.Pressed += ShowSettings;
 
-		// The head coach in his school cap and jersey; click for My Career.
-		var coachBadge = new CoachBadge(ShowCareer) { Name = "CoachBadge" };
-		rightCluster.AddChild(coachBadge);
-		rightCluster.MoveChild(coachBadge, 0);
+		BuildShell(rightCluster);
+	}
+
+	// ------------------------------------------------------------------ shell
+	private ShellRail _rail = null!;
+	private SectionBar _sectionBar = null!;
+	private Label _shellDate = null!;
+	private PanelContainer _shellPhase = null!;
+	private Label _shellPhaseText = null!;
+	private Button _continueButton = null!;
+	private string? _tabOverride;
+	private string _lastSection = ShellRail.Home;
+
+	/// <summary>
+	/// Redesigned chrome (docs/ui-concepts): left rail for the six sections,
+	/// a slim top bar with the date, season phase, mail, settings and one gold
+	/// CONTINUE button, and section tabs under it. The old dropdown menus stay
+	/// in the scene (hidden) so their ids and handlers keep working.
+	/// </summary>
+	private void BuildShell(HBoxContainer rightCluster)
+	{
+		HBoxContainer shell = GetNode<HBoxContainer>("Shell");
+		_rail = new ShellRail { Name = "ShellRail", SizeFlagsVertical = SizeFlags.ExpandFill };
+		shell.AddChild(_rail);
+		shell.MoveChild(_rail, 0);
+		_rail.SectionPressed += OpenSection;
+		_rail.CoachPressed += ShowCareer;
+
+		VBoxContainer layout = GetNode<VBoxContainer>("Shell/AppLayout");
+		_sectionBar = new SectionBar { Name = "SectionBar" };
+		layout.AddChild(_sectionBar);
+		layout.MoveChild(_sectionBar, 1);
+
+		_topBar.CompactShell = true;
+		_topBar.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = UiKit.Bg });
+		_topBar.CustomMinimumSize = new Vector2(0, 76);
+		_topBar.CustomMaximumSize = new Vector2(-1, 84);
+		MarginContainer margin = GetNode<MarginContainer>("Shell/AppLayout/TopBar/TopBarMargin");
+		margin.AddThemeConstantOverride("margin_left", 28);
+		margin.AddThemeConstantOverride("margin_right", 28);
+		margin.AddThemeConstantOverride("margin_top", 14);
+		margin.AddThemeConstantOverride("margin_bottom", 10);
+
+		HBoxContainer bar = GetNode<HBoxContainer>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer");
+		GetNode<Control>("Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark").Visible = false;
+
+		var status = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		status.AddThemeConstantOverride("separation", 16);
+		_shellDate = UiKit.Text_("", UiKit.Bold, 26, UiKit.Text);
+		_shellDate.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+		status.AddChild(_shellDate);
+		_shellPhase = new PanelContainer { SizeFlagsVertical = SizeFlags.ShrinkCenter };
+		_shellPhase.AddThemeStyleboxOverride("panel", UiKit.Box(new Color("#1b1810"), 20, 14, 5, new Color("#3a3424"), 1));
+		_shellPhaseText = UiKit.Text_("", UiKit.Semibold, 13, UiKit.Gold);
+		_shellPhase.AddChild(_shellPhaseText);
+		status.AddChild(_shellPhase);
+		bar.AddChild(status);
+		bar.MoveChild(status, 1);
+
+		_continueButton = UiKit.Action("CONTINUE", true, OnContinuePressed, 20);
+		_continueButton.CustomMinimumSize = new Vector2(190, 48);
+		_continueButton.TooltipText = "Advance to the next thing that needs you";
+		rightCluster.AddChild(_continueButton);
+		rightCluster.AddThemeConstantOverride("separation", 12);
+
+		var timer = new Timer { WaitTime = 0.5, Autostart = true };
+		timer.Timeout += RefreshShellStatus;
+		AddChild(timer);
+		RefreshShellStatus();
+	}
+
+	private void RefreshShellStatus()
+	{
+		if (_session == null || _shellDate == null)
+		{
+			return;
+		}
+
+		System.DateOnly date = _session.CurrentDate;
+		_shellDate.Text = date.ToString("dddd, MMMM d", System.Globalization.CultureInfo.InvariantCulture).ToUpperInvariant();
+		string phase = (_session.SeasonStatus ?? "").ToUpperInvariant();
+		_shellPhaseText.Text = phase;
+		_shellPhase.Visible = phase.Length > 0;
+
+		bool canContinue = !_unsignedLock && _homeView is HomePage;
+		_continueButton.Visible = canContinue;
+		if (canContinue && _homeView is HomePage home)
+		{
+			string label = home.ContinueLabel;
+			_continueButton.Text = label is "ADVANCE DAY" ? "CONTINUE" : label;
+		}
+	}
+
+	private void OnContinuePressed()
+	{
+		if (_homeView is not HomePage home)
+		{
+			return;
+		}
+
+		if (_activeView != HomeViewKey)
+		{
+			ShowHome();
+		}
+
+		home.Continue();
+		RefreshShellStatus();
+	}
+
+	private void OpenSection(string section)
+	{
+		switch (section)
+		{
+			case ShellRail.Home: ShowHome(); break;
+			case ShellRail.Team: ShowRoster(); break;
+			case ShellRail.Season: ShowCalendar(); break;
+			case ShellRail.League: ShowLeague(); break;
+			case ShellRail.Scout: ShowPlayerSearch(); break;
+			case ShellRail.Office: ShowCareer(); break;
+		}
+	}
+
+	private static readonly Dictionary<string, (string Section, string Tab)> ViewSections = new()
+	{
+		[HomeViewKey] = (ShellRail.Home, ""),
+		[RosterViewKey] = (ShellRail.Team, "ROSTER"),
+		[LineupsViewKey] = (ShellRail.Team, "DEPTH CHART"),
+		[RotationViewKey] = (ShellRail.Team, "PITCHING STAFF"),
+		[TrainingViewKey] = (ShellRail.Team, "TRAINING"),
+		[InjuriesViewKey] = (ShellRail.Team, "MEDICAL"),
+		[CalendarViewKey] = (ShellRail.Season, "CALENDAR"),
+		[ScheduleViewKey] = (ShellRail.Season, "SCHEDULE"),
+		[TryoutsViewKey] = (ShellRail.Season, "TRYOUTS"),
+		[GraduationViewKey] = (ShellRail.Season, "GRADUATION"),
+		[GamePreviewViewKey] = (ShellRail.Season, "SCHEDULE"),
+		[LiveGameViewKey] = (ShellRail.Season, "SCHEDULE"),
+		[LeagueOverviewViewKey] = (ShellRail.League, "DISTRICTS"),
+		[StandingsViewKey] = (ShellRail.League, "STANDINGS"),
+		[RankingsViewKey] = (ShellRail.League, "RANKINGS"),
+		[LeadersViewKey] = (ShellRail.League, "LEADERS"),
+		[StatisticsViewKey] = (ShellRail.League, "STATISTICS"),
+		[AwardsViewKey] = (ShellRail.League, "AWARDS"),
+		[NewsViewKey] = (ShellRail.League, "NEWS"),
+		[TransactionsViewKey] = (ShellRail.League, "TRANSACTIONS"),
+		[PlayerSearchViewKey] = (ShellRail.Scout, "PLAYER SEARCH"),
+		[TargetsViewKey] = (ShellRail.Scout, "MY TARGETS"),
+		[CareerViewKey] = (ShellRail.Office, "MY CAREER"),
+		[MessagesViewKey] = (ShellRail.Office, "MAIL"),
+		[GoalsViewKey] = (ShellRail.Office, "BOARD & GOALS"),
+		[BudgetViewKey] = (ShellRail.Office, "BUDGET"),
+		[SponsorsViewKey] = (ShellRail.Office, "SPONSORS"),
+		[SettingsViewKey] = (ShellRail.Office, "SETTINGS"),
+	};
+
+	private List<(string Label, System.Action Open)> TabsFor(string section)
+	{
+		var tabs = new List<(string Label, System.Action Open)>();
+		void Add(string label, System.Action open) => tabs.Add((label, open));
+		switch (section)
+		{
+			case ShellRail.Team:
+				Add("ROSTER", ShowRoster);
+				Add("DEPTH CHART", ShowLineups);
+				Add("PITCHING STAFF", ShowRotation);
+				Add("TRAINING", ShowTraining);
+				Add("MEDICAL", ShowInjuries);
+				break;
+			case ShellRail.Season:
+				Add("CALENDAR", ShowCalendar);
+				Add("SCHEDULE", ShowSchedule);
+				Add("TRYOUTS", ShowTryouts);
+				Add("GRADUATION", ShowGraduation);
+				break;
+			case ShellRail.League:
+				Add("DISTRICTS", ShowLeague);
+				Add("STANDINGS", ShowStandings);
+				Add("PLAYOFFS", ShowPlayoffs);
+				Add("RANKINGS", ShowRankings);
+				Add("LEADERS", ShowLeaders);
+				Add("STATISTICS", ShowStatistics);
+				Add("AWARDS", ShowAwards);
+				Add("NEWS", ShowNews);
+				Add("TRANSACTIONS", ShowTransactions);
+				break;
+			case ShellRail.Scout:
+				Add("PLAYER SEARCH", ShowPlayerSearch);
+				Add("MY TARGETS", ShowTargets);
+				break;
+			case ShellRail.Office:
+				Add("MY CAREER", ShowCareer);
+				if (!_unsignedLock)
+				{
+					Add("MAIL", ShowMessages);
+					Add("BOARD & GOALS", ShowGoals);
+					Add("BUDGET", ShowBudget);
+					Add("SPONSORS", ShowSponsors);
+				}
+
+				Add("SETTINGS", ShowSettings);
+				break;
+		}
+
+		return tabs;
+	}
+
+	private void SyncShell(string viewKey)
+	{
+		if (_rail == null)
+		{
+			return;
+		}
+
+		string section = _lastSection;
+		string tab = "";
+		if (ViewSections.TryGetValue(viewKey, out (string Section, string Tab) map))
+		{
+			section = map.Section;
+			tab = map.Tab;
+		}
+
+		if (_tabOverride != null)
+		{
+			tab = _tabOverride;
+			_tabOverride = null;
+		}
+
+		_lastSection = section;
+		_rail.SetLocked(_unsignedLock);
+		_rail.SetActive(section);
+		_rail.Visible = _topBar.Visible;
+		_sectionBar.Visible = _topBar.Visible;
+		_sectionBar.SetTabs(TabsFor(section), tab);
+		if (!_topBar.Visible)
+		{
+			_sectionBar.Visible = false;
+		}
+
+		RefreshShellStatus();
 	}
 
 	private void ReturnToTitle()
@@ -1084,6 +1319,7 @@ public partial class AppNavigator : MarginContainer
 		}
 
 		RefreshInboxBadge();
+		SyncShell(viewKey);
 
 		if (_navigationSoundsEnabled && changed && playSound)
 		{

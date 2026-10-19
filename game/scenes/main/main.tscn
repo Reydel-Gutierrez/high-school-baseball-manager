@@ -111,11 +111,16 @@ theme = ExtResource("1_iuonh")
 script = ExtResource("28_appnav")
 metadata/_edit_use_anchors_ = true
 
-[node name="AppLayout" type="VBoxContainer" parent="." unique_id=1127750311]
+[node name="Shell" type="HBoxContainer" parent="." unique_id=1127750399]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="TopBar" type="PanelContainer" parent="AppLayout" unique_id=851095958]
+[node name="AppLayout" type="VBoxContainer" parent="Shell" unique_id=1127750311]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="TopBar" type="PanelContainer" parent="Shell/AppLayout" unique_id=851095958]
 custom_minimum_size = Vector2(0, 54)
 custom_maximum_size = Vector2(-1, 60)
 layout_mode = 2
@@ -123,25 +128,25 @@ size_flags_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_topbar")
 script = ExtResource("4_topnav")
 
-[node name="TopBarMargin" type="MarginContainer" parent="AppLayout/TopBar" unique_id=1850731796]
+[node name="TopBarMargin" type="MarginContainer" parent="Shell/AppLayout/TopBar" unique_id=1850731796]
 layout_mode = 2
 theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 8
 
-[node name="HBoxContainer" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin" unique_id=687947371]
+[node name="HBoxContainer" type="HBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin" unique_id=687947371]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="BrandMark" type="VBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=1001]
+[node name="BrandMark" type="VBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=1001]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 4
 theme_override_constants/separation = -2
 alignment = 1
 
-[node name="HighSchoolLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1002]
+[node name="HighSchoolLabel" type="Label" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1002]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95686275, 0.9647059, 0.972549, 1)
 theme_override_constants/line_spacing = 0
@@ -150,11 +155,11 @@ theme_override_font_sizes/font_size = 10
 text = "HIGH SCHOOL"
 vertical_alignment = 2
 
-[node name="TitleRow" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1003]
+[node name="TitleRow" type="HBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark" unique_id=1003]
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="BaseballLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1004]
+[node name="BaseballLabel" type="Label" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1004]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("5_bold")
@@ -162,7 +167,7 @@ theme_override_font_sizes/font_size = 22
 text = "BASEBALL"
 vertical_alignment = 1
 
-[node name="YearLabel" type="Label" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1005]
+[node name="YearLabel" type="Label" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1005]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95686275, 0.6431373, 0.10980392, 1)
 theme_override_fonts/font = ExtResource("5_bold")
@@ -170,41 +175,41 @@ theme_override_font_sizes/font_size = 22
 text = "26"
 vertical_alignment = 1
 
-[node name="NavigationRow" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=419839481]
+[node name="NavigationRow" type="HBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=419839481]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 4
 alignment = 1
 
-[node name="MessagesButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623091]
+[node name="MessagesButton" type="Button" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623091]
 custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Inbox"
 script = ExtResource("9_msgtab")
 
-[node name="MessagesCalendarGap" type="Control" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=108505786]
+[node name="MessagesCalendarGap" type="Control" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=108505786]
 custom_minimum_size = Vector2(10, 0)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 
-[node name="CalendarButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2003]
+[node name="CalendarButton" type="Button" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2003]
 custom_minimum_size = Vector2(42, 38)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Season calendar and schedule"
 script = ExtResource("9_caltab")
 
-[node name="CalendarRule" type="ColorRect" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2004]
+[node name="CalendarRule" type="ColorRect" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=2004]
 custom_minimum_size = Vector2(1, 18)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 color = Color(0.28, 0.3, 0.35, 1)
 
-[node name="HomeButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623089]
+[node name="HomeButton" type="Button" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=292623089]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.07058824, 0.07450981, 0.08627451, 1)
@@ -219,7 +224,7 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_home_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_home_focus")
 text = "HOME"
 
-[node name="OrganizationMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=992549266]
+[node name="OrganizationMenu" type="MenuButton" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=992549266]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
@@ -240,7 +245,7 @@ popup/item_4/text = "BOARD & GOALS"
 popup/item_4/id = 103
 script = ExtResource("1_hyk8p")
 
-[node name="ClubhouseMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=907681812]
+[node name="ClubhouseMenu" type="MenuButton" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=907681812]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
@@ -257,7 +262,7 @@ popup/item_2/text = "INJURIES"
 popup/item_2/id = 202
 script = ExtResource("1_hyk8p")
 
-[node name="DistrictHubMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=147765320]
+[node name="DistrictHubMenu" type="MenuButton" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=147765320]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
@@ -284,7 +289,7 @@ popup/item_7/text = "NEWS"
 popup/item_7/id = 304
 script = ExtResource("1_hyk8p")
 
-[node name="FinancesMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1363254465]
+[node name="FinancesMenu" type="MenuButton" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1363254465]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
@@ -299,7 +304,7 @@ popup/item_1/text = "SPONSORS"
 popup/item_1/id = 401
 script = ExtResource("1_hyk8p")
 
-[node name="ScoutingMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1964727536]
+[node name="ScoutingMenu" type="MenuButton" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1964727536]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
@@ -314,27 +319,27 @@ popup/item_1/text = "MY TARGETS"
 popup/item_1/id = 502
 script = ExtResource("1_hyk8p")
 
-[node name="CareerButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1692429108]
+[node name="CareerButton" type="Button" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1692429108]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_fonts/font = ExtResource("7_semibold")
 theme_override_font_sizes/font_size = 13
 text = "MY CAREER"
 
-[node name="RightCluster" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=2001]
+[node name="RightCluster" type="HBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer" unique_id=2001]
 layout_mode = 2
 size_flags_horizontal = 0
 size_flags_vertical = 4
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="TeamLevelToggle" type="HBoxContainer" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=2002]
+[node name="TeamLevelToggle" type="HBoxContainer" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=2002]
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_constants/separation = 0
 script = ExtResource("30_teamtoggle")
 
-[node name="SettingsButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=960798489]
+[node name="SettingsButton" type="Button" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/RightCluster" unique_id=960798489]
 custom_minimum_size = Vector2(28, 28)
 layout_mode = 2
 size_flags_vertical = 4
@@ -347,177 +352,177 @@ icon = ExtResource("8_gear")
 icon_alignment = 1
 expand_icon = true
 
-[node name="ContentArea" type="PanelContainer" parent="AppLayout" unique_id=1499715221]
+[node name="ContentArea" type="PanelContainer" parent="Shell/AppLayout" unique_id=1499715221]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_content")
 
-[node name="ContentRoot" parent="AppLayout/ContentArea" unique_id=1315075994 instance=ExtResource("31_home")]
+[node name="ContentRoot" parent="Shell/AppLayout/ContentArea" unique_id=1315075994 instance=ExtResource("31_home")]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RosterView" parent="AppLayout/ContentArea" unique_id=241912356 instance=ExtResource("29_roster")]
+[node name="RosterView" parent="Shell/AppLayout/ContentArea" unique_id=241912356 instance=ExtResource("29_roster")]
 visible = false
 layout_mode = 2
 
-[node name="TransactionsView" parent="AppLayout/ContentArea" unique_id=1466207155 instance=ExtResource("33_txn")]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="GoalsView" parent="AppLayout/ContentArea" unique_id=1577318266 instance=ExtResource("34_goals")]
+[node name="TransactionsView" parent="Shell/AppLayout/ContentArea" unique_id=1466207155 instance=ExtResource("33_txn")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="TryoutsView" parent="AppLayout/ContentArea" unique_id=1577318290 instance=ExtResource("34_tryouts")]
+[node name="GoalsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318266 instance=ExtResource("34_goals")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="GraduationView" parent="AppLayout/ContentArea" unique_id=1577318292 instance=ExtResource("34_graduation")]
+[node name="TryoutsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318290 instance=ExtResource("34_tryouts")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LineupsView" parent="AppLayout/ContentArea" unique_id=1577318267 instance=ExtResource("35_lineups")]
+[node name="GraduationView" parent="Shell/AppLayout/ContentArea" unique_id=1577318292 instance=ExtResource("34_graduation")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RotationView" parent="AppLayout/ContentArea" unique_id=1577318268 instance=ExtResource("36_rotation")]
+[node name="LineupsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318267 instance=ExtResource("35_lineups")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="InjuriesView" parent="AppLayout/ContentArea" unique_id=1577318294 instance=ExtResource("36_injuries")]
+[node name="RotationView" parent="Shell/AppLayout/ContentArea" unique_id=1577318268 instance=ExtResource("36_rotation")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LeagueOverviewView" parent="AppLayout/ContentArea" unique_id=1577318312 instance=ExtResource("37_league")]
+[node name="InjuriesView" parent="Shell/AppLayout/ContentArea" unique_id=1577318294 instance=ExtResource("36_injuries")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="StandingsView" parent="AppLayout/ContentArea" unique_id=1577318269 instance=ExtResource("37_standings")]
+[node name="LeagueOverviewView" parent="Shell/AppLayout/ContentArea" unique_id=1577318312 instance=ExtResource("37_league")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RankingsView" parent="AppLayout/ContentArea" unique_id=1577318310 instance=ExtResource("37_rankings")]
+[node name="StandingsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318269 instance=ExtResource("37_standings")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LeadersView" parent="AppLayout/ContentArea" unique_id=1577318270 instance=ExtResource("38_leaders")]
+[node name="RankingsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318310 instance=ExtResource("37_rankings")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="AwardsView" parent="AppLayout/ContentArea" unique_id=1577318271 instance=ExtResource("39_awards")]
+[node name="LeadersView" parent="Shell/AppLayout/ContentArea" unique_id=1577318270 instance=ExtResource("38_leaders")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="StatisticsView" parent="AppLayout/ContentArea" unique_id=1577318272 instance=ExtResource("40_stats")]
+[node name="AwardsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318271 instance=ExtResource("39_awards")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="NewsView" parent="AppLayout/ContentArea" unique_id=1577318273 instance=ExtResource("41_news")]
+[node name="StatisticsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318272 instance=ExtResource("40_stats")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="MessagesView" parent="AppLayout/ContentArea" unique_id=1577318510 instance=ExtResource("41_messages")]
+[node name="NewsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318273 instance=ExtResource("41_news")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="PlayerSearchView" parent="AppLayout/ContentArea" unique_id=1577318274 instance=ExtResource("42_search")]
+[node name="MessagesView" parent="Shell/AppLayout/ContentArea" unique_id=1577318510 instance=ExtResource("41_messages")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="TargetsView" parent="AppLayout/ContentArea" unique_id=1577318275 instance=ExtResource("43_targets")]
+[node name="PlayerSearchView" parent="Shell/AppLayout/ContentArea" unique_id=1577318274 instance=ExtResource("42_search")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="BudgetView" parent="AppLayout/ContentArea" unique_id=1577318400 instance=ExtResource("43_budget")]
+[node name="TargetsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318275 instance=ExtResource("43_targets")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SponsorsView" parent="AppLayout/ContentArea" unique_id=1577318401 instance=ExtResource("43_sponsors")]
+[node name="BudgetView" parent="Shell/AppLayout/ContentArea" unique_id=1577318400 instance=ExtResource("43_budget")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="CareerView" parent="AppLayout/ContentArea" unique_id=1577318276 instance=ExtResource("44_career")]
+[node name="SponsorsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318401 instance=ExtResource("43_sponsors")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="CalendarView" parent="AppLayout/ContentArea" unique_id=1577318277 instance=ExtResource("45_calendar")]
+[node name="CareerView" parent="Shell/AppLayout/ContentArea" unique_id=1577318276 instance=ExtResource("44_career")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ScheduleView" parent="AppLayout/ContentArea" unique_id=1577318299 instance=ExtResource("48_schedule")]
+[node name="CalendarView" parent="Shell/AppLayout/ContentArea" unique_id=1577318277 instance=ExtResource("45_calendar")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SettingsView" parent="AppLayout/ContentArea" unique_id=1577318278 instance=ExtResource("46_settings")]
+[node name="ScheduleView" parent="Shell/AppLayout/ContentArea" unique_id=1577318299 instance=ExtResource("48_schedule")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="GamePreviewView" parent="AppLayout/ContentArea" unique_id=1577318298 instance=ExtResource("47_preview")]
+[node name="SettingsView" parent="Shell/AppLayout/ContentArea" unique_id=1577318278 instance=ExtResource("46_settings")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ChampionshipView" parent="AppLayout/ContentArea" unique_id=1577318300 instance=ExtResource("49_champ")]
+[node name="GamePreviewView" parent="Shell/AppLayout/ContentArea" unique_id=1577318298 instance=ExtResource("47_preview")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SeasonReviewView" parent="AppLayout/ContentArea" unique_id=1577318301 instance=ExtResource("50_review")]
+[node name="ChampionshipView" parent="Shell/AppLayout/ContentArea" unique_id=1577318300 instance=ExtResource("49_champ")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="HallOfFameView" parent="AppLayout/ContentArea" unique_id=1577318302 instance=ExtResource("51_hof")]
+[node name="SeasonReviewView" parent="Shell/AppLayout/ContentArea" unique_id=1577318301 instance=ExtResource("50_review")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HallOfFameView" parent="Shell/AppLayout/ContentArea" unique_id=1577318302 instance=ExtResource("51_hof")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3

@@ -74,6 +74,12 @@ public partial class TopBarNavigation : PanelContainer
 		}
 	}
 
+	/// <summary>
+	/// Redesigned shell: section navigation lives in the left rail, so only
+	/// the mail and settings buttons stay in the top bar.
+	/// </summary>
+	public bool CompactShell { get; set; }
+
 	public void SetLockedToCareer(bool locked) => ApplyCareerShell(hideClubhouseNav: locked, lockToCareer: locked);
 
 	public void ApplyCareerShell(bool hideClubhouseNav, bool lockToCareer)
@@ -117,6 +123,27 @@ public partial class TopBarNavigation : PanelContainer
 		if (teamToggle != null)
 		{
 			teamToggle.Visible = !hideClubhouseNav;
+		}
+
+		if (CompactShell)
+		{
+			foreach (KeyValuePair<string, BaseButton> pair in _items)
+			{
+				if (pair.Key is not (MessagesKey or SettingsKey))
+				{
+					pair.Value.Visible = false;
+				}
+			}
+
+			if (calendarRule != null)
+			{
+				calendarRule.Visible = false;
+			}
+
+			if (messagesGap != null)
+			{
+				messagesGap.Visible = false;
+			}
 		}
 	}
 
