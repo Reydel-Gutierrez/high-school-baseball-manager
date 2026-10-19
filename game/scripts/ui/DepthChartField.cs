@@ -13,16 +13,16 @@ public partial class DepthChartField : Control
 {
 	private static readonly Dictionary<string, Vector2> Spots = new(StringComparer.OrdinalIgnoreCase)
 	{
-		["C"] = new(0.50f, 0.86f),
-		["P"] = new(0.50f, 0.60f),
-		["1B"] = new(0.74f, 0.57f),
-		["2B"] = new(0.63f, 0.41f),
-		["SS"] = new(0.37f, 0.41f),
-		["3B"] = new(0.26f, 0.57f),
-		["LF"] = new(0.18f, 0.20f),
-		["CF"] = new(0.50f, 0.10f),
-		["RF"] = new(0.82f, 0.20f),
-		["DH"] = new(0.13f, 0.86f),
+		["C"] = new(0.50f, 0.84f),
+		["P"] = new(0.50f, 0.61f),
+		["1B"] = new(0.78f, 0.58f),
+		["2B"] = new(0.64f, 0.43f),
+		["SS"] = new(0.36f, 0.43f),
+		["3B"] = new(0.22f, 0.58f),
+		["LF"] = new(0.18f, 0.24f),
+		["CF"] = new(0.50f, 0.15f),
+		["RF"] = new(0.82f, 0.24f),
+		["DH"] = new(0.13f, 0.84f),
 	};
 
 	private readonly List<(Control Chip, Vector2 Spot)> _chips = [];
@@ -47,6 +47,7 @@ public partial class DepthChartField : Control
 		}
 
 		_chips.Clear();
+		var used = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 		for (int i = 0; i < lineup.Slots.Length; i++)
 		{
 			LineupSlot slot = lineup.Slots[i];
@@ -54,6 +55,11 @@ public partial class DepthChartField : Control
 			{
 				continue;
 			}
+
+			// Two players listed at one spot sit side by side instead of stacking.
+			used.TryGetValue(slot.Position!, out int taken);
+			used[slot.Position!] = taken + 1;
+			spot += new Vector2(0.15f * taken * (spot.X > 0.5f ? -1 : 1), 0.06f * taken);
 
 			ClubhousePlayer? player = slot.IsEmpty ? null : ClubhouseSquad.Find(slot.Jersey);
 			bool outOfPosition = player != null && !ClubhouseSquad.CanPlayAt(player, slot.Position);
@@ -103,7 +109,7 @@ public partial class DepthChartField : Control
 			};
 		}
 
-		const float face = 50f;
+		const float face = 42f;
 		var ring = new PanelContainer { CustomMinimumSize = new Vector2(face + 6, face + 6), SizeFlagsHorizontal = SizeFlags.ShrinkCenter, MouseFilter = MouseFilterEnum.Ignore };
 		ring.AddThemeStyleboxOverride("panel", UiKit.Box(selected ? UiKit.Text : UiKit.Gold, (int)(face / 2 + 3), 3, 3));
 		Control? portrait = player == null ? null : PlayerFaces.For(teamId, player.FullName, face, face, circle: true, level: level);

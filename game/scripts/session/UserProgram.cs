@@ -103,7 +103,7 @@ public static class UserProgram
 	public static Texture2D? Logo() => TeamLogos.Load(OrganizationId);
 
 	/// <summary>Header crest that follows career/school changes on its own.</summary>
-	public static ProgramMark MakeHeaderMark(float size = 84) => new(size) { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+	public static ProgramMark MakeHeaderMark(float size = 72) => new(size) { SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
 
 	/// <summary>
 	/// Keeps a label showing the user's school (upper-case), optionally with

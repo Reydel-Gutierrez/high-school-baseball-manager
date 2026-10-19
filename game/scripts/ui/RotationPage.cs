@@ -250,7 +250,7 @@ public partial class RotationPage : Control
 	{
 		var card = MakeCard();
 		card.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-		card.CustomMinimumSize = new Vector2(0, 132);
+		card.CustomMinimumSize = new Vector2(0, 104);
 		_detailHost = new VBoxContainer();
 		_detailHost.AddThemeConstantOverride("separation", 6);
 		card.AddChild(_detailHost);

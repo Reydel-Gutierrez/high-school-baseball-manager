@@ -95,6 +95,13 @@ public partial class InjuriesPage : Control
 		layout.AddThemeConstantOverride("separation", 6);
 		margin.AddChild(layout);
 		layout.AddChild(BuildHeader());
+		var kpis = new HBoxContainer();
+		kpis.AddThemeConstantOverride("separation", 10);
+		kpis.AddChild(UiKit.KpiLive("OUT", out _kOut, out _kOutCap));
+		kpis.AddChild(UiKit.KpiLive("DAY-TO-DAY", out _kDtd, out _kDtdCap));
+		kpis.AddChild(UiKit.KpiLive("AVAILABLE", out _kOk, out _kOkCap));
+		kpis.AddChild(UiKit.KpiLive("TEAM HEALTH", out _kHealth, out _kHealthCap));
+		layout.AddChild(kpis);
 
 		var body = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
 		body.AddThemeConstantOverride("separation", 6);
@@ -117,7 +124,7 @@ public partial class InjuriesPage : Control
 		};
 		identity.AddThemeConstantOverride("separation", -4);
 		identity.AddChild(MakeText($"CLUBHOUSE  ·  {GameSession.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("INJURIES", _bold, 36, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("MEDICAL", _bold, 36, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("CASCADE REGIONAL HIGH SCHOOL", _medium, 11, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -200,6 +207,45 @@ public partial class InjuriesPage : Control
 		return card;
 	}
 
+	private Label _kOut = null!, _kOutCap = null!, _kDtd = null!, _kDtdCap = null!, _kOk = null!, _kOkCap = null!, _kHealth = null!, _kHealthCap = null!;
+
+	private void RefreshKpis()
+	{
+		int total = 0, outCount = 0, dtd = 0;
+		if (_session.World != null)
+		{
+			foreach (Player player in _session.RosterFor(_session.GetTeam(_session.ActiveTeam.Level).Id))
+			{
+				total++;
+				if (player.Injury != null && player.Injury.ActiveOn(_session.CurrentDate))
+				{
+					if (player.Injury.DayToDay)
+					{
+						dtd++;
+					}
+					else
+					{
+						outCount++;
+					}
+				}
+			}
+		}
+
+		_kOut.Text = outCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+		_kOut.AddThemeColorOverride("font_color", outCount == 0 ? UiKit.Green : UiKit.Red);
+		_kOutCap.Text = "Unavailable for games";
+		_kDtd.Text = dtd.ToString(System.Globalization.CultureInfo.InvariantCulture);
+		_kDtd.AddThemeColorOverride("font_color", dtd == 0 ? UiKit.Green : UiKit.Gold);
+		_kDtdCap.Text = "Can play, carefully";
+		int ok = total - outCount - dtd;
+		_kOk.Text = $"{ok}/{total}";
+		_kOkCap.Text = "Cleared to play";
+		int pct = total == 0 ? 100 : (int)Math.Round(100.0 * ok / total);
+		_kHealth.Text = $"{pct}%";
+		_kHealth.AddThemeColorOverride("font_color", pct >= 90 ? UiKit.Text : pct >= 75 ? UiKit.Gold : UiKit.Red);
+		_kHealthCap.Text = _session.ActiveTeam.LevelLabel;
+	}
+
 	private void Refresh()
 	{
 		if (_rowsHost == null)
@@ -207,6 +253,7 @@ public partial class InjuriesPage : Control
 			return;
 		}
 
+		RefreshKpis();
 		List<ClubhousePlayer> injured = ClubhouseSquad.Injured(_session.ActiveTeam.Level);
 		_countValue.Text = injured.Count == 1 ? "1 INJURED" : $"{injured.Count} INJURED";
 		_countValue.AddThemeColorOverride("font_color", injured.Count > 0 ? Urgent : Green);

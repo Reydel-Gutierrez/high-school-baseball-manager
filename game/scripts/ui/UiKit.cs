@@ -172,15 +172,15 @@ public static class UiKit
 	/// <summary>KPI tile whose value and caption labels the page updates later.</summary>
 	public static PanelContainer KpiLive(string label, out Label value, out Label caption)
 	{
-		var card = MakeCard(18, 10);
+		var card = MakeCard(16, 6);
 		card.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
 		var col = new VBoxContainer();
-		col.AddThemeConstantOverride("separation", -2);
-		col.AddChild(Text_(label, Semibold, 12, Muted));
-		value = Text_("–", Bold, 30, Text);
+		col.AddThemeConstantOverride("separation", -4);
+		col.AddChild(Text_(label, Semibold, 11, Muted));
+		value = Text_("–", Bold, 26, Text);
 		value.ClipText = true;
 		col.AddChild(value);
-		caption = Text_("", Medium, 13, Muted);
+		caption = Text_("", Medium, 12, Muted);
 		caption.ClipText = true;
 		col.AddChild(caption);
 		card.AddChild(col);
