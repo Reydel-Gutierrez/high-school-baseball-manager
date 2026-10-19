@@ -34,7 +34,7 @@ public static class PersonAppearanceGenerator
 			BodyBuild = rng.Pick(AppearanceCatalog.All<BodyBuild>()),
 			OutfitStyle = rng.Pick(AppearanceCatalog.All<OutfitStyle>()),
 			OutfitColorway = OutfitColorway.Neutral,
-		};
+		}.Also(a => Harmonize(a, new SeededRandom(seed).Derive(0x6E7E), player: false));
 	}
 
 	public static PersonAppearance GenerateCoach(int seed)
@@ -80,7 +80,85 @@ public static class PersonAppearanceGenerator
 			BodyBuild = build,
 			OutfitStyle = OutfitStyle.BaseballJersey,
 			OutfitColorway = OutfitColorway.Team,
-		};
+		}.Also(a => Harmonize(a, new SeededRandom(seed).Derive(0x6E7E), player: true));
+	}
+
+	/// <summary>
+	/// Real-world coherence: skin tone is drawn from a US high-school mix,
+	/// then hair color, eye color and hair texture follow from it (no
+	/// copper-haired, green-eyed faces on the deepest tones, and so on).
+	/// Uses its own derived stream so the other rolls keep their values.
+	/// </summary>
+	private static void Harmonize(PersonAppearance a, ISeededRandom rng, bool player)
+	{
+		a.SkinTone = Weighted(rng, ToneWeights);
+		bool deep = a.SkinTone >= SkinTone.Brown;
+		bool olive = a.SkinTone is SkinTone.Medium or SkinTone.Tan;
+		bool fair = a.SkinTone <= SkinTone.Light;
+		HairColor hair = deep
+			? Weighted<HairColor>(rng, [(HairColor.Black, 85), (HairColor.DarkBrown, 15)])
+			: olive
+				? Weighted<HairColor>(rng, [(HairColor.Black, 55), (HairColor.DarkBrown, 35), (HairColor.Brown, 10)])
+				: fair
+					? Weighted<HairColor>(rng, [(HairColor.Brown, 30), (HairColor.DarkBrown, 25), (HairColor.Blonde, 24), (HairColor.Auburn, 8), (HairColor.Copper, 7), (HairColor.Black, 6)])
+					: Weighted<HairColor>(rng, [(HairColor.DarkBrown, 40), (HairColor.Brown, 25), (HairColor.Black, 28), (HairColor.Blonde, 7)]);
+		if (!player && a.HairColor is HairColor.Gray or HairColor.SaltAndPepper)
+		{
+			hair = a.HairColor; // coaches keep their gray
+		}
+
+		bool beardMatched = a.FacialHairColor == a.HairColor;
+		a.HairColor = hair;
+		if (beardMatched || deep || olive)
+		{
+			a.FacialHairColor = hair;
+		}
+
+		a.EyeColor = deep
+			? Weighted<EyeColor>(rng, [(EyeColor.Dark, 60), (EyeColor.Brown, 37), (EyeColor.Hazel, 3)])
+			: olive
+				? Weighted<EyeColor>(rng, [(EyeColor.Brown, 55), (EyeColor.Dark, 27), (EyeColor.Hazel, 15), (EyeColor.Green, 3)])
+				: fair
+					? Weighted<EyeColor>(rng, [(EyeColor.Blue, 34), (EyeColor.Brown, 24), (EyeColor.Hazel, 16), (EyeColor.Green, 15), (EyeColor.Gray, 11)])
+					: Weighted<EyeColor>(rng, [(EyeColor.Brown, 50), (EyeColor.Hazel, 25), (EyeColor.Blue, 13), (EyeColor.Green, 12)]);
+
+		if (player && deep && rng.NextDouble() < 0.7)
+		{
+			a.HairStyle = Weighted<HairStyle>(rng, [(HairStyle.Fade, 30), (HairStyle.Buzz, 20), (HairStyle.ShortAfro, 20), (HairStyle.Waves, 18), (HairStyle.Curls, 12)]);
+		}
+	}
+
+	private static readonly (SkinTone, int)[] ToneWeights =
+	[
+		(SkinTone.Fair, 10), (SkinTone.Light, 22), (SkinTone.LightMedium, 18), (SkinTone.Medium, 14),
+		(SkinTone.Tan, 12), (SkinTone.Brown, 10), (SkinTone.Deep, 8), (SkinTone.Dark, 6),
+	];
+
+	private static T Weighted<T>(ISeededRandom rng, (T Value, int Weight)[] table)
+	{
+		int total = 0;
+		foreach ((T _, int w) in table)
+		{
+			total += w;
+		}
+
+		double roll = rng.NextDouble() * total;
+		foreach ((T v, int w) in table)
+		{
+			roll -= w;
+			if (roll < 0)
+			{
+				return v;
+			}
+		}
+
+		return table[^1].Value;
+	}
+
+	private static PersonAppearance Also(this PersonAppearance a, Action<PersonAppearance> apply)
+	{
+		apply(a);
+		return a;
 	}
 
 	private static readonly HairStyle[] PlayerHairStyles =
