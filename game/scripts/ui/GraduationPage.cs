@@ -281,13 +281,41 @@ public partial class GraduationPage : Control
 			return;
 		}
 
-		_storyHost.AddChild(MakeText(selected.FullName.ToUpperInvariant(), _bold, 28, TextPrimary, HorizontalAlignment.Left));
-		_storyHost.AddChild(MakeText(
-			$"{selected.Position}  ·  {selected.YearsLabel}",
-			_semibold,
-			14,
-			Accent,
-			HorizontalAlignment.Left));
+		// Senior send-off banner: school art, capped headshot, name.
+		string orgId = _session.CatalogOrganizationId;
+		var banner = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 170) };
+		banner.UseTeam(orgId);
+		PersonPortrait? face = PlayerFaces.For(orgId, selected.FullName, 150, 170, level: TeamLevel.Varsity)
+			?? PlayerFaces.For(orgId, selected.FullName, 150, 170, level: TeamLevel.JuniorVarsity);
+		if (face != null)
+		{
+			face.Backdrop = false;
+			face.AnchorLeft = 0;
+			face.AnchorRight = 0.32f;
+			face.AnchorTop = 0;
+			face.AnchorBottom = 1;
+			face.OffsetTop = 8;
+			face.OffsetBottom = -3;
+			face.CustomMinimumSize = Vector2.Zero;
+			banner.AddChild(face);
+		}
+
+		var copy = new VBoxContainer
+		{
+			AnchorLeft = face != null ? 0.34f : 0f,
+			AnchorRight = 1,
+			AnchorTop = 0,
+			AnchorBottom = 1,
+			OffsetLeft = 16,
+			OffsetBottom = -16,
+			Alignment = BoxContainer.AlignmentMode.End,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		copy.AddThemeConstantOverride("separation", -4);
+		copy.AddChild(MakeText($"CLASS OF {GameSession.SeasonYear}  ·  {selected.Position}  ·  {selected.YearsLabel}".ToUpperInvariant(), _semibold, 13, UiKit.Gold, HorizontalAlignment.Left));
+		copy.AddChild(MakeText(selected.FullName.ToUpperInvariant(), _bold, 40, Colors.White, HorizontalAlignment.Left));
+		banner.AddChild(copy);
+		_storyHost.AddChild(banner);
 
 		var farewell = MakeText(selected.Farewell, _medium, 15, new Color(0.82f, 0.84f, 0.88f), HorizontalAlignment.Left);
 		farewell.AutowrapMode = TextServer.AutowrapMode.WordSmart;
