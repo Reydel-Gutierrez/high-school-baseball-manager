@@ -249,7 +249,14 @@ public partial class PlayerProfileCard : PanelContainer
 
 		identity.AddChild(new Control { CustomMinimumSize = new Vector2(0, 6) });
 		identity.AddChild(bio);
-		var school = MakeText(player.TeamShort.ToUpperInvariant(), _medium, 12, new Color(1, 1, 1, 0.75f), HorizontalAlignment.Left);
+		string where = TeamBrands.Location(player.TeamId);
+		string teamLine = Capped(player.TeamId) ? TeamBrands.TeamName(player.TeamId) : player.TeamShort;
+		var school = MakeText(
+			(where.Length > 0 ? $"{teamLine}  ·  {where}" : teamLine).ToUpperInvariant(),
+			_medium,
+			12,
+			new Color(1, 1, 1, 0.75f),
+			HorizontalAlignment.Left);
 		if (!string.IsNullOrEmpty(player.TeamId))
 		{
 			SchoolLinks.MakeClickable(school, player.TeamId);
@@ -309,31 +316,7 @@ public partial class PlayerProfileCard : PanelContainer
 
 	private void DrawHeroBackdrop(Control hero, Color primary, Color secondary, string number)
 	{
-		Vector2 size = hero.Size;
-		Color top = primary.Lightened(0.08f);
-		Color bottom = primary.Darkened(0.55f);
-		const int bands = 24;
-		for (int i = 0; i < bands; i++)
-		{
-			float t0 = i / (float)bands;
-			float t1 = (i + 1) / (float)bands;
-			hero.DrawRect(new Rect2(0, size.Y * t0, size.X, size.Y * (t1 - t0) + 1), top.Lerp(bottom, t0), true);
-		}
-
-		// broadcast-style diagonal sash in the trim color
-		var sash = new Vector2[]
-		{
-			new(size.X * 0.58f, 0), new(size.X * 0.66f, 0), new(size.X * 0.50f, size.Y), new(size.X * 0.42f, size.Y),
-		};
-		hero.DrawColoredPolygon(sash, new Color(secondary, 0.10f));
-		if (!string.IsNullOrEmpty(number))
-		{
-			int fontSize = (int)(size.Y * 1.05f);
-			Vector2 textSize = _bold.GetStringSize(number, HorizontalAlignment.Left, -1, fontSize);
-			hero.DrawString(_bold, new Vector2(size.X - textSize.X - 12, size.Y * 0.92f), number, HorizontalAlignment.Left, -1, fontSize, new Color(1, 1, 1, 0.07f));
-		}
-
-		hero.DrawRect(new Rect2(0, size.Y - 3, size.X, 3), secondary, true);
+		BroadcastPanel.Paint(hero, hero.Size, primary, secondary, number, TeamBrands.Banner(_snapshot?.TeamId));
 	}
 
 	/// <summary>The four numbers a broadcast puts under a player's name.</summary>

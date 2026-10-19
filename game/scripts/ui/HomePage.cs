@@ -2503,6 +2503,7 @@ public partial class HomePage : Control
 		{
 			Primary = primary,
 			Secondary = secondary,
+			Background = TeamBrands.Banner(pitcher.TeamId),
 			Number = player is { JerseyNumber: > 0 } ? player.JerseyNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : "",
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,

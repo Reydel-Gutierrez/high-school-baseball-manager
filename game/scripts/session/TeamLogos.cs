@@ -22,9 +22,15 @@ public static class TeamLogos
 
 	public static Texture2D? Load(string? organizationId)
 	{
-		if (string.IsNullOrEmpty(organizationId) || !Paths.TryGetValue(organizationId, out string? path))
+		if (string.IsNullOrEmpty(organizationId))
 		{
 			return null;
+		}
+
+		if (!Paths.TryGetValue(organizationId, out string? path))
+		{
+			// Branded schools keep their primary mark at assets/teams/{id}/logo.png.
+			return TeamBrands.Logo(organizationId);
 		}
 
 		return GD.Load<Texture2D>(path);

@@ -65,3 +65,5 @@ dist/
 *.tmp
 *.temp
 ~$*
+# Raw art downloaded from Canva before processing into game/assets
+branding_inbox/

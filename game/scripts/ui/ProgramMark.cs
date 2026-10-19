@@ -90,8 +90,11 @@ public partial class ProgramMark : Control
 
 		Vector2 center = origin + new Vector2(side / 2f, side / 2f);
 		float radius = side * 0.46f;
-		DrawCircle(center, radius, BadgeFill);
-		DrawArc(center, radius, 0, Mathf.Tau, 64, BadgeRing, Mathf.Max(1.5f, side * 0.03f), true);
+		HSBM.Domain.SchoolBrand? brand = TeamBrands.For(OrganizationId);
+		Color fill = brand != null ? new Color(brand.PrimaryHex) : BadgeFill;
+		Color ring = brand != null ? new Color(brand.SecondaryHex) : BadgeRing;
+		DrawCircle(center, radius, fill);
+		DrawArc(center, radius, 0, Mathf.Tau, 64, ring, Mathf.Max(1.5f, side * 0.03f), true);
 		if (_font == null || string.IsNullOrEmpty(_monogram))
 		{
 			return;
@@ -100,12 +103,17 @@ public partial class ProgramMark : Control
 		int fontSize = (int)(side * (_monogram.Length > 2 ? 0.30f : 0.38f));
 		Vector2 textSize = _font.GetStringSize(_monogram, HorizontalAlignment.Left, -1, fontSize);
 		var baseline = new Vector2(center.X - textSize.X / 2f, center.Y + fontSize * 0.36f);
-		DrawString(_font, baseline, _monogram, HorizontalAlignment.Left, -1, fontSize, BadgeText);
+		DrawString(_font, baseline, _monogram, HorizontalAlignment.Left, -1, fontSize, brand != null ? ring : BadgeText);
 	}
 
 	/// <summary>Cap-front letters: one or two, like a big-league cap ("N", "DV").</summary>
 	public static string CapMonogram(string organizationId)
 	{
+		if (TeamBrands.For(organizationId) is { } brand)
+		{
+			return brand.CapMonogram;
+		}
+
 		string m = Monogram(organizationId);
 		return m.Length >= 3 ? m[..1] : m;
 	}

@@ -39,7 +39,7 @@ public static class TeamColors
 			return hit;
 		}
 
-		(Color, Color) colors = FromLogo(id) ?? Pick(id);
+		(Color, Color) colors = FromBrand(id) ?? FromLogo(id) ?? Pick(id);
 		Cache[id] = colors;
 		return colors;
 	}
@@ -56,6 +56,12 @@ public static class TeamColors
 
 			return Classic[(int)((uint)hash % (uint)Classic.Length)];
 		}
+	}
+
+	private static (Color, Color)? FromBrand(string id)
+	{
+		HSBM.Domain.SchoolBrand? brand = HSBM.Domain.SchoolBrandCatalog.TryGet(id);
+		return brand == null ? null : (new Color(brand.PrimaryHex), new Color(brand.SecondaryHex));
 	}
 
 	/// <summary>Two most common saturated colors in the school's logo.</summary>
@@ -141,5 +147,68 @@ public static class TeamColors
 		}
 
 		return (p, secondary ?? new Color(0.95f, 0.95f, 0.95f));
+	}
+}
+
+/// <summary>
+/// Game-side view of a school's brand: display names, location, and the
+/// art files that live under res://assets/teams/{organization id}/
+/// (logo.png = primary mark, banner.png = wide background for broadcast
+/// panels). Every helper falls back cleanly for schools without a brand.
+/// </summary>
+public static class TeamBrands
+{
+	public static HSBM.Domain.SchoolBrand? For(string? organizationId) =>
+		HSBM.Domain.SchoolBrandCatalog.TryGet(string.IsNullOrWhiteSpace(organizationId) ? null : SchoolProfiles.NormalizeId(organizationId));
+
+	/// <summary>"Northfield Knights", else the school's short name.</summary>
+	public static string TeamName(string? organizationId)
+	{
+		string shortName = ShortName(organizationId);
+		HSBM.Domain.SchoolBrand? brand = For(organizationId);
+		return brand == null ? shortName : $"{shortName} {brand.Mascot}";
+	}
+
+	public static string ShortName(string? organizationId)
+	{
+		if (string.IsNullOrWhiteSpace(organizationId))
+		{
+			return "";
+		}
+
+		try
+		{
+			return HSBM.Domain.LeagueCatalog.Standard.GetOrganization(SchoolProfiles.NormalizeId(organizationId)).ShortName;
+		}
+		catch (KeyNotFoundException)
+		{
+			return organizationId;
+		}
+	}
+
+	/// <summary>"Northfield, MI" or empty.</summary>
+	public static string Location(string? organizationId) => For(organizationId)?.LocationShort ?? "";
+
+	public static Texture2D? Banner(string? organizationId) => Art(organizationId, "banner.png");
+
+	public static Texture2D? Logo(string? organizationId) => Art(organizationId, "logo.png");
+
+	private static readonly Dictionary<string, Texture2D?> ArtCache = new(StringComparer.Ordinal);
+
+	private static Texture2D? Art(string? organizationId, string file)
+	{
+		if (string.IsNullOrWhiteSpace(organizationId))
+		{
+			return null;
+		}
+
+		string path = $"res://assets/teams/{SchoolProfiles.NormalizeId(organizationId)}/{file}";
+		if (!ArtCache.TryGetValue(path, out Texture2D? tex))
+		{
+			tex = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+			ArtCache[path] = tex;
+		}
+
+		return tex;
 	}
 }

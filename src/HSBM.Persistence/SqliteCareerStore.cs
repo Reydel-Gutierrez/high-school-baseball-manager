@@ -696,6 +696,23 @@ public sealed class SqliteCareerStore : ICareerStore
 		return list;
 	}
 
+	/// <summary>
+	/// School names are static content: a save made before a school was
+	/// renamed in the catalog picks up the current name and short name.
+	/// </summary>
+	private static OrganizationIdentity CurrentIdentity(OrganizationIdentity saved)
+	{
+		foreach (OrganizationIdentity current in LeagueCatalog.Standard.Organizations)
+		{
+			if (current.Id == saved.Id)
+			{
+				return saved with { Name = current.Name, ShortName = current.ShortName };
+			}
+		}
+
+		return saved;
+	}
+
 	private List<OrganizationState> ReadOrganizations()
 	{
 		var list = new List<OrganizationState>();
@@ -712,7 +729,7 @@ public sealed class SqliteCareerStore : ICareerStore
 		{
 			list.Add(new OrganizationState
 			{
-				Identity = new OrganizationIdentity(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(4)),
+				Identity = CurrentIdentity(new OrganizationIdentity(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(4))),
 				DistrictId = reader.GetString(3),
 				TalentTier = (ProgramTalentTier)reader.GetInt32(5),
 				CompetitionLevel = reader.FieldCount > 6 && !reader.IsDBNull(6)

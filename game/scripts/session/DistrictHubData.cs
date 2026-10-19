@@ -43,7 +43,7 @@ public static class DistrictHubData
 		T("harbor-ridge", "Harbor Ridge", "HARBOR RIDGE", DistrictGreatLakes, false, 14, 8, "L1", 14, 8, "W1", 119, 91, 0.286f, 19, 3.12f),
 		T("delaware-valley", "Delaware Valley", "DELAWARE VALLEY", DistrictGreatLakes, false, 12, 10, "W1", 13, 9, "L2", 108, 102, 0.274f, 16, 3.40f),
 		T("bayview", "Bayview Central", "BAYVIEW", DistrictGreatLakes, false, 11, 11, "L2", 10, 12, "L1", 101, 110, 0.261f, 14, 3.72f),
-		T("northfield", "Northfield Prep", "NORTHFIELD", DistrictGreatLakes, false, 9, 13, "L3", 9, 13, "W1", 92, 118, 0.248f, 11, 4.05f),
+		T("northfield", "Northfield", "NORTHFIELD", DistrictGreatLakes, false, 9, 13, "L3", 9, 13, "W1", 92, 118, 0.248f, 11, 4.05f),
 		T("lakeside", "Lakeside Academy", "LAKESIDE", DistrictGreatLakes, false, 7, 15, "L4", 8, 14, "L3", 81, 129, 0.236f, 8, 4.44f),
 		T("pinecrest", "Pinecrest", "PINECREST", DistrictGreatLakes, false, 4, 18, "L7", 6, 16, "L5", 64, 148, 0.219f, 5, 5.12f),
 

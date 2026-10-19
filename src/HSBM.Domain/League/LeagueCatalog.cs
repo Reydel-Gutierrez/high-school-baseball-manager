@@ -164,7 +164,7 @@ public sealed class LeagueCatalog
 		Add(orgs, districtMap, "harbor-ridge", "Harbor Ridge High School", "Harbor Ridge", "great-lakes");
 		Add(orgs, districtMap, "delaware-valley", "Delaware Valley High School", "Delaware Valley", "great-lakes");
 		Add(orgs, districtMap, "bayview", "Bayview Central High School", "Bayview", "great-lakes");
-		Add(orgs, districtMap, "northfield", "Northfield Prep", "Northfield", "great-lakes");
+		Add(orgs, districtMap, "northfield", "Northfield High School", "Northfield", "great-lakes");
 		Add(orgs, districtMap, "lakeside", "Lakeside Academy", "Lakeside", "great-lakes");
 		Add(orgs, districtMap, "pinecrest", "Pinecrest High School", "Pinecrest", "great-lakes");
 

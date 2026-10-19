@@ -96,8 +96,16 @@ public partial class SchoolProfileCard : PanelContainer
 			child.QueueFree();
 		}
 
-		_body.AddChild(BuildHeader());
-		_body.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
+		HSBM.Domain.SchoolBrand? brand = TeamBrands.For(_snapshot.TeamId);
+		if (brand != null)
+		{
+			_body.AddChild(BuildBrandHeader(brand));
+		}
+		else
+		{
+			_body.AddChild(BuildHeader());
+			_body.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
+		}
 		_body.AddChild(BuildTabs());
 
 		var scroll = new ScrollContainer
@@ -180,6 +188,50 @@ public partial class SchoolProfileCard : PanelContainer
 		return header;
 	}
 
+	/// <summary>
+	/// Branded schools get a broadcast header: banner art in school colors,
+	/// the primary logo, "NORTHFIELD KNIGHTS", the school's full name and
+	/// hometown.
+	/// </summary>
+	private Control BuildBrandHeader(HSBM.Domain.SchoolBrand brand)
+	{
+		var panel = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 132), Stripe = 3 };
+		panel.UseTeam(_snapshot.TeamId);
+		var pad = new MarginContainer();
+		pad.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		pad.AddThemeConstantOverride("margin_left", 12);
+		pad.AddThemeConstantOverride("margin_top", 10);
+		pad.AddThemeConstantOverride("margin_right", 12);
+		pad.AddThemeConstantOverride("margin_bottom", 12);
+		panel.AddChild(pad);
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 12);
+		pad.AddChild(row);
+		Texture2D? logo = TeamLogos.Load(_snapshot.TeamId);
+		row.AddChild(logo != null ? TeamLogos.MakeHeaderMark(logo, 100) : new ProgramMark(84, _snapshot.TeamId));
+
+		var names = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = BoxContainer.AlignmentMode.Center };
+		names.AddThemeConstantOverride("separation", -2);
+		names.AddChild(MakeText($"{_snapshot.DistrictName.ToUpperInvariant()} DISTRICT  ·  {brand.LocationShort.ToUpperInvariant()}", _semibold, 10, new Color(brand.SecondaryHex), HorizontalAlignment.Left));
+		var title = MakeText(TeamBrands.TeamName(_snapshot.TeamId).ToUpperInvariant(), _bold, 26, Colors.White, HorizontalAlignment.Left);
+		title.ClipText = true;
+		names.AddChild(title);
+		names.AddChild(MakeText(_snapshot.FullName, _medium, 12, new Color(1, 1, 1, 0.75f), HorizontalAlignment.Left));
+		names.AddChild(MakeText(
+			$"{_snapshot.RecordLabel}   |   {_snapshot.PlaceLabel}   |   Reputation {_snapshot.Reputation}",
+			_semibold,
+			12,
+			Colors.White,
+			HorizontalAlignment.Left));
+		row.AddChild(names);
+		if (_closeHandler != null)
+		{
+			row.AddChild(MakeCloseButton());
+		}
+
+		return panel;
+	}
+
 	private Button MakeCloseButton()
 	{
 		var button = new Button
@@ -238,6 +290,11 @@ public partial class SchoolProfileCard : PanelContainer
 
 	private void BuildOverview(VBoxContainer content)
 	{
+		if (TeamBrands.For(_snapshot.TeamId) is { } brand)
+		{
+			BuildSchoolIdentity(content, brand);
+		}
+
 		content.AddChild(MakeSection("PROGRAM"));
 		content.AddChild(MakeStat("Reputation", _snapshot.Reputation.ToString(), ReputationColor(_snapshot.Reputation)));
 		content.AddChild(MakeStat("Facilities", _snapshot.Facilities.ToLabel(), GradeColor(_snapshot.Facilities)));
@@ -264,6 +321,60 @@ public partial class SchoolProfileCard : PanelContainer
 		content.AddChild(MakeStat("State Titles", _snapshot.StateTitles.ToString(), TextPrimary));
 		content.AddChild(MakeStat("Regional Titles", _snapshot.RegionalTitles.ToString(), TextPrimary));
 		content.AddChild(MakeStat("District Titles", _snapshot.DistrictTitles.ToString(), TextPrimary));
+	}
+
+	private void BuildSchoolIdentity(VBoxContainer content, HSBM.Domain.SchoolBrand brand)
+	{
+		content.AddChild(MakeSection("THE SCHOOL"));
+		content.AddChild(MakeStat("Location", brand.Location, TextPrimary));
+		content.AddChild(MakeStat("Mascot", brand.Mascot, TextPrimary));
+		content.AddChild(MakeStat("Founded", brand.Founded.ToString(System.Globalization.CultureInfo.InvariantCulture), TextPrimary));
+		content.AddChild(MakeStat("Enrollment", brand.Enrollment.ToString("N0", System.Globalization.CultureInfo.InvariantCulture), TextPrimary));
+		content.AddChild(MakeStat("Classification", brand.Classification, TextPrimary));
+		content.AddChild(MakeStat("Home Field", brand.HomeField, TextPrimary));
+
+		var colors = new HBoxContainer();
+		var label = MakeText("Colors", _medium, 13, TextMuted, HorizontalAlignment.Left);
+		label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		colors.AddChild(label);
+		foreach (string hex in new[] { brand.PrimaryHex, brand.SecondaryHex, brand.AccentHex })
+		{
+			var chip = new Panel { CustomMinimumSize = new Vector2(16, 16), SizeFlagsVertical = SizeFlags.ShrinkCenter };
+			chip.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+			{
+				BgColor = new Color(hex),
+				BorderColor = Hairline,
+				BorderWidthLeft = 1,
+				BorderWidthTop = 1,
+				BorderWidthRight = 1,
+				BorderWidthBottom = 1,
+				CornerRadiusTopLeft = 3,
+				CornerRadiusTopRight = 3,
+				CornerRadiusBottomLeft = 3,
+				CornerRadiusBottomRight = 3,
+			});
+			colors.AddChild(chip);
+		}
+
+		colors.AddChild(new Control { CustomMinimumSize = new Vector2(6, 0) });
+		colors.AddChild(MakeText(brand.ColorNames, _bold, 14, TextPrimary, HorizontalAlignment.Right));
+		content.AddChild(colors);
+		content.AddChild(MakeStat("Motto", $"\u201C{brand.Motto}\u201D", new Color(brand.SecondaryHex).Lightened(0.2f)));
+
+		content.AddChild(MakeSection("ABOUT THE PROGRAM"));
+		var history = MakeText(brand.History, _medium, 13, TextPrimary, HorizontalAlignment.Left);
+		history.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		history.CustomMinimumSize = new Vector2(200, 0);
+		content.AddChild(history);
+
+		content.AddChild(MakeSection("TRADITIONS"));
+		foreach (string tradition in brand.Traditions)
+		{
+			var line = MakeText($"\u2022  {tradition}", _medium, 13, TextPrimary, HorizontalAlignment.Left);
+			line.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			line.CustomMinimumSize = new Vector2(200, 0);
+			content.AddChild(line);
+		}
 	}
 
 	private void BuildRoster(VBoxContainer content)
