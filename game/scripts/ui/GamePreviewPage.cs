@@ -11,15 +11,15 @@ public partial class GamePreviewPage : Control
 {
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
 	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.88f);
 	private static readonly Color CardFill = new(0.070588f, 0.078431f, 0.094118f, 0.86f);
-	private static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
-	private static readonly Color Hairline = new(0.28f, 0.30f, 0.35f, 1f);
+	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
+	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
 
 	private GameSession _session = null!;
 	private FontFile _bold = null!;
@@ -517,10 +517,10 @@ public partial class GamePreviewPage : Control
 			ContentMarginTop = 18,
 			ContentMarginRight = 28,
 			ContentMarginBottom = 18,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 			CornerDetail = 4,
 			ShadowColor = new Color(0f, 0f, 0f, 0.35f),
 			ShadowSize = 12,
@@ -613,10 +613,10 @@ public partial class GamePreviewPage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}
@@ -630,10 +630,10 @@ public partial class GamePreviewPage : Control
 			ContentMarginTop = 10,
 			ContentMarginRight = 16,
 			ContentMarginBottom = 10,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}
@@ -652,10 +652,10 @@ public partial class GamePreviewPage : Control
 			ContentMarginTop = 10,
 			ContentMarginRight = 16,
 			ContentMarginBottom = 10,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}

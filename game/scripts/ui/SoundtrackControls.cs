@@ -9,11 +9,11 @@ public partial class SoundtrackControls : HBoxContainer
 {
 	private static readonly Color TextPrimary = new(0.800000f, 0.819608f, 0.850980f, 1f);
 	private static readonly Color TextActive = new(0.070588f, 0.074510f, 0.086275f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color FrameBg = new(0.121569f, 0.137255f, 0.160784f, 1f);
-	private static readonly Color FrameBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
+	private static readonly Color FrameBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
 
 	private FontFile _semibold = null!;
 	private Button _play = null!;
@@ -39,10 +39,10 @@ public partial class SoundtrackControls : HBoxContainer
 			ContentMarginTop = 2,
 			ContentMarginRight = 8,
 			ContentMarginBottom = 2,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 		});
 		AddChild(frame);
 
@@ -144,9 +144,9 @@ public partial class SoundtrackControls : HBoxContainer
 			ContentMarginTop = 4,
 			ContentMarginRight = 8,
 			ContentMarginBottom = 4,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 		};
 }

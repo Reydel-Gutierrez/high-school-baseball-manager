@@ -6,7 +6,7 @@ using Godot;
 /// </summary>
 public partial class MessagesTabButton : Button
 {
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 
 	private PanelContainer _badge = null!;

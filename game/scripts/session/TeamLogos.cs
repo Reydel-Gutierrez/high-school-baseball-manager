@@ -70,8 +70,10 @@ public static class TeamLogos
 	{
 		return new ColorRect
 		{
-			CustomMinimumSize = new Vector2(1, 0),
-			Color = color,
+			// The redesign drops the divider; kept as a no-op spacer so layouts stay put.
+			CustomMinimumSize = new Vector2(0, 0),
+			Color = Colors.Transparent,
+			Visible = false,
 			SizeFlagsVertical = Control.SizeFlags.ExpandFill,
 			MouseFilter = Control.MouseFilterEnum.Ignore,
 		};

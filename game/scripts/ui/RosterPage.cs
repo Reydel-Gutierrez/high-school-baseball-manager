@@ -23,16 +23,16 @@ public partial class RosterPage : Control
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color RowEven = new(0.055f, 0.062f, 0.078f, 0.55f);
 	private static readonly Color RowOdd = new(0.070588f, 0.078431f, 0.094118f, 0.35f);
-	private static readonly Color RowSelected = new(0.956863f, 0.643137f, 0.109804f, 0.14f);
+	private static readonly Color RowSelected = new(0.772549f, 0.635294f, 0.325490f, 0.14f);
 	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
 	private static readonly Color Urgent = new(0.906f, 0.298f, 0.235f, 1f);
-	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.92f);
+	private static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
 	private static readonly Color BarBg = new(0.121569f, 0.137255f, 0.160784f, 1f);
 
 	private readonly List<RosterPlayer> _players = [];
@@ -457,7 +457,7 @@ public partial class RosterPage : Control
 
 		header.AddChild(block);
 		header.MoveChild(block, countBlock.GetIndex());
-		var rule = new ColorRect { Color = new Color(0.28f, 0.30f, 0.35f, 1f), CustomMinimumSize = new Vector2(1, 0), MouseFilter = MouseFilterEnum.Ignore };
+		var rule = new ColorRect { Color = new Color(0.17f, 0.19f, 0.24f, 1f), CustomMinimumSize = new Vector2(1, 0), MouseFilter = MouseFilterEnum.Ignore };
 		header.AddChild(rule);
 		header.MoveChild(rule, countBlock.GetIndex());
 		_coverageStrip = block;
@@ -550,8 +550,8 @@ public partial class RosterPage : Control
 				ContentMarginRight = 4,
 				ContentMarginTop = 3,
 				ContentMarginBottom = 2,
-				CornerRadiusTopLeft = 3,
-				CornerRadiusTopRight = 3,
+				CornerRadiusTopLeft = 8,
+				CornerRadiusTopRight = 8,
 			});
 			string Join(List<string> names) => names.Count == 0 ? "none" : string.Join(", ", names);
 			cell.TooltipText = $"{code}: {status}\nPrimary: {Join(mains)}\nCan also play: {Join(backs)}"
@@ -813,7 +813,7 @@ public partial class RosterPage : Control
 		};
 		dialog.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.98f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = new Color(0.27451f, 0.294118f, 0.333333f),
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
@@ -823,10 +823,10 @@ public partial class RosterPage : Control
 			ContentMarginTop = 16,
 			ContentMarginRight = 18,
 			ContentMarginBottom = 16,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 			CornerDetail = 4,
 		});
 		center.AddChild(dialog);
@@ -997,7 +997,7 @@ public partial class RosterPage : Control
 		button.AddThemeColorOverride("font_hover_color", disabled ? new Color(0.40f, 0.42f, 0.46f) : Colors.White);
 		button.AddThemeColorOverride("font_pressed_color", fontColor);
 		button.AddThemeColorOverride("font_disabled_color", new Color(0.40f, 0.42f, 0.46f));
-		button.AddThemeStyleboxOverride("normal", MakeModalButtonStyle(CardInner, new Color(0.28f, 0.30f, 0.35f)));
+		button.AddThemeStyleboxOverride("normal", MakeModalButtonStyle(CardInner, new Color(0.17f, 0.19f, 0.24f)));
 		button.AddThemeStyleboxOverride("hover", MakeModalButtonStyle(HoverBg, Accent));
 		button.AddThemeStyleboxOverride("pressed", MakeModalButtonStyle(HoverBg, Accent));
 		button.AddThemeStyleboxOverride("focus", MakeModalButtonStyle(HoverBg, Accent));
@@ -1020,10 +1020,10 @@ public partial class RosterPage : Control
 			ContentMarginTop = 8,
 			ContentMarginRight = 14,
 			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}
@@ -1042,10 +1042,10 @@ public partial class RosterPage : Control
 			ContentMarginTop = 10,
 			ContentMarginRight = 14,
 			ContentMarginBottom = 10,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}
@@ -1447,7 +1447,7 @@ public partial class RosterPage : Control
 		return new ColorRect
 		{
 			CustomMinimumSize = new Vector2(0, 1),
-			Color = new Color(0.28f, 0.30f, 0.35f, 1f),
+			Color = new Color(0.17f, 0.19f, 0.24f, 1f),
 		};
 	}
 
@@ -1456,7 +1456,7 @@ public partial class RosterPage : Control
 		return new ColorRect
 		{
 			CustomMinimumSize = new Vector2(1, 0),
-			Color = new Color(0.28f, 0.30f, 0.35f, 1f),
+			Color = new Color(0.17f, 0.19f, 0.24f, 1f),
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
 	}
@@ -1685,10 +1685,10 @@ public partial class RosterPage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 			CornerDetail = 5,
 		};
 	}
@@ -1713,7 +1713,7 @@ public partial class RosterPage : Control
 		return new StyleBoxFlat
 		{
 			BgColor = CardInner,
-			BorderColor = new Color(0.28f, 0.30f, 0.35f, 1f),
+			BorderColor = new Color(0.17f, 0.19f, 0.24f, 1f),
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
 			BorderWidthRight = 1,
@@ -1722,10 +1722,10 @@ public partial class RosterPage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}

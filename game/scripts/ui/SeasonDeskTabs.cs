@@ -11,8 +11,8 @@ public static class SeasonDeskTabs
 	public const string Schedule = "schedule";
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 
@@ -65,10 +65,10 @@ public static class SeasonDeskTabs
 			ContentMarginTop = 5,
 			ContentMarginRight = 12,
 			ContentMarginBottom = 5,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 			CornerDetail = 5,
 		};
 	}

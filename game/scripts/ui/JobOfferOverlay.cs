@@ -10,13 +10,13 @@ public partial class JobOfferOverlay : Control
 {
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
 	private static readonly Color Urgent = new(0.906f, 0.298f, 0.235f, 1f);
-	private static readonly Color Hairline = new(0.28f, 0.30f, 0.35f, 1f);
-	private static readonly Color Gold = new(0.92f, 0.74f, 0.28f, 1f);
+	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
+	private static readonly Color Gold = new(0.772549f, 0.635294f, 0.325490f, 1f);
 
 	private GameSession _session = null!;
 	private FontFile _bold = null!;
@@ -363,10 +363,10 @@ public partial class JobOfferOverlay : Control
 		ContentMarginTop = 10,
 		ContentMarginRight = 14,
 		ContentMarginBottom = 10,
-		CornerRadiusTopLeft = 3,
-		CornerRadiusTopRight = 3,
-		CornerRadiusBottomRight = 3,
-		CornerRadiusBottomLeft = 3,
+		CornerRadiusTopLeft = 8,
+		CornerRadiusTopRight = 8,
+		CornerRadiusBottomRight = 8,
+		CornerRadiusBottomLeft = 8,
 		CornerDetail = 4,
 	};
 
@@ -382,10 +382,10 @@ public partial class JobOfferOverlay : Control
 		ContentMarginTop = 10,
 		ContentMarginRight = 14,
 		ContentMarginBottom = 10,
-		CornerRadiusTopLeft = 3,
-		CornerRadiusTopRight = 3,
-		CornerRadiusBottomRight = 3,
-		CornerRadiusBottomLeft = 3,
+		CornerRadiusTopLeft = 8,
+		CornerRadiusTopRight = 8,
+		CornerRadiusBottomRight = 8,
+		CornerRadiusBottomLeft = 8,
 		CornerDetail = 4,
 	};
 

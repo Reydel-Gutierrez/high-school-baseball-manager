@@ -7,13 +7,13 @@ using Godot;
 /// </summary>
 public partial class CalendarTabButton : Button
 {
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color PageBg = new(0.121569f, 0.137255f, 0.160784f, 1f);
 	private static readonly Color PageBgHover = new(0.168627f, 0.184314f, 0.215686f, 1f);
 	private static readonly Color PageBgActive = new(0.196078f, 0.164706f, 0.101961f, 1f);
-	private static readonly Color Border = new(0.243137f, 0.262745f, 0.301961f, 1f);
+	private static readonly Color Border = new(0.137255f, 0.152941f, 0.200000f, 1f);
 	private static readonly Color FocusBorder = new(0.988235f, 0.843137f, 0.450980f, 1f);
 	private static readonly Color DayColor = new(0.956863f, 0.964706f, 0.972549f, 1f);
 
@@ -135,8 +135,8 @@ public partial class CalendarTabButton : Button
 		{
 			BgColor = header,
 			DrawCenter = true,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
 			CornerRadiusBottomRight = 0,
 			CornerRadiusBottomLeft = 0,
 			CornerDetail = 4,

@@ -64,9 +64,9 @@ public static class SchoolLinks
 			chip.AddThemeFontOverride("font", semibold);
 			chip.AddThemeFontSizeOverride("font_size", 11);
 			chip.AddThemeColorOverride("font_color", new Color(0.070588f, 0.074510f, 0.086275f, 1f));
-			chip.AddThemeStyleboxOverride("normal", MakeFilled(new Color(0.956863f, 0.643137f, 0.109804f, 1f)));
-			chip.AddThemeStyleboxOverride("hover", MakeFilled(new Color(0.980392f, 0.721569f, 0.200000f, 1f)));
-			chip.AddThemeStyleboxOverride("pressed", MakeFilled(new Color(0.980392f, 0.721569f, 0.200000f, 1f)));
+			chip.AddThemeStyleboxOverride("normal", MakeFilled(new Color(0.772549f, 0.635294f, 0.325490f, 1f)));
+			chip.AddThemeStyleboxOverride("hover", MakeFilled(new Color(0.850980f, 0.729412f, 0.443137f, 1f)));
+			chip.AddThemeStyleboxOverride("pressed", MakeFilled(new Color(0.850980f, 0.729412f, 0.443137f, 1f)));
 			string id = team.Id;
 			chip.Pressed += () => Open(chip, id);
 			row.AddChild(chip);
@@ -84,7 +84,7 @@ public static class SchoolLinks
 			SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
 			MouseDefaultCursorShape = Control.CursorShape.PointingHand,
 		};
-		Color accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
+		Color accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
 		Color textOn = new(0.070588f, 0.074510f, 0.086275f, 1f);
 		Color idle = new(0.956863f, 0.964706f, 0.972549f, 1f);
 		button.AddThemeFontOverride("font", semibold);
@@ -92,7 +92,7 @@ public static class SchoolLinks
 		button.AddThemeColorOverride("font_color", active ? textOn : idle);
 		button.AddThemeColorOverride("font_hover_color", active ? textOn : Colors.White);
 		button.AddThemeStyleboxOverride("normal", MakeFilled(active ? accent : Colors.Transparent));
-		button.AddThemeStyleboxOverride("hover", MakeFilled(active ? new Color(0.980392f, 0.721569f, 0.200000f, 1f) : new Color(0.184314f, 0.203922f, 0.239216f, 1f)));
+		button.AddThemeStyleboxOverride("hover", MakeFilled(active ? new Color(0.850980f, 0.729412f, 0.443137f, 1f) : new Color(0.184314f, 0.203922f, 0.239216f, 1f)));
 		button.AddThemeStyleboxOverride("pressed", MakeFilled(active ? accent : new Color(0.184314f, 0.203922f, 0.239216f, 1f)));
 		button.Pressed += onPressed;
 		return button;
@@ -107,10 +107,10 @@ public static class SchoolLinks
 			ContentMarginTop = 5,
 			ContentMarginRight = 10,
 			ContentMarginBottom = 5,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 		};
 	}
 

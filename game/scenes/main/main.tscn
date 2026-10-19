@@ -56,7 +56,7 @@ content_margin_left = 14.0
 content_margin_top = 6.0
 content_margin_right = 14.0
 content_margin_bottom = 6.0
-bg_color = Color(0.95686275, 0.6431373, 0.10980392, 1)
+bg_color = Color(0.77254903, 0.63529414, 0.3254902, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -169,7 +169,7 @@ vertical_alignment = 1
 
 [node name="YearLabel" type="Label" parent="Shell/AppLayout/TopBar/TopBarMargin/HBoxContainer/BrandMark/TitleRow" unique_id=1005]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95686275, 0.6431373, 0.10980392, 1)
+theme_override_colors/font_color = Color(0.77254903, 0.63529414, 0.3254902, 1)
 theme_override_fonts/font = ExtResource("5_bold")
 theme_override_font_sizes/font_size = 22
 text = "26"

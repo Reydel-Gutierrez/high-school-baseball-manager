@@ -13,14 +13,14 @@ public partial class LeadersPage : Control
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
-	private static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
+	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
 	private static readonly Color RowEven = new(0.055f, 0.062f, 0.078f, 0.55f);
 	private static readonly Color RowOdd = new(0.070588f, 0.078431f, 0.094118f, 0.35f);
-	private static readonly Color UserRow = new(0.956863f, 0.643137f, 0.109804f, 0.14f);
+	private static readonly Color UserRow = new(0.772549f, 0.635294f, 0.325490f, 0.14f);
 
 	private GameSession _session = null!;
 	private FontFile _bold = null!;
@@ -93,7 +93,7 @@ public partial class LeadersPage : Control
 		var header = new HBoxContainer();
 		header.AddThemeConstantOverride("separation", 14);
 		header.AddChild(UserProgram.MakeHeaderMark());
-		header.AddChild(TeamLogos.MakeHeaderRule(new Color(0.28f, 0.30f, 0.35f, 1f)));
+		header.AddChild(TeamLogos.MakeHeaderRule(new Color(0.17f, 0.19f, 0.24f, 1f)));
 
 		var identity = new VBoxContainer
 		{
@@ -101,8 +101,8 @@ public partial class LeadersPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("LEADERS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("LEADERS", _bold, 36, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  FOUR DISTRICTS", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -159,7 +159,7 @@ public partial class LeadersPage : Control
 		var heading = new PanelContainer();
 		heading.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.047059f, 0.054902f, 0.070588f, 0.96f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			ContentMarginLeft = 12,
 			ContentMarginTop = 10,
 			ContentMarginRight = 12,
@@ -191,7 +191,7 @@ public partial class LeadersPage : Control
 		var header = new PanelContainer();
 		header.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.047059f, 0.054902f, 0.070588f, 0.96f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = CardBorder,
 			BorderWidthBottom = 1,
 			ContentMarginLeft = 12,
@@ -381,16 +381,16 @@ public partial class LeadersPage : Control
 	{
 		return new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.94f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = CardBorder,
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
 			BorderWidthRight = 1,
 			BorderWidthBottom = 1,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}
@@ -405,10 +405,10 @@ public partial class LeadersPage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 4,
-			CornerRadiusTopRight = 4,
-			CornerRadiusBottomRight = 4,
-			CornerRadiusBottomLeft = 4,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
 			CornerDetail = 5,
 		};
 	}

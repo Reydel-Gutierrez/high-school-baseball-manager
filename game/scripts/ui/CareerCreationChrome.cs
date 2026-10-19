@@ -22,8 +22,8 @@ public static class CareerCreationChrome
 	public static readonly Color AccentHot = new(0.22f, 0.56f, 1f, 1f);
 	public static readonly Color ButtonIdle = new(0.055f, 0.078f, 0.145f, 0.78f);
 	public static readonly Color ButtonHover = new(0.10f, 0.16f, 0.30f, 0.90f);
-	public static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.96f);
-	public static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
+	public static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
+	public static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
 	public static readonly Color FieldBg = new(0.04f, 0.055f, 0.10f, 0.92f);
 	public static readonly Color Ink = new(0.05f, 0.07f, 0.10f, 1f);
 

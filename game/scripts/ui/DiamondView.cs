@@ -10,7 +10,7 @@ public partial class DiamondView : Control
 	private static readonly Color Dirt = new(0.42f, 0.30f, 0.20f, 0.95f);
 	private static readonly Color Chalk = new(0.92f, 0.92f, 0.88f, 0.9f);
 	private static readonly Color BaseEmpty = new(0.85f, 0.86f, 0.88f, 1f);
-	private static readonly Color BaseLit = new(0.956863f, 0.643137f, 0.109804f, 1f);
+	private static readonly Color BaseLit = new(0.772549f, 0.635294f, 0.325490f, 1f);
 	private static readonly Color OutOff = new(0.25f, 0.27f, 0.31f, 1f);
 	private static readonly Color OutOn = new(0.906f, 0.298f, 0.235f, 1f);
 

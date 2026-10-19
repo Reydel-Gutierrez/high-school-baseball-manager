@@ -12,14 +12,14 @@ public partial class CalendarPage : Control
 {
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color Important = new(0.45f, 0.72f, 0.88f, 1f);
 	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
 	private static readonly Color Urgent = new(0.906f, 0.298f, 0.235f, 1f);
-	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.92f);
-	private static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
-	private static readonly Color Hairline = new(0.28f, 0.30f, 0.35f, 1f);
+	private static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
+	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
+	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
 	private static readonly string[] Weekdays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 	private GameSession _session = null!;
@@ -284,8 +284,8 @@ public partial class CalendarPage : Control
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 		};
 		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"HOME  ·  {GameSession.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("CALENDAR", _bold, 26, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText($"HOME  ·  {GameSession.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("CALENDAR", _bold, 36, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -675,10 +675,10 @@ public partial class CalendarPage : Control
 			ContentMarginTop = 1,
 			ContentMarginRight = 5,
 			ContentMarginBottom = 1,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 		});
 		badge.AddChild(MakeText(text, _bold, 13, color, HorizontalAlignment.Center));
 		row.AddChild(badge);
@@ -739,10 +739,10 @@ public partial class CalendarPage : Control
 			ContentMarginTop = 3,
 			ContentMarginRight = 3,
 			ContentMarginBottom = 3,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		});
 
@@ -1051,15 +1051,15 @@ public partial class CalendarPage : Control
 		};
 		row.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = active ? new Color(0.956863f, 0.643137f, 0.109804f, 0.12f) : Colors.Transparent,
+			BgColor = active ? new Color(0.772549f, 0.635294f, 0.325490f, 0.12f) : Colors.Transparent,
 			ContentMarginLeft = 6,
 			ContentMarginTop = 5,
 			ContentMarginRight = 6,
 			ContentMarginBottom = 5,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 		});
 		row.GuiInput += ev =>
 		{
@@ -1131,7 +1131,7 @@ public partial class CalendarPage : Control
 		};
 		card.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.94f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = CardBorder,
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
@@ -1141,10 +1141,10 @@ public partial class CalendarPage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		});
 		return card;
@@ -1164,10 +1164,10 @@ public partial class CalendarPage : Control
 			ContentMarginTop = 8,
 			ContentMarginRight = 10,
 			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}
@@ -1186,10 +1186,10 @@ public partial class CalendarPage : Control
 			ContentMarginTop = 6,
 			ContentMarginRight = 10,
 			ContentMarginBottom = 6,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}

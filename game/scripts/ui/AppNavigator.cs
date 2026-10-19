@@ -929,6 +929,18 @@ public partial class AppNavigator : MarginContainer
 		_rail.SectionPressed += OpenSection;
 		_rail.CoachPressed += ShowCareer;
 
+		// Flat dark canvas from the concepts: drop each page's stadium photo.
+		RenderingServer.SetDefaultClearColor(UiKit.Bg);
+		PanelContainer contentArea = GetNode<PanelContainer>("Shell/AppLayout/ContentArea");
+		contentArea.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = UiKit.Bg });
+		foreach (Node page in contentArea.GetChildren())
+		{
+			if (page.GetNodeOrNull<CanvasItem>("BackgroundImage") is { } photo)
+			{
+				photo.Visible = false;
+			}
+		}
+
 		VBoxContainer layout = GetNode<VBoxContainer>("Shell/AppLayout");
 		_sectionBar = new SectionBar { Name = "SectionBar" };
 		layout.AddChild(_sectionBar);
@@ -1436,8 +1448,8 @@ public partial class AppNavigator : MarginContainer
 	{
 		return new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.94f),
-			BorderColor = new Color(0.243137f, 0.262745f, 0.301961f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
+			BorderColor = new Color(0.137255f, 0.152941f, 0.200000f),
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
 			BorderWidthRight = 1,
@@ -1446,10 +1458,10 @@ public partial class AppNavigator : MarginContainer
 			ContentMarginTop = 24,
 			ContentMarginRight = 24,
 			ContentMarginBottom = 24,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}

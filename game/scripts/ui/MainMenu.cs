@@ -19,8 +19,8 @@ public partial class MainMenu : Control
 	private static readonly Color AccentBlueHot = new(0.22f, 0.56f, 1f, 1f);
 	private static readonly Color ButtonIdle = new(0.055f, 0.078f, 0.145f, 0.78f);
 	private static readonly Color ButtonHover = new(0.10f, 0.16f, 0.30f, 0.90f);
-	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.96f);
-	private static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
+	private static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
+	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
 
 	private enum MenuAction
 	{

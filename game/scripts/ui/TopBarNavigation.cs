@@ -40,8 +40,8 @@ public partial class TopBarNavigation : PanelContainer
 	// Prototype palette: dark navy bar, amber active pill, cool off-white labels.
 	private static readonly Color TextPrimary = new(0.800000f, 0.819608f, 0.850980f, 1f); // #CCD1D9
 	private static readonly Color TextActive = new(0.070588f, 0.074510f, 0.086275f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f); // #F4A41C
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f); // #F4A41C
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color FocusBorder = new(0.988235f, 0.843137f, 0.450980f, 1f);
 

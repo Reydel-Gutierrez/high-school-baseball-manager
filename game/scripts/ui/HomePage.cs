@@ -17,15 +17,15 @@ public partial class HomePage : Control
 
 	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
 	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.956863f, 0.643137f, 0.109804f, 1f);
-	private static readonly Color AccentHover = new(0.980392f, 0.721569f, 0.200000f, 1f);
+	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
+	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
 	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
 	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
 	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
 	private static readonly Color Urgent = new(0.906f, 0.298f, 0.235f, 1f);
-	private static readonly Color CardInner = new(0.055f, 0.062f, 0.078f, 0.92f);
-	private static readonly Color CardBorder = new(0.243137f, 0.262745f, 0.301961f, 1f);
-	private static readonly Color Hairline = new(0.28f, 0.30f, 0.35f, 1f);
+	private static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
+	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
+	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
 	private static readonly Color LakesBlue = new(0.45f, 0.72f, 0.88f, 1f);
 	private static readonly Color Important = new(0.45f, 0.72f, 0.88f, 1f);
 
@@ -462,7 +462,7 @@ public partial class HomePage : Control
 		};
 		panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.98f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = CardBorder,
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
@@ -472,10 +472,10 @@ public partial class HomePage : Control
 			ContentMarginTop = 14,
 			ContentMarginRight = 16,
 			ContentMarginBottom = 16,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 		});
 		center.AddChild(panel);
 
@@ -833,10 +833,10 @@ public partial class HomePage : Control
 			ContentMarginTop = 3,
 			ContentMarginRight = 6,
 			ContentMarginBottom = 3,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 		});
 		button.AddThemeStyleboxOverride("hover", MakeOutlinedButton(HoverBg, Accent));
 		button.AddThemeStyleboxOverride("pressed", MakeOutlinedButton(HoverBg, Accent));
@@ -2014,10 +2014,10 @@ public partial class HomePage : Control
 			ContentMarginRight = 6,
 			ContentMarginTop = 1,
 			ContentMarginBottom = 1,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomLeft = 3,
-			CornerRadiusBottomRight = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomLeft = 8,
+			CornerRadiusBottomRight = 8,
 		});
 		hand.AddChild(MakeText(string.IsNullOrEmpty(kicker) ? pitcher.Hand : $"{kicker}  ·  {pitcher.Hand}", _semibold, 10, UiKit.Gold, HorizontalAlignment.Left));
 		info.AddChild(hand);
@@ -2044,10 +2044,10 @@ public partial class HomePage : Control
 			BgColor = new Color(0, 0, 0, 0.32f),
 			ContentMarginTop = 3,
 			ContentMarginBottom = 3,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomLeft = 3,
-			CornerRadiusBottomRight = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomLeft = 8,
+			CornerRadiusBottomRight = 8,
 		});
 		var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		col.AddThemeConstantOverride("separation", -2);
@@ -2172,7 +2172,7 @@ public partial class HomePage : Control
 		};
 		card.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = new Color(0.070588f, 0.078431f, 0.094118f, 0.94f),
+			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
 			BorderColor = CardBorder,
 			BorderWidthLeft = 1,
 			BorderWidthTop = 1,
@@ -2182,10 +2182,10 @@ public partial class HomePage : Control
 			ContentMarginTop = 8,
 			ContentMarginRight = 10,
 			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		});
 		return card;
@@ -2246,10 +2246,10 @@ public partial class HomePage : Control
 			ContentMarginTop = padY,
 			ContentMarginRight = padX,
 			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 3,
 		};
 	}
@@ -2263,10 +2263,10 @@ public partial class HomePage : Control
 			ContentMarginTop = 8,
 			ContentMarginRight = 12,
 			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}
@@ -2285,10 +2285,10 @@ public partial class HomePage : Control
 			ContentMarginTop = 8,
 			ContentMarginRight = 12,
 			ContentMarginBottom = 8,
-			CornerRadiusTopLeft = 3,
-			CornerRadiusTopRight = 3,
-			CornerRadiusBottomRight = 3,
-			CornerRadiusBottomLeft = 3,
+			CornerRadiusTopLeft = 8,
+			CornerRadiusTopRight = 8,
+			CornerRadiusBottomRight = 8,
+			CornerRadiusBottomLeft = 8,
 			CornerDetail = 4,
 		};
 	}
