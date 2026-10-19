@@ -51,7 +51,7 @@ public partial class HomePage
 
 	private Control BuildHero()
 	{
-		_hero = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 178), Stripe = 3f };
+		_hero = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 164), Stripe = 3f };
 		_hero.UseTeam(_session.CatalogOrganizationId);
 
 		var pad = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
@@ -68,7 +68,7 @@ public partial class HomePage
 
 		_heroCrest = new TextureRect
 		{
-			CustomMinimumSize = new Vector2(148, 148),
+			CustomMinimumSize = new Vector2(136, 136),
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
@@ -172,6 +172,13 @@ public partial class HomePage
 		Clear(_attentionList);
 		IReadOnlyList<InboxMessage> items = MessagesDesk.For(_session);
 		int shown = 0;
+		string? gap = CoverageGap();
+		if (gap != null)
+		{
+			_attentionList.AddChild(AttentionRowRaw(gap, "Position coverage  ·  Roster", "FIX", UiKit.Red, OpenRosterPage));
+			shown++;
+		}
+
 		foreach (InboxMessage item in items)
 		{
 			if (shown == 3)
@@ -194,31 +201,111 @@ public partial class HomePage
 		}
 	}
 
-	private Control AttentionRow(InboxMessage item)
+	private Control AttentionRow(InboxMessage item) =>
+		AttentionRowRaw(
+			item.Headline,
+			item.Preview,
+			string.IsNullOrWhiteSpace(item.ActionLabel) ? "OPEN" : item.ActionLabel.ToUpperInvariant(),
+			ChannelTone(item.Channel),
+			() => OpenTickerMessage(item));
+
+	private Control AttentionRowRaw(string headline, string preview, string action, Color tone, System.Action onPressed)
 	{
-		var button = RowButton(() => OpenTickerMessage(item));
+		var button = RowButton(onPressed);
 		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		row.AddThemeConstantOverride("separation", 10);
-		row.AddChild(Dot(ChannelTone(item.Channel), 8));
+		row.AddChild(Dot(tone, 8));
 
 		var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
 		text.AddThemeConstantOverride("separation", -3);
-		var head = UiKit.Text_(item.Headline, UiKit.Semibold, 15, Colors.White);
+		var head = UiKit.Text_(headline, UiKit.Semibold, 15, Colors.White);
 		head.ClipText = true;
 		head.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
 		text.AddChild(head);
-		var sub = UiKit.Text_(item.Preview, UiKit.Medium, 12, new Color(1, 1, 1, 0.55f));
+		var sub = UiKit.Text_(preview, UiKit.Medium, 12, new Color(1, 1, 1, 0.55f));
 		sub.ClipText = true;
 		sub.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
 		text.AddChild(sub);
 		row.AddChild(text);
 
-		string action = string.IsNullOrWhiteSpace(item.ActionLabel) ? "OPEN" : item.ActionLabel.ToUpperInvariant();
 		row.AddChild(UiKit.Text_(action, UiKit.Semibold, 11, UiKit.Gold));
 		button.CustomMinimumSize = new Vector2(0, 40);
 		button.AddChild(row);
 		return button;
+	}
+
+	private static readonly (string Code, PlayerPosition Position)[] FieldSpots =
+	[
+		("C", PlayerPosition.Catcher),
+		("1B", PlayerPosition.FirstBase),
+		("2B", PlayerPosition.SecondBase),
+		("3B", PlayerPosition.ThirdBase),
+		("SS", PlayerPosition.Shortstop),
+		("LF", PlayerPosition.LeftField),
+		("CF", PlayerPosition.CenterField),
+		("RF", PlayerPosition.RightField),
+	];
+
+	/// <summary>"No healthy 1B or 3B on varsity" when a spot has nobody, else null.</summary>
+	private string? CoverageGap()
+	{
+		if (_session.World == null)
+		{
+			return null;
+		}
+
+		TeamLevel level = _session.ActiveTeam.Level;
+		var squad = new List<Player>();
+		foreach (Player p in _session.OrganizationRoster())
+		{
+			if (p.TeamLevel == level && !(p.Injury != null && p.Injury.ActiveOn(_session.CurrentDate)))
+			{
+				squad.Add(p);
+			}
+		}
+
+		if (squad.Count == 0)
+		{
+			return null;
+		}
+
+		var missing = new List<string>();
+		foreach ((string code, PlayerPosition spot) in FieldSpots)
+		{
+			bool covered = false;
+			foreach (Player p in squad)
+			{
+				if (p.PrimaryPosition == spot || p.SecondaryPosition == spot)
+				{
+					covered = true;
+					break;
+				}
+			}
+
+			if (!covered)
+			{
+				missing.Add(code);
+			}
+		}
+
+		if (missing.Count == 0)
+		{
+			return null;
+		}
+
+		string squadName = level == TeamLevel.Varsity ? "varsity" : "JV";
+		return missing.Count == 1
+			? $"No healthy {missing[0]} on {squadName}"
+			: $"No healthy {string.Join(", ", missing.GetRange(0, missing.Count - 1))} or {missing[^1]} on {squadName}";
+	}
+
+	private void OpenRosterPage()
+	{
+		if (GetTree().CurrentScene is AppNavigator navigator)
+		{
+			navigator.ShowRoster();
+		}
 	}
 
 	private Control BuildInboxCard()
@@ -242,7 +329,7 @@ public partial class HomePage
 		IReadOnlyList<InboxMessage> items = MessagesDesk.For(_session);
 
 		// The banner already shows the first three; the inbox lists what follows.
-		int start = items.Count > 6 ? 3 : 0;
+		int start = items.Count > 3 ? 3 : 0;
 		int shown = 0;
 		for (int i = start; i < items.Count && shown < 5; i++, shown++)
 		{
@@ -459,11 +546,11 @@ public partial class HomePage
 		string homeId = game.Home ? userId : oppId;
 		string venue = TeamBrands.For(homeId)?.HomeField ?? $"{DistrictHubData.GetTeam(homeId).ShortName} Field";
 
-		var card = UiKit.MakeCard(20, 16);
+		var card = UiKit.MakeCard(20, 12);
 		card.SizeFlagsVertical = SizeFlags.ExpandFill;
 		card.ClipContents = true;
 		var col = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-		col.AddThemeConstantOverride("separation", 8);
+		col.AddThemeConstantOverride("separation", 4);
 		card.AddChild(col);
 
 		string kicker = ContestKicker(game) + "  ·  " + (game.Home ? "HOME" : "AWAY");
@@ -481,7 +568,7 @@ public partial class HomePage
 		mid.AddThemeConstantOverride("separation", 0);
 		mid.AddChild(UiKit.Text_("VS", UiKit.Bold, 18, UiKit.Muted, HorizontalAlignment.Center));
 		string day = game.Date.ToString("ddd  ·  MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
-		mid.AddChild(UiKit.Text_(day, UiKit.Bold, 28, UiKit.Text, HorizontalAlignment.Center));
+		mid.AddChild(UiKit.Text_(day, UiKit.Bold, 26, UiKit.Text, HorizontalAlignment.Center));
 		mid.AddChild(UiKit.Text_($"{game.Time}  ·  {venue}", UiKit.Medium, 13, UiKit.Muted, HorizontalAlignment.Center));
 		matchup.AddChild(mid);
 		matchup.AddChild(NextGameTeam(oppId, oppRecord));
@@ -493,12 +580,11 @@ public partial class HomePage
 		Color ours = BarColor(userId, UiKit.Gold);
 		Color theirs = BarColor(oppId, UiKit.Red);
 		var bars = new VBoxContainer();
-		bars.AddThemeConstantOverride("separation", 4);
+		bars.AddThemeConstantOverride("separation", 0);
 		bars.AddChild(StrengthRow("PITCHING", us.Pitching, them.Pitching, ours, theirs));
 		bars.AddChild(StrengthRow("HITTING", us.Hitting, them.Hitting, ours, theirs));
 		bars.AddChild(StrengthRow("DEFENSE", us.Fielding, them.Fielding, ours, theirs));
 		col.AddChild(bars);
-		col.AddChild(UiKit.Spacer(0, 2));
 
 		var pitchers = new HBoxContainer();
 		pitchers.AddThemeConstantOverride("separation", 10);
@@ -532,20 +618,20 @@ public partial class HomePage
 		Texture2D? logo = TeamLogos.Load(teamId);
 		if (logo != null)
 		{
-			var mark = MakeShowcaseLogo(logo, 96);
+			var mark = MakeShowcaseLogo(logo, 70);
 			mark.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 			box.AddChild(mark);
 		}
 		else
 		{
 			var center = new CenterContainer { MouseFilter = MouseFilterEnum.Ignore };
-			center.AddChild(new ProgramMark(84, teamId));
+			center.AddChild(new ProgramMark(64, teamId));
 			box.AddChild(center);
 		}
 
 		SchoolBrand? brand = TeamBrands.For(teamId);
 		string name = brand?.Mascot ?? DistrictHubData.GetTeam(teamId).ShortName;
-		box.AddChild(UiKit.Text_(name.ToUpperInvariant(), UiKit.Bold, 22, UiKit.Text, HorizontalAlignment.Center));
+		box.AddChild(UiKit.Text_(name.ToUpperInvariant(), UiKit.Bold, 19, UiKit.Text, HorizontalAlignment.Center));
 		string where = brand?.LocationShort ?? DistrictHubData.GetTeam(teamId).ShortName;
 		box.AddChild(UiKit.Text_($"{record}  ·  {where}", UiKit.Medium, 12, UiKit.Muted, HorizontalAlignment.Center));
 		SchoolLinks.MakeClickable(box, teamId);
@@ -556,7 +642,7 @@ public partial class HomePage
 	{
 		var row = new HBoxContainer();
 		row.AddThemeConstantOverride("separation", 12);
-		var left = UiKit.Text_(ours.ToString(CultureInfo.InvariantCulture), UiKit.Bold, 18, ours >= theirs ? UiKit.Text : UiKit.Muted);
+		var left = UiKit.Text_(ours.ToString(CultureInfo.InvariantCulture), UiKit.Bold, 16, ours >= theirs ? UiKit.Text : UiKit.Muted);
 		left.CustomMinimumSize = new Vector2(30, 0);
 		row.AddChild(left);
 		var ourBar = UiKit.Meter(ours, 100, ourColor, 0, 6);
@@ -569,7 +655,7 @@ public partial class HomePage
 		var theirBar = UiKit.Meter(theirs, 100, theirColor, 0, 6);
 		theirBar.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		row.AddChild(theirBar);
-		var right = UiKit.Text_(theirs.ToString(CultureInfo.InvariantCulture), UiKit.Bold, 18, theirs >= ours ? UiKit.Text : UiKit.Muted, HorizontalAlignment.Right);
+		var right = UiKit.Text_(theirs.ToString(CultureInfo.InvariantCulture), UiKit.Bold, 16, theirs >= ours ? UiKit.Text : UiKit.Muted, HorizontalAlignment.Right);
 		right.CustomMinimumSize = new Vector2(30, 0);
 		row.AddChild(right);
 		return row;

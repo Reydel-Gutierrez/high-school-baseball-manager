@@ -1961,7 +1961,7 @@ public partial class HomePage : Control
 			Number = player is { JerseyNumber: > 0 } ? player.JerseyNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : "",
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
-			CustomMinimumSize = new Vector2(0, 118),
+			CustomMinimumSize = new Vector2(0, 100),
 			MouseDefaultCursorShape = CursorShape.PointingHand,
 		};
 		PlayerLinks.MakeClickable(chip, pitcher.TeamId, pitcher.PlayerName);
