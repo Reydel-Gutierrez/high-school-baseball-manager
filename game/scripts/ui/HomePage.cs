@@ -2284,9 +2284,11 @@ public partial class HomePage : Control
 		GamePreviewStarter userArm = userHome ? sheet.HomeStarter : sheet.AwayStarter;
 		GamePreviewStarter oppArm = userHome ? sheet.AwayStarter : sheet.HomeStarter;
 		string when = $"{game.Date.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}  ·  {game.Time}";
-		string venue = game.Home
-			? $"{_session.Organization.ShortName.ToUpperInvariant()} FIELD"
-			: $"{DistrictHubData.GetTeam(oppId).ShortName.ToUpperInvariant()} FIELD";
+		string homeId = game.Home ? userId : oppId;
+		string homeShort = game.Home ? _session.Organization.ShortName : DistrictHubData.GetTeam(oppId).ShortName;
+		string venue = TeamBrands.For(homeId) is { } homeBrand
+			? $"{homeBrand.HomeField.ToUpperInvariant()}  ·  {homeBrand.LocationShort.ToUpperInvariant()}"
+			: $"{homeShort.ToUpperInvariant()} FIELD";
 		return BuildContestCard(
 			ContestKicker(game),
 			when,
