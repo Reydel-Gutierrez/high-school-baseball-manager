@@ -93,7 +93,6 @@ public partial class ShellRail : PanelContainer
 			CustomMinimumSize = new Vector2(66, 62),
 			FocusMode = FocusModeEnum.None,
 			MouseDefaultCursorShape = CursorShape.PointingHand,
-			TooltipText = label[..1] + label[1..].ToLowerInvariant(),
 		};
 		var inner = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
 		inner.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);

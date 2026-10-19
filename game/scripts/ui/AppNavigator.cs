@@ -965,7 +965,7 @@ public partial class AppNavigator : MarginContainer
 		rightCluster.AddChild(_continueButton);
 		rightCluster.AddThemeConstantOverride("separation", 12);
 
-		var timer = new Timer { WaitTime = 0.5, Autostart = true };
+		var timer = new Godot.Timer { WaitTime = 0.5, Autostart = true };
 		timer.Timeout += RefreshShellStatus;
 		AddChild(timer);
 		RefreshShellStatus();
