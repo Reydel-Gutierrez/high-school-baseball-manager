@@ -3,9 +3,9 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// League world map: four districts, 32 programs, then drill into a
-/// district or a school. Standings, rankings, and the rest of the league
-/// desk stay one click away in the same menu.
+/// District directory: pick one of the four districts (yours by default)
+/// to see its eight programs and open any school's profile. Standings,
+/// rankings, and the rest of the league desk stay in the same menu.
 /// </summary>
 public partial class LeagueOverviewPage : Control
 {
@@ -59,11 +59,16 @@ public partial class LeagueOverviewPage : Control
 		VisibilityChanged -= OnVisibilityChanged;
 	}
 
+	/// <summary>Open the directory on the user's own district.</summary>
 	public void ShowWorld()
 	{
-		_focusedDistrict = null;
+		_boundUserProgram = UserProgram.OrganizationId;
+		_selectedSchoolId = UserTeamId();
+		_focusedDistrict = UserDistrictId();
 		Refresh();
 	}
+
+	private string UserDistrictId() => DistrictHubData.GetTeam(UserTeamId()).DistrictId;
 
 	public void ShowDistrict(string districtId)
 	{
@@ -152,7 +157,7 @@ public partial class LeagueOverviewPage : Control
 		};
 		identity.AddThemeConstantOverride("separation", -2);
 		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _medium, 10, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("HIGH SCHOOL BASEBALL", _bold, 26, TextPrimary, HorizontalAlignment.Left));
+		identity.AddChild(MakeText("DISTRICTS", _bold, 26, TextPrimary, HorizontalAlignment.Left));
 		_subtitle = MakeText("FOUR DISTRICTS  ·  32 PROGRAMS", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
 		identity.AddChild(_subtitle);
 		header.AddChild(identity);
@@ -185,6 +190,7 @@ public partial class LeagueOverviewPage : Control
 
 		_boundUserProgram = user;
 		_selectedSchoolId = user;
+		_focusedDistrict = null;
 	}
 
 	private void Refresh()
@@ -195,6 +201,7 @@ public partial class LeagueOverviewPage : Control
 			return;
 		}
 
+		_focusedDistrict ??= UserDistrictId();
 		ApplyHeaderCopy();
 		RebuildFilters();
 		RebuildBody();
@@ -204,15 +211,7 @@ public partial class LeagueOverviewPage : Control
 	{
 		bool varsity = Level() == TeamLevel.Varsity;
 		string level = varsity ? "VARSITY" : "JV";
-		if (_focusedDistrict == null)
-		{
-			_subtitle.Text = $"{level}  ·  FOUR DISTRICTS  ·  32 PROGRAMS";
-			_countValue.Text = $"{DistrictHubData.Teams.Count}";
-			_countLabel.Text = "PROGRAMS";
-			return;
-		}
-
-		HubDistrict district = DistrictHubData.GetDistrict(_focusedDistrict);
+		HubDistrict district = DistrictHubData.GetDistrict(_focusedDistrict!);
 		_subtitle.Text = $"{level}  ·  {district.Name.ToUpperInvariant()} DISTRICT  ·  {district.Region.ToUpperInvariant()} REGION";
 		_countValue.Text = "8";
 		_countLabel.Text = "PROGRAMS";
@@ -227,8 +226,6 @@ public partial class LeagueOverviewPage : Control
 		}
 
 		_filterRow.Visible = true;
-
-		AddFilter("ALL DISTRICTS", ShowWorld, _focusedDistrict == null);
 
 		foreach (HubDistrict district in DistrictHubData.Districts)
 		{
@@ -264,77 +261,7 @@ public partial class LeagueOverviewPage : Control
 
 		_schoolCard = null;
 
-		if (_focusedDistrict == null)
-		{
-			_bodyHost.AddChild(BuildWorldBody());
-			return;
-		}
-
 		_bodyHost.AddChild(BuildDistrictBody());
-	}
-
-	private Control BuildWorldBody()
-	{
-		var layout = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		layout.AddThemeConstantOverride("separation", 8);
-
-		layout.AddChild(BuildRegionRow("EAST", DistrictHubData.Districts[0], DistrictHubData.Districts[1]));
-		layout.AddChild(BuildRegionRow("WEST", DistrictHubData.Districts[2], DistrictHubData.Districts[3]));
-		return layout;
-	}
-
-	private Control BuildRegionRow(string region, HubDistrict left, HubDistrict right)
-	{
-		var block = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		block.AddThemeConstantOverride("separation", 4);
-		block.AddChild(MakeText(region + " REGION", _semibold, 11, Accent, HorizontalAlignment.Left));
-
-		var row = new HBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		row.AddThemeConstantOverride("separation", 8);
-		row.AddChild(BuildDistrictCard(left));
-		row.AddChild(BuildDistrictCard(right));
-		block.AddChild(row);
-		return block;
-	}
-
-	private Control BuildDistrictCard(HubDistrict district)
-	{
-		var card = new PanelContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			ClipContents = true,
-		};
-		card.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
-
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 0);
-		card.AddChild(layout);
-
-		layout.AddChild(BuildDistrictHeading(district, compact: true));
-		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
-		layout.AddChild(BuildCompactColumnHeader());
-
-		List<HubStandingRow> standings = DistrictHubData.StandingsFor(district.Id, Level());
-		string userId = UserTeamId();
-		for (int i = 0; i < standings.Count; i++)
-		{
-			layout.AddChild(BuildCompactRow(standings[i], i % 2 == 0, userId));
-		}
-
-		return card;
 	}
 
 	private Control BuildDistrictBody()
@@ -435,7 +362,7 @@ public partial class LeagueOverviewPage : Control
 		List<HubStandingRow> standings = DistrictHubData.StandingsFor(district.Id, Level());
 		if (standings.Count > 0)
 		{
-			row.AddChild(MakeText(standings[0].Team.ShortName + "  " + standings[0].Team.Record(Level()), _semibold, 12, Accent, HorizontalAlignment.Right));
+			row.AddChild(MakeText("LEADER  " + standings[0].Team.ShortName.ToUpperInvariant() + "  " + standings[0].Team.Record(Level()), _semibold, 12, Accent, HorizontalAlignment.Right));
 		}
 
 		if (district.Id == DistrictHubData.GetTeam(UserTeamId()).DistrictId)
@@ -444,21 +371,6 @@ public partial class LeagueOverviewPage : Control
 		}
 
 		header.AddChild(row);
-		return header;
-	}
-
-	private Control BuildCompactColumnHeader()
-	{
-		var header = new PanelContainer();
-		header.AddThemeStyleboxOverride("panel", ColumnHeaderStyle());
-		var columns = new HBoxContainer();
-		columns.AddThemeConstantOverride("separation", 8);
-		columns.AddChild(MakeFixed("#", 22, _semibold, 10, TextMuted, HorizontalAlignment.Center));
-		var team = MakeText("PROGRAM", _semibold, 10, TextMuted, HorizontalAlignment.Left);
-		team.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		columns.AddChild(team);
-		columns.AddChild(MakeFixed("W-L", 52, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		header.AddChild(columns);
 		return header;
 	}
 
@@ -478,20 +390,6 @@ public partial class LeagueOverviewPage : Control
 		columns.AddChild(MakeFixed("STR", 44, _semibold, 10, TextMuted, HorizontalAlignment.Right));
 		header.AddChild(columns);
 		return header;
-	}
-
-	private Control BuildCompactRow(HubStandingRow row, bool even, string userId)
-	{
-		PanelContainer panel = MakeRowPanel(row.Team.Id, even, userId);
-		SchoolLinks.MakeClickable(panel, row.Team.Id);
-
-		var columns = new HBoxContainer();
-		columns.AddThemeConstantOverride("separation", 8);
-		columns.AddChild(MakeFixed($"{row.Rank}", 22, _bold, 13, row.Qualifies ? Green : TextMuted, HorizontalAlignment.Center));
-		columns.AddChild(BuildTeamIdentity(row.Team.Id, row.Team.ShortName, row.Team.Id == userId, 13, 22));
-		columns.AddChild(MakeFixed(row.Team.Record(Level()), 52, _bold, 13, TextPrimary, HorizontalAlignment.Right));
-		panel.AddChild(columns);
-		return panel;
 	}
 
 	private Control BuildFullRow(HubStandingRow row, bool even, string userId)

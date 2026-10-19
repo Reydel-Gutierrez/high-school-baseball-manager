@@ -13,7 +13,6 @@ public partial class AppNavigator : MarginContainer
 	public const string CalendarViewKey = "calendar";
 	public const string ScheduleViewKey = "schedule";
 	public const string RosterViewKey = "roster";
-	public const string TradesViewKey = "trades";
 	public const string TransactionsViewKey = "transactions";
 	public const string GoalsViewKey = "goals";
 	public const string TryoutsViewKey = "tryouts";
@@ -45,7 +44,6 @@ public partial class AppNavigator : MarginContainer
 	public const string SeasonRolloverViewKey = "season-rollover";
 
 	public const int OrganizationRosterId = 100;
-	public const int OrganizationTradesId = 101;
 	public const int OrganizationTransactionsId = 102;
 	public const int OrganizationGoalsId = 103;
 	public const int OrganizationTryoutsId = 104;
@@ -65,7 +63,6 @@ public partial class AppNavigator : MarginContainer
 	public const int FinancesBudgetId = 400;
 	public const int FinancesSponsorsId = 401;
 	public const int ScoutingPlayerSearchId = 500;
-	public const int ScoutingTradesId = 501;
 	public const int ScoutingTargetsId = 502;
 
 	private TopBarNavigation _topBar = null!;
@@ -73,7 +70,6 @@ public partial class AppNavigator : MarginContainer
 	private Control _calendarView = null!;
 	private Control _scheduleView = null!;
 	private Control _rosterView = null!;
-	private Control _tradesView = null!;
 	private Control _transactionsView = null!;
 	private Control _goalsView = null!;
 	private Control _tryoutsView = null!;
@@ -122,7 +118,6 @@ public partial class AppNavigator : MarginContainer
 		_calendarView = GetNode<Control>("AppLayout/ContentArea/CalendarView");
 		_scheduleView = GetNode<Control>("AppLayout/ContentArea/ScheduleView");
 		_rosterView = GetNode<Control>("AppLayout/ContentArea/RosterView");
-		_tradesView = GetNode<Control>("AppLayout/ContentArea/TradesView");
 		_transactionsView = GetNode<Control>("AppLayout/ContentArea/TransactionsView");
 		_goalsView = GetNode<Control>("AppLayout/ContentArea/GoalsView");
 		_tryoutsView = GetNode<Control>("AppLayout/ContentArea/TryoutsView");
@@ -209,7 +204,6 @@ public partial class AppNavigator : MarginContainer
 		_views[CalendarViewKey] = _calendarView;
 		_views[ScheduleViewKey] = _scheduleView;
 		_views[RosterViewKey] = _rosterView;
-		_views[TradesViewKey] = _tradesView;
 		_views[TransactionsViewKey] = _transactionsView;
 		_views[GoalsViewKey] = _goalsView;
 		_views[TryoutsViewKey] = _tryoutsView;
@@ -519,24 +513,6 @@ public partial class AppNavigator : MarginContainer
 		ShowView(RosterViewKey, TopBarNavigation.OrganizationKey);
 	}
 
-	public void ShowTrades()
-	{
-		ShowTrades(TopBarNavigation.OrganizationKey);
-	}
-
-	public void ShowTrades(string topBarKey)
-	{
-		ShowView(TradesViewKey, topBarKey);
-	}
-
-	public void ShowScoutingTrades(string teamId, string firstName, string lastName)
-	{
-		ShowView(TradesViewKey, TopBarNavigation.ScoutingKey);
-		if (_tradesView is TradesPage trades)
-		{
-			trades.OpenForPlayer(teamId, firstName, lastName);
-		}
-	}
 
 	public void ShowPlayerSearch()
 	{
@@ -922,6 +898,11 @@ public partial class AppNavigator : MarginContainer
 		rightCluster.AddChild(soundtrack);
 		rightCluster.MoveChild(soundtrack, settingsButton.GetIndex());
 		settingsButton.Pressed += ShowSettings;
+
+		// The head coach in his school cap and jersey; click for My Career.
+		var coachBadge = new CoachBadge(ShowCareer) { Name = "CoachBadge" };
+		rightCluster.AddChild(coachBadge);
+		rightCluster.MoveChild(coachBadge, 0);
 	}
 
 	private void ReturnToTitle()
@@ -959,9 +940,6 @@ public partial class AppNavigator : MarginContainer
 		{
 			case OrganizationRosterId:
 				ShowRoster();
-				break;
-			case OrganizationTradesId:
-				ShowTrades();
 				break;
 			case OrganizationTransactionsId:
 				ShowTransactions();
@@ -1059,9 +1037,6 @@ public partial class AppNavigator : MarginContainer
 		{
 			case ScoutingPlayerSearchId:
 				ShowPlayerSearch();
-				break;
-			case ScoutingTradesId:
-				ShowTrades(TopBarNavigation.ScoutingKey);
 				break;
 			case ScoutingTargetsId:
 				ShowTargets();

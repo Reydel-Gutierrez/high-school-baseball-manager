@@ -3,13 +3,12 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// Organization transaction log: completed trades, District Open Pool
-/// signings, releases into the pool, and freshman tryout selections.
+/// Organization transaction log: tryout signings, promotions, graduations
+/// and releases. (High school programs don't trade players.)
 /// </summary>
 public partial class TransactionsPage : Control
 {
 	private const string FilterAll = "all";
-	private const string FilterTrades = "trade";
 	private const string FilterOpenPool = "open_pool";
 	private const string FilterTryouts = "tryout";
 	private const string FilterPromotions = "promote";
@@ -154,7 +153,6 @@ public partial class TransactionsPage : Control
 		AddFilter(row, FilterGraduates, "GRADUATES");
 		AddFilter(row, FilterPromotions, "PROMOTIONS");
 		AddFilter(row, FilterReleases, "RELEASES");
-		AddFilter(row, FilterTrades, "TRADES");
 		return row;
 	}
 
@@ -389,7 +387,6 @@ public partial class TransactionsPage : Control
 
 	private static PlayerTransactionKind FilterKind(string filter) => filter switch
 	{
-		FilterTrades => PlayerTransactionKind.Trade,
 		FilterOpenPool => PlayerTransactionKind.OpenPool,
 		FilterTryouts => PlayerTransactionKind.Tryout,
 		FilterPromotions => PlayerTransactionKind.Promotion,

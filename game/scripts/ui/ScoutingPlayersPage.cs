@@ -1115,7 +1115,6 @@ public partial class ScoutingPlayersPage : Control
 			TextMuted,
 			HorizontalAlignment.Left));
 		_actionBody.AddChild(MakeAccentLine());
-		_actionBody.AddChild(MakeModalOption("TRADE", TextPrimary, () => StartTrade(player)));
 		_actionBody.AddChild(MakeModalOption(
 			targeted ? "REMOVE TARGET" : "ADD TARGET",
 			targeted ? Urgent : TextPrimary,
@@ -1140,15 +1139,6 @@ public partial class ScoutingPlayersPage : Control
 		}
 
 		BindProfile();
-	}
-
-	private void StartTrade(HubSquadPlayer player)
-	{
-		ClosePlayerActions();
-		if (GetTree().CurrentScene is AppNavigator navigator)
-		{
-			navigator.ShowScoutingTrades(player.TeamId, player.FirstName, player.LastName);
-		}
 	}
 
 	private Button MakeModalOption(string text, Color color, Action onPressed)

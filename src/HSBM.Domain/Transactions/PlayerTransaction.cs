@@ -4,6 +4,7 @@ namespace HSBM.Domain;
 
 public enum PlayerTransactionKind
 {
+	/// <summary>Legacy: high school programs don't trade players. Kept so old saves still load.</summary>
 	Trade,
 	OpenPool,
 	Tryout,
@@ -25,21 +26,6 @@ public sealed record PlayerTransaction(
 {
 	public static string FormatDate(DateOnly date) =>
 		date.ToString("MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
-
-	public static PlayerTransaction Trade(
-		string name,
-		string position,
-		string year,
-		string squad,
-		string toTeam,
-		string fromTeam,
-		string date) =>
-		new(
-			PlayerTransactionKind.Trade,
-			date,
-			$"{name} has been traded to {toTeam} from {fromTeam}.",
-			$"{position}  ·  {year}  ·  {squad}",
-			DedupKey: $"Trade:{toTeam}:{fromTeam}:{name}:{date}");
 
 	public static PlayerTransaction Tryout(
 		string name,

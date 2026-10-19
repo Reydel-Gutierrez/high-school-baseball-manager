@@ -545,7 +545,7 @@ public partial class SettingsPage : Control
 		body.AddChild(BuildAutosaveTriggerRow(
 			"transaction",
 			"AFTER A MAJOR TRANSACTION",
-			"Trades, releases, and open-pool signings."));
+			"Cuts, releases, and roster moves."));
 		body.AddChild(BuildAutosaveTriggerRow(
 			"week",
 			"AFTER A WEEK ADVANCE",

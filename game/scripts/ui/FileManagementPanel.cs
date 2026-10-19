@@ -820,7 +820,7 @@ public partial class FileManagementPanel : Control
 
 		if (prefs.AfterMajorTransaction)
 		{
-			parts.Add("trades");
+			parts.Add("roster moves");
 		}
 
 		if (prefs.AfterWeekAdvance)

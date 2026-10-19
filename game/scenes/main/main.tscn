@@ -13,7 +13,6 @@
 [ext_resource type="PackedScene" uid="uid://c8rosterpage1" path="res://scenes/pages/roster.tscn" id="29_roster"]
 [ext_resource type="Script" uid="uid://dhjo1xiidaxe3" path="res://scripts/ui/TeamLevelToggle.cs" id="30_teamtoggle"]
 [ext_resource type="PackedScene" uid="uid://c8homepage001" path="res://scenes/pages/home.tscn" id="31_home"]
-[ext_resource type="PackedScene" uid="uid://bc5m0wv5k6nb5" path="res://scenes/pages/trades.tscn" id="32_trades"]
 [ext_resource type="PackedScene" uid="uid://c8txnpage0001" path="res://scenes/pages/transactions.tscn" id="33_txn"]
 [ext_resource type="PackedScene" uid="uid://x2nacspq5ab5" path="res://scenes/pages/goals.tscn" id="34_goals"]
 [ext_resource type="PackedScene" uid="uid://c7la8kg7i53ia" path="res://scenes/pages/graduation.tscn" id="34_graduation"]
@@ -228,19 +227,17 @@ theme_override_font_sizes/font_size = 13
 text = "ORGANIZATION ▼"
 flat = false
 switch_on_hover = true
-item_count = 6
+item_count = 5
 popup/item_0/text = "ROSTER"
 popup/item_0/id = 100
 popup/item_1/text = "TRYOUTS"
 popup/item_1/id = 104
 popup/item_2/text = "GRADUATION"
 popup/item_2/id = 106
-popup/item_3/text = "TRADES"
-popup/item_3/id = 101
-popup/item_4/text = "TRANSACTIONS"
-popup/item_4/id = 102
-popup/item_5/text = "BOARD & GOALS"
-popup/item_5/id = 103
+popup/item_3/text = "TRANSACTIONS"
+popup/item_3/id = 102
+popup/item_4/text = "BOARD & GOALS"
+popup/item_4/id = 103
 script = ExtResource("1_hyk8p")
 
 [node name="ClubhouseMenu" type="MenuButton" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=907681812]
@@ -269,7 +266,7 @@ text = "LEAGUE ▼"
 flat = false
 switch_on_hover = true
 item_count = 8
-popup/item_0/text = "WORLD"
+popup/item_0/text = "DISTRICTS"
 popup/item_0/id = 306
 popup/item_1/text = "STANDINGS"
 popup/item_1/id = 300
@@ -310,13 +307,11 @@ theme_override_font_sizes/font_size = 13
 text = "SCOUTING ▼"
 flat = false
 switch_on_hover = true
-item_count = 3
+item_count = 2
 popup/item_0/text = "PLAYER SEARCH"
 popup/item_0/id = 500
-popup/item_1/text = "TRADES"
-popup/item_1/id = 501
-popup/item_2/text = "MY TARGETS"
-popup/item_2/id = 502
+popup/item_1/text = "MY TARGETS"
+popup/item_1/id = 502
 script = ExtResource("1_hyk8p")
 
 [node name="CareerButton" type="Button" parent="AppLayout/TopBar/TopBarMargin/HBoxContainer/NavigationRow" unique_id=1692429108]
@@ -365,12 +360,6 @@ size_flags_vertical = 3
 [node name="RosterView" parent="AppLayout/ContentArea" unique_id=241912356 instance=ExtResource("29_roster")]
 visible = false
 layout_mode = 2
-
-[node name="TradesView" parent="AppLayout/ContentArea" unique_id=1280261712 instance=ExtResource("32_trades")]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
 
 [node name="TransactionsView" parent="AppLayout/ContentArea" unique_id=1466207155 instance=ExtResource("33_txn")]
 visible = false
