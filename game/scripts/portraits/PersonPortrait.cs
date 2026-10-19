@@ -184,9 +184,9 @@ public partial class PersonPortrait : Control
 		// collar and shoulders at the bottom (the render is 4:5; cap top sits
 		// near 3% of its height and the collar near 72%).
 		Vector2 tex = _photo!.GetSize();
-		float scale = d / (tex.X * 0.84f);
+		float scale = d / (tex.X * 1.0f);
 		Vector2 drawn = tex * scale;
-		var dest = new Rect2(new Vector2(c.X - drawn.X / 2f, c.Y - drawn.Y * 0.39f), drawn);
+		var dest = new Rect2(new Vector2(c.X - drawn.X / 2f, c.Y - drawn.Y * 0.40f), drawn);
 
 		const int segments = 40;
 		var pts = new Vector2[segments];
