@@ -319,6 +319,7 @@ public partial class HeadshotStudio : Node
 		_skin.SetShaderParameter("skin_color", r.Skin);
 		_skin.SetShaderParameter("hair_color", r.Hair);
 		_skin.SetShaderParameter("brow_color", r.Brow);
+		_skin.SetShaderParameter("beard_color", r.BeardColor);
 		_skin.SetShaderParameter("hair_style", skinStyle);
 		_skin.SetShaderParameter("beard", r.Beard);
 		_skin.SetShaderParameter("jersey_color", r.Jersey);
@@ -336,6 +337,7 @@ public partial class HeadshotStudio : Node
 		{
 			mat.SetShaderParameter("hair_color", r.Hair);
 			mat.SetShaderParameter("brow_color", r.Brow);
+			mat.SetShaderParameter("beard_color", r.BeardColor);
 			mat.SetShaderParameter("hair_style", r.HairShape);
 			mat.SetShaderParameter("hair_length", r.HairLength);
 			mat.SetShaderParameter("beard", r.Beard);

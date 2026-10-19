@@ -98,6 +98,7 @@ public sealed class FaceRecipe
 	public Color Skin;
 	public Color Hair;
 	public Color Brow;
+	public Color BeardColor;
 	public Color Iris;
 	public Vector4 HairShape;
 	public float HairLength;
@@ -119,7 +120,7 @@ public sealed class FaceRecipe
 	public string Key = "";
 
 	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
-	public const string RenderVersion = "v5;";
+	public const string RenderVersion = "v6;";
 
 	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f, bool cap = false, string? monogram = null)
 	{
@@ -247,6 +248,7 @@ public sealed class FaceRecipe
 		(r.HairShape, r.HairLength) = HairStyleOf(appearance.HairStyle);
 		r.Beard = BeardOf(appearance.FacialHairStyle);
 		Color beardColor = HairColorOf(appearance.FacialHairColor, age);
+		r.BeardColor = beardColor;
 		if (r.Beard != Vector4.Zero)
 		{
 			r.Hair = r.HairShape.Y <= 0.01f ? beardColor : r.Hair;
@@ -391,7 +393,7 @@ public sealed class FaceRecipe
 			sb.Append(n).Append('=').Append(r.Weights[n].ToString("0.000", CultureInfo.InvariantCulture)).Append(';');
 		}
 
-		sb.Append(r.Skin.ToHtml()).Append(r.Hair.ToHtml()).Append(r.Brow.ToHtml()).Append(r.Iris.ToHtml())
+		sb.Append(r.Skin.ToHtml()).Append(r.Hair.ToHtml()).Append(r.Brow.ToHtml()).Append(r.Iris.ToHtml()).Append(r.BeardColor.ToHtml())
 			.Append(r.HairShape).Append(r.HairLength.ToString(CultureInfo.InvariantCulture)).Append(r.Beard)
 			.Append(r.Jersey.ToHtml()).Append(r.Trim.ToHtml()).Append(r.ShowJersey).Append(r.Yaw.ToString("0", CultureInfo.InvariantCulture)).Append(r.AgeLines.ToString("0.00", CultureInfo.InvariantCulture))
 			.Append(r.Age).Append(r.Cap).Append(r.Monogram);

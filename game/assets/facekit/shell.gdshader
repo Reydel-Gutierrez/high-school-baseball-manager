@@ -11,6 +11,7 @@ uniform sampler2D hair_map : filter_linear_mipmap, repeat_disable;
 uniform sampler2D light_map : filter_linear_mipmap, repeat_disable;
 uniform vec3 hair_color = vec3(0.10, 0.07, 0.05);
 uniform vec3 brow_color = vec3(0.10, 0.07, 0.05);
+uniform vec3 beard_color = vec3(0.10, 0.07, 0.05);
 uniform vec4 hair_style = vec4(0.0, 0.9, 0.5, 0.0);
 uniform vec4 beard = vec4(0.0);
 uniform float hair_length = 0.005;
@@ -47,7 +48,7 @@ void vertex() {
 	float line = 0.5 - hair_style.x;
 	float cover = smoothstep(line - 0.08, line + 0.04, H.r) * step(0.05, hair_style.y);
 	float hair_len = hair_length * mix(1.0, 0.35, H.b * hair_style.z) * cover * mix(1.0, 0.5, cap);
-	float beard_len = M.b * beard.y * 0.009 + M.a * beard.z * 0.007 + D.b * beard.w * 0.009;
+	float beard_len = M.b * beard.y * 0.009 + M.a * beard.z * 0.0045 + D.b * beard.w * 0.009;
 	float brow_len = smoothstep(0.1, 0.4, M.g) * 0.0010;
 	float len = max(max(hair_len, beard_len), brow_len);
 	float h = shell / shells;
@@ -91,7 +92,8 @@ void fragment() {
 		discard;
 	}
 	vec4 L = texture(light_map, UV);
-	vec3 base = to_lin(is_brow ? brow_color : hair_color);
+	bool is_beard = !is_brow && beard_reach > hair_reach;
+	vec3 base = to_lin(is_brow ? brow_color : (is_beard ? beard_color : hair_color));
 	base *= 0.80 + 0.45 * clump;
 	base = mix(base * 0.45, base * 1.10, smoothstep(0.0, 0.7, vh));
 	vec3 v = normalize(INV_VIEW_MATRIX[3].xyz - w_pos);

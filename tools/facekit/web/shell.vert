@@ -12,7 +12,7 @@ void main(){
   float line = 0.5 - uHairStyle.x;
   float cover = smoothstep(line - 0.08, line + 0.04, H.r) * step(0.05, uHairStyle.y);
   float hairLen = uHairLen * mix(1.0, 0.35, H.b * uHairStyle.z) * cover * mix(1.0, 0.5, uCap);
-  float beardLen = M.b * uBeard.y * 0.009 + M.a * uBeard.z * 0.007 + D.b * uBeard.w * 0.009;
+  float beardLen = M.b * uBeard.y * 0.009 + M.a * uBeard.z * 0.0045 + D.b * uBeard.w * 0.009;
   float browLen = smoothstep(0.1, 0.4, M.g) * 0.0010;
   float len = max(max(hairLen, beardLen), browLen);
   float h = uShell / uShells;

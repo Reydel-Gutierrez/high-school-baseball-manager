@@ -24,6 +24,7 @@ uniform sampler2D tone : filter_linear_mipmap, repeat_disable;
 uniform vec3 skin_color = vec3(0.86, 0.66, 0.55);   // sRGB
 uniform vec3 hair_color = vec3(0.10, 0.07, 0.05);
 uniform vec3 brow_color = vec3(0.10, 0.07, 0.05);
+uniform vec3 beard_color = vec3(0.10, 0.07, 0.05);
 uniform vec4 hair_style = vec4(0.0, 0.9, 0.5, 0.0);  // hairline lift, density, fade, balding
 uniform vec4 beard = vec4(0.0);                      // stubble, full, mustache, goatee
 uniform vec3 jersey_color = vec3(0.08, 0.12, 0.35);
@@ -98,7 +99,7 @@ void fragment() {
 	vec3 base = to_lin(skin_color);
 	float lum = dot(base, vec3(0.3, 0.59, 0.11));
 	vec3 skin = base;
-	skin = max(mix(vec3(lum), skin, 1.22), 0.0); // keep skin saturated through the tonemap
+	skin = max(mix(vec3(lum), skin, 1.08), 0.0); // keep skin saturated through the tonemap
 	skin = mix(skin, skin * vec3(1.03, 1.0, 0.90), T.g * 0.5);
 	skin = mix(skin, skin * vec3(1.05, 0.70, 0.68), clamp(D.r * 1.1, 0.0, 1.0));
 	skin = mix(skin, skin * vec3(0.78, 0.70, 0.78), T.r * 0.55);
@@ -115,7 +116,7 @@ void fragment() {
 	float hair_noise = vnoise(raw * 1400.0) * 0.6 + vnoise(raw * 3000.0) * 0.4;
 	float beard_amt = M.b * max(beard.x * 0.55, beard.y) + M.a * beard.z + D.b * beard.w;
 	float beard_cov = clamp(beard_amt * (0.45 + 0.9 * hair_noise), 0.0, 1.0);
-	alb = mix(alb, hair_lin, beard_cov * mix(0.45, 0.92, beard.y));
+	alb = mix(alb, to_lin(beard_color), beard_cov * mix(0.45, 0.92, beard.y));
 	float brow = clamp(M.g * 1.2, 0.0, 1.0);
 	alb = mix(alb, to_lin(brow_color), brow * 0.62);
 	vec4 style = cap > 0.5 ? vec4(hair_style.x, hair_style.y, 1.0, 1.0) : hair_style;

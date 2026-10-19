@@ -49,7 +49,7 @@ void main(){
   vec3 base = toLin(uSkin);
   float lum = dot(base, vec3(0.3,0.59,0.11));
   vec3 skin = base;
-  skin = max(mix(vec3(lum), skin, 1.22), 0.0);                                  // keep skin saturated through the tonemap
+  skin = max(mix(vec3(lum), skin, 1.08), 0.0);                                  // keep skin saturated through the tonemap
   skin = mix(skin, skin * vec3(1.03, 1.0, 0.90), T.g * 0.5);                 // warmer forehead
   skin = mix(skin, skin * vec3(1.05, 0.70, 0.68), clamp(D.r * 1.1, 0.0, 1.0)); // cheeks, nose, ears flush
   skin = mix(skin, skin * vec3(0.78, 0.70, 0.78), T.r * 0.55);                // periorbital darkening
