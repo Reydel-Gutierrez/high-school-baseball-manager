@@ -901,6 +901,9 @@ public partial class AppNavigator : MarginContainer
 	private ShellRail _rail = null!;
 	private SectionBar _sectionBar = null!;
 	private Label _shellDate = null!;
+	private HBoxContainer _shellStatus = null!;
+	private HBoxContainer _shellTitleHost = null!;
+	private Control _shellBarSpacer = null!;
 	private PanelContainer _shellPhase = null!;
 	private Label _shellPhaseText = null!;
 	private Button _continueButton = null!;
@@ -965,6 +968,16 @@ public partial class AppNavigator : MarginContainer
 		status.AddChild(_shellPhase);
 		bar.AddChild(status);
 		bar.MoveChild(status, 1);
+		_shellStatus = status;
+
+		// Pages that implement IShellTitled show their crest and title here,
+		// and the date block moves to the middle beside the mail button.
+		_shellTitleHost = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Visible = false };
+		bar.AddChild(_shellTitleHost);
+		bar.MoveChild(_shellTitleHost, 1);
+		_shellBarSpacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill, Visible = false, MouseFilter = MouseFilterEnum.Ignore };
+		bar.AddChild(_shellBarSpacer);
+		bar.MoveChild(_shellBarSpacer, rightCluster.GetIndex());
 
 		_continueButton = UiKit.Action("CONTINUE", true, OnContinuePressed, 20);
 		_continueButton.CustomMinimumSize = new Vector2(190, 48);
@@ -1178,6 +1191,7 @@ public partial class AppNavigator : MarginContainer
 		}
 
 		_lastSection = section;
+		SyncShellTitle(viewKey);
 		_rail.SetLocked(_unsignedLock);
 		_rail.SetActive(section);
 		_rail.Visible = _topBar.Visible;
@@ -1189,6 +1203,28 @@ public partial class AppNavigator : MarginContainer
 		}
 
 		RefreshShellStatus();
+	}
+
+	/// <summary>Swap the active page's title into the top bar (or restore the date-left layout).</summary>
+	private void SyncShellTitle(string viewKey)
+	{
+		foreach (Node child in _shellTitleHost.GetChildren())
+		{
+			_shellTitleHost.RemoveChild(child);
+		}
+
+		Control? title = _views.TryGetValue(viewKey, out Control? page) && page is IShellTitled titled ? titled.ShellTitle : null;
+		if (title != null)
+		{
+			title.GetParent()?.RemoveChild(title);
+			_shellTitleHost.AddChild(title);
+		}
+
+		bool hasTitle = title != null;
+		_shellTitleHost.Visible = hasTitle;
+		_shellBarSpacer.Visible = hasTitle;
+		_shellStatus.SizeFlagsHorizontal = hasTitle ? SizeFlags.ShrinkCenter : SizeFlags.ExpandFill;
+		_shellDate.AddThemeFontSizeOverride("font_size", hasTitle ? 20 : 26);
 	}
 
 	private void ReturnToTitle()

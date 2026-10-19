@@ -9,7 +9,7 @@ using HSBM.Domain;
 /// counts all come from GameSession.ActiveTeam so this page stays in sync
 /// with the top-bar team switch.
 /// </summary>
-public partial class RosterPage : Control
+public partial class RosterPage : Control, IShellTitled
 {
 	private const string FilterAll = "all";
 	private const string FilterPitchers = "pitchers";
@@ -90,6 +90,7 @@ public partial class RosterPage : Control
 		RegisterFilter("%FilterCatchers", FilterCatchers);
 		RegisterFilter("%FilterInfield", FilterInfield);
 		RegisterFilter("%FilterOutfield", FilterOutfield);
+		CompactHeader();
 
 		BuildActionOverlay();
 		_session.ActiveTeamChanged += OnActiveTeamChanged;
@@ -101,6 +102,11 @@ public partial class RosterPage : Control
 
 	public override void _ExitTree()
 	{
+		if (_shellTitle != null && !_shellTitle.IsInsideTree())
+		{
+			_shellTitle.QueueFree();
+		}
+
 		if (_session != null)
 		{
 			_session.ActiveTeamChanged -= OnActiveTeamChanged;
@@ -187,6 +193,37 @@ public partial class RosterPage : Control
 	private void ApplyActiveTeam()
 	{
 		_title.Text = _session.ActiveTeam.RosterTitle.ToUpperInvariant();
+		_shellTitleLabel.Text = _title.Text;
+	}
+
+	private Control _shellTitle = null!;
+	private Label _shellTitleLabel = null!;
+
+	public Control ShellTitle => _shellTitle;
+
+	/// <summary>
+	/// Crest, kicker and title move to the shell's top bar; the filter pills
+	/// join the coverage strip and roster summary on one row, so the table and
+	/// player card get the header's height back.
+	/// </summary>
+	private void CompactHeader()
+	{
+		Label kicker = GetNode<Label>("PageMargin/PageLayout/HeaderBar/HeaderText/Kicker");
+		_shellTitle = global::ShellTitle.Make(kicker.Text, _title.Text, out _shellTitleLabel);
+		HBoxContainer header = GetNode<HBoxContainer>("PageMargin/PageLayout/HeaderBar");
+		foreach (Node child in header.GetChildren())
+		{
+			if (child is ProgramMark or TextureRect || child.Name == "HeaderRule" || child.Name == "HeaderText")
+			{
+				((CanvasItem)child).Visible = false;
+			}
+		}
+
+		HBoxContainer filters = GetNode<HBoxContainer>("PageMargin/PageLayout/FilterRow");
+		filters.Reparent(header);
+		header.MoveChild(filters, 0);
+		filters.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		filters.SizeFlagsVertical = SizeFlags.ShrinkCenter;
 	}
 
 	public override void _UnhandledInput(InputEvent @event)
@@ -695,6 +732,7 @@ public partial class RosterPage : Control
 		var card = new PlayerProfileCard
 		{
 			FrameVisible = false,
+			Compact = true,
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};

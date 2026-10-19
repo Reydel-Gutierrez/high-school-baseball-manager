@@ -46,6 +46,14 @@ public partial class PlayerProfileCard : PanelContainer
 
 	public bool FrameVisible { get; set; } = true;
 
+	/// <summary>
+	/// For tight pages (the roster): a shorter banner, no second headshot
+	/// beside attributes and statistics, and attributes in two columns.
+	/// </summary>
+	public bool Compact { get; set; }
+
+	private float HeroHeight => Compact ? 150 : 186;
+
 	public override void _Ready()
 	{
 		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
@@ -133,7 +141,7 @@ public partial class PlayerProfileCard : PanelContainer
 		scroll.AddChild(pad);
 		var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		content.AddThemeConstantOverride("separation", 10);
-		if ((_tab == TabAttributes || _tab == TabStatistics) && _snapshot.Appearance != null)
+		if ((_tab == TabAttributes || _tab == TabStatistics) && _snapshot.Appearance != null && !Compact)
 		{
 			// Stats read better with the player in view: a studio headshot
 			// on the left, the numbers on the right.
@@ -173,7 +181,7 @@ public partial class PlayerProfileCard : PanelContainer
 		(Color primary, Color secondary) = TeamColors.For(player.TeamId);
 		var hero = new Control
 		{
-			CustomMinimumSize = new Vector2(0, 186),
+			CustomMinimumSize = new Vector2(0, HeroHeight),
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			ClipContents = true,
 		};
@@ -512,28 +520,44 @@ public partial class PlayerProfileCard : PanelContainer
 
 	private void BuildAttributes(VBoxContainer content, PlayerProfileSnapshot player)
 	{
+		VBoxContainer right = content;
+		if (Compact)
+		{
+			// Two columns: hitting and physical left, fielding and pitching right.
+			var columns = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			columns.AddThemeConstantOverride("separation", 24);
+			var left = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			left.AddThemeConstantOverride("separation", 10);
+			right = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			right.AddThemeConstantOverride("separation", 10);
+			columns.AddChild(left);
+			columns.AddChild(right);
+			content.AddChild(columns);
+			content = left;
+		}
+
 		content.AddChild(MakeSection("HITTING"));
 		content.AddChild(MakeMeter("Contact R", player.Hitting.ContactRight, player.Fogged));
 		content.AddChild(MakeMeter("Contact L", player.Hitting.ContactLeft, player.Fogged));
 		content.AddChild(MakeMeter("Power", player.Hitting.Power, player.Fogged));
 		content.AddChild(MakeMeter("Plate Vision", player.Hitting.PlateVision, player.Fogged));
 
-		content.AddChild(MakeSection("FIELDING"));
-		content.AddChild(MakeMeter("Fielding", player.Fielding.Fielding, player.Fogged));
-		content.AddChild(MakeMeter("Arm", player.Fielding.Arm, player.Fogged));
-		content.AddChild(MakeMeter("Reaction", player.Fielding.Reaction, player.Fogged));
-
 		content.AddChild(MakeSection("PHYSICAL"));
 		content.AddChild(MakeMeter("Speed", player.Physical.Speed, player.Fogged));
 		content.AddChild(MakeMeter("Strength", player.Physical.Strength, player.Fogged));
 
+		right.AddChild(MakeSection("FIELDING"));
+		right.AddChild(MakeMeter("Fielding", player.Fielding.Fielding, player.Fogged));
+		right.AddChild(MakeMeter("Arm", player.Fielding.Arm, player.Fogged));
+		right.AddChild(MakeMeter("Reaction", player.Fielding.Reaction, player.Fogged));
+
 		if (player.Pitching != null)
 		{
-			content.AddChild(MakeSection("PITCHING"));
-			content.AddChild(MakeMeter("Stuff", player.Pitching.Stuff, player.Fogged));
-			content.AddChild(MakeMeter("Control", player.Pitching.Control, player.Fogged));
-			content.AddChild(MakeMeter("Movement", player.Pitching.Movement, player.Fogged));
-			content.AddChild(MakeMeter("Stamina", player.Pitching.Stamina, player.Fogged));
+			right.AddChild(MakeSection("PITCHING"));
+			right.AddChild(MakeMeter("Stuff", player.Pitching.Stuff, player.Fogged));
+			right.AddChild(MakeMeter("Control", player.Pitching.Control, player.Fogged));
+			right.AddChild(MakeMeter("Movement", player.Pitching.Movement, player.Fogged));
+			right.AddChild(MakeMeter("Stamina", player.Pitching.Stamina, player.Fogged));
 		}
 	}
 
