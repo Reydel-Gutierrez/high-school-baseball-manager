@@ -133,7 +133,20 @@ public partial class PlayerProfileCard : PanelContainer
 		scroll.AddChild(pad);
 		var content = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		content.AddThemeConstantOverride("separation", 10);
-		pad.AddChild(content);
+		if ((_tab == TabAttributes || _tab == TabStatistics) && _snapshot.Appearance != null)
+		{
+			// Stats read better with the player in view: a studio headshot
+			// on the left, the numbers on the right.
+			var split = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+			split.AddThemeConstantOverride("separation", 12);
+			split.AddChild(BuildShowcase(_snapshot));
+			split.AddChild(content);
+			pad.AddChild(split);
+		}
+		else
+		{
+			pad.AddChild(content);
+		}
 
 		switch (_tab)
 		{
@@ -189,6 +202,8 @@ public partial class PlayerProfileCard : PanelContainer
 				WeightLbs = player.WeightLbs,
 				Jersey = primary,
 				Trim = secondary,
+				Cap = Capped(player.TeamId),
+				Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
 			};
 			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			portrait.OffsetLeft = 10;
@@ -833,6 +848,8 @@ public partial class PlayerProfileCard : PanelContainer
 				WeightLbs = player.WeightLbs,
 				Jersey = jersey,
 				Trim = trim,
+				Cap = Capped(player.TeamId),
+				Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
 			};
 			portrait.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 			portrait.SetAppearance(player.Appearance);
@@ -881,6 +898,98 @@ public partial class PlayerProfileCard : PanelContainer
 		fallback.AddChild(initial);
 		wrap.AddChild(fallback);
 		return wrap;
+	}
+
+	private float _showcaseYaw;
+
+	/// <summary>Rostered players wear their school cap; unsigned prospects go bareheaded.</summary>
+	private static bool Capped(string? teamId) =>
+		!string.IsNullOrWhiteSpace(teamId) && !HSBM.Domain.LeagueCatalog.IsUnsignedOrganization(teamId);
+
+	/// <summary>
+	/// Studio headshot beside the numbers: big, in team cap and jersey,
+	/// with a turntable and the measurables a scout looks at first.
+	/// </summary>
+	private Control BuildShowcase(PlayerProfileSnapshot player)
+	{
+		(Color primary, Color secondary) = TeamColors.For(player.TeamId);
+		var card = new PanelContainer { CustomMinimumSize = new Vector2(230, 0), SizeFlagsVertical = SizeFlags.ShrinkBegin };
+		card.AddThemeStyleboxOverride("panel", MakeInner(0, 0));
+		var col = new VBoxContainer();
+		col.AddThemeConstantOverride("separation", 0);
+		card.AddChild(col);
+
+		var portrait = new PersonPortrait
+		{
+			CustomMinimumSize = new Vector2(230, 288),
+			BackdropColor = primary.Darkened(0.45f),
+			Age = player.Age > 0 ? player.Age : 16,
+			HeightInches = player.HeightInches,
+			WeightLbs = player.WeightLbs,
+			Jersey = primary,
+			Trim = secondary,
+			Cap = Capped(player.TeamId),
+			Monogram = Capped(player.TeamId) ? ProgramMark.Monogram(player.TeamId) : "",
+			Yaw = _showcaseYaw,
+		};
+		portrait.SetAppearance(player.Appearance!);
+		col.AddChild(portrait);
+		col.AddChild(new ColorRect { Color = secondary, CustomMinimumSize = new Vector2(0, 3) });
+
+		var turn = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+		turn.AddThemeConstantOverride("separation", 4);
+		foreach ((string label, float yaw) in new[] { ("LEFT", -35f), ("FRONT", 0f), ("RIGHT", 35f) })
+		{
+			float y = yaw;
+			var b = new Button { Text = label, Flat = true, FocusMode = FocusModeEnum.None, MouseDefaultCursorShape = CursorShape.PointingHand };
+			b.AddThemeFontOverride("font", _semibold);
+			b.AddThemeFontSizeOverride("font_size", 11);
+			b.AddThemeColorOverride("font_color", Mathf.IsEqualApprox(y, _showcaseYaw) ? Accent : TextMuted);
+			b.AddThemeColorOverride("font_hover_color", TextPrimary);
+			b.Pressed += () =>
+			{
+				_showcaseYaw = y;
+				portrait.Yaw = y;
+				portrait.Refresh();
+			};
+			turn.AddChild(b);
+		}
+
+		col.AddChild(turn);
+
+		var facts = new GridContainer { Columns = 2 };
+		facts.AddThemeConstantOverride("h_separation", 10);
+		facts.AddThemeConstantOverride("v_separation", 4);
+		void Fact(string k, string v)
+		{
+			facts.AddChild(MakeText(k, _medium, 11, TextMuted, HorizontalAlignment.Left));
+			var val = MakeText(v, _semibold, 13, TextPrimary, HorizontalAlignment.Right);
+			val.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+			facts.AddChild(val);
+		}
+
+		Fact("POSITION", player.Position);
+		Fact("CLASS", player.YearLabel);
+		Fact("B/T", player.BatsThrows);
+		if (!player.Fogged && player.HeightLabel != "?")
+		{
+			Fact("HEIGHT", player.HeightLabel);
+			Fact("WEIGHT", $"{player.WeightLbs} lb");
+		}
+
+		if (player.Age > 0)
+		{
+			Fact("AGE", player.Age.ToString(CultureInfo.InvariantCulture));
+		}
+
+		var factPad = new MarginContainer();
+		factPad.AddThemeConstantOverride("margin_left", 12);
+		factPad.AddThemeConstantOverride("margin_right", 12);
+		factPad.AddThemeConstantOverride("margin_bottom", 12);
+		factPad.AddThemeConstantOverride("margin_top", 2);
+		factPad.AddChild(facts);
+		col.AddChild(factPad);
+		return card;
 	}
 
 	private Control MakeSection(string title)

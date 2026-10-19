@@ -76,7 +76,7 @@ void fragment() {
 	// ---- age-weighted crease height (meters) -> bump the normal
 	float w_fore = ramp(24.0, 50.0, age);
 	float w_eye = ramp(28.0, 55.0, age);
-	float w_fold = 0.25 + 0.75 * ramp(20.0, 50.0, age);
+	float w_fold = 0.10 + 0.90 * ramp(26.0, 55.0, age);
 	float hgt = (W.r * w_fore + W.g * w_eye + W.b * w_fold) * 0.0009;
 	hgt += (vnoise(raw * 2600.0) - 0.5) * 0.00005;
 	vec3 n = normalize(w_nor);
@@ -98,6 +98,7 @@ void fragment() {
 	vec3 base = to_lin(skin_color);
 	float lum = dot(base, vec3(0.3, 0.59, 0.11));
 	vec3 skin = base;
+	skin = max(mix(vec3(lum), skin, 1.22), 0.0); // keep skin saturated through the tonemap
 	skin = mix(skin, skin * vec3(1.03, 1.0, 0.90), T.g * 0.5);
 	skin = mix(skin, skin * vec3(1.05, 0.70, 0.68), clamp(D.r * 1.1, 0.0, 1.0));
 	skin = mix(skin, skin * vec3(0.78, 0.70, 0.78), T.r * 0.55);
@@ -169,7 +170,7 @@ void fragment() {
 
 	// ---- specular
 	float oil = W.a * 0.5 + 0.5;
-	float rough = 0.60 - 0.10 * oil - 0.12 * M.r + 0.10 * hair_a + 0.06 * (hair_noise - 0.5);
+	float rough = 0.67 - 0.10 * oil - 0.12 * M.r + 0.10 * hair_a + 0.06 * (hair_noise - 0.5);
 	rough = mix(rough, 0.75, is_cloth);
 	vec3 h = normalize(key_dir + v);
 	float fres = 0.028 + 0.972 * pow(1.0 - max(dot(h, v), 0.0), 5.0);
@@ -178,8 +179,8 @@ void fragment() {
 	vec3 hf = normalize(fill_dir + v);
 	float spec_f = ggx(n, hf, rough) * (0.028 + 0.972 * pow(1.0 - max(dot(hf, v), 0.0), 5.0)) * max(dot(n, fill_dir), 0.0);
 	float spec_occ = key_vis * cav * (1.0 - hair_a * 0.8) * (1.0 - beard_cov * 0.7);
-	col += key_col * spec_k * spec_occ * mix(0.42, 0.12, is_cloth) + fill_col * spec_f * fill_vis * 0.18 * (1.0 - is_cloth);
+	col += key_col * spec_k * spec_occ * mix(0.30, 0.12, is_cloth) + fill_col * spec_f * fill_vis * 0.18 * (1.0 - is_cloth);
 
-	col = aces(col * 0.80);
+	col = aces(col * 0.70);
 	ALBEDO = pow(max(col, vec3(0.0)), vec3(1.0 / 2.2));
 }

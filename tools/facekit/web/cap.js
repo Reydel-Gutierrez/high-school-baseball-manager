@@ -99,19 +99,21 @@ export function buildCap(kit, baseRel, p) {
   // brim: from the front rim, pre-curved, 3 mm thick
   const brimStart = pos.length / 3;
   const B = 40, D = 10, TH = 0.003;
-  const span = 70 * Math.PI / 180;
+  const span = 64 * Math.PI / 180;
   const grid = [];
   for (let i = 0; i <= B; i++) {
     const th = -span + 2 * span * i / B;
     const pr = rimPhi(th);
     const base = point(th, pr, 0.0075);
-    const fwd = norm([Math.sin(th), 0, Math.cos(th)]);
-    const len = 0.072 * Math.pow(Math.max(0, Math.cos(th * 90 / 70)), 0.75) + 0.002;
+    // bills point forward (D-shaped outline), not radially out to the sides
+    const rad = [Math.sin(th), 0, Math.cos(th)];
+    const fwd = norm([rad[0] * 0.25, 0, rad[2] * 0.25 + 0.75]);
+    const len = 0.074 * Math.sqrt(Math.max(0, 1 - (th / span) ** 2)) + 0.002;
     const row = [];
     for (let k = 0; k <= D; k++) {
       const t = k / D;
       const out = len * t;
-      const curl = -0.026 * Math.pow(Math.abs(th) / span, 1.6) * Math.pow(t, 0.8);    // sides bend down
+      const curl = -0.032 * Math.pow(Math.abs(th) / span, 1.5) * Math.pow(t, 0.8);    // sides bend down
       const droop = -Math.tan(9 * Math.PI / 180) * out;               // bill tilts down
       row.push([base[0] + fwd[0] * out, base[1] + droop + curl, base[2] + fwd[2] * out]);
     }

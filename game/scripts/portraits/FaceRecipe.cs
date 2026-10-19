@@ -119,7 +119,7 @@ public sealed class FaceRecipe
 	public string Key = "";
 
 	/// <summary>Bump when shaders or framing change so cached headshots re-render.</summary>
-	public const string RenderVersion = "v4;";
+	public const string RenderVersion = "v5;";
 
 	public static FaceRecipe From(PersonAppearance appearance, int age, int heightInches, int weightLbs, Color? jersey = null, Color? trim = null, float yaw = 0f, bool cap = false, string? monogram = null)
 	{

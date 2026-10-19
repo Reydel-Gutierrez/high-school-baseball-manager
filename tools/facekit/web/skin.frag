@@ -32,7 +32,7 @@ void main(){
 
   // ---- age-weighted crease height (meters) -> bump the normal
   float a = uAge;
-  float wFore = ramp(24.0, 50.0, a), wEye = ramp(28.0, 55.0, a), wFold = 0.25 + 0.75 * ramp(20.0, 50.0, a);
+  float wFore = ramp(24.0, 50.0, a), wEye = ramp(28.0, 55.0, a), wFold = 0.10 + 0.90 * ramp(26.0, 55.0, a);
   float wNeck = ramp(40.0, 65.0, a);
   float hgt = (W.r * wFore + W.g * wEye + W.b * wFold) * 0.0009;
   hgt += (vnoise(vUv * 2600.0) - 0.5) * 0.00005;               // fine skin texture
@@ -49,6 +49,7 @@ void main(){
   vec3 base = toLin(uSkin);
   float lum = dot(base, vec3(0.3,0.59,0.11));
   vec3 skin = base;
+  skin = max(mix(vec3(lum), skin, 1.22), 0.0);                                  // keep skin saturated through the tonemap
   skin = mix(skin, skin * vec3(1.03, 1.0, 0.90), T.g * 0.5);                 // warmer forehead
   skin = mix(skin, skin * vec3(1.05, 0.70, 0.68), clamp(D.r * 1.1, 0.0, 1.0)); // cheeks, nose, ears flush
   skin = mix(skin, skin * vec3(0.78, 0.70, 0.78), T.r * 0.55);                // periorbital darkening
@@ -122,7 +123,7 @@ void main(){
 
   // ---- specular
   float oil = (W.a * 0.5 + 0.5);
-  float rough = 0.60 - 0.10 * oil - 0.12 * M.r + 0.10 * hairA + 0.06 * (hairNoise - 0.5);
+  float rough = 0.67 - 0.10 * oil - 0.12 * M.r + 0.10 * hairA + 0.06 * (hairNoise - 0.5);
   rough = mix(rough, 0.75, isCloth);
   vec3 h = normalize(keyDir + v);
   float fres = 0.028 + 0.972 * pow(1.0 - max(dot(h, v), 0.0), 5.0);
@@ -131,9 +132,9 @@ void main(){
   vec3 hf = normalize(fillDir + v);
   float specF = ggx(n, hf, rough) * (0.028 + 0.972 * pow(1.0 - max(dot(hf, v), 0.0), 5.0)) * max(dot(n, fillDir), 0.0);
   float specOcc = keyVis * cav * (1.0 - hairA * 0.8) * (1.0 - beardCov * 0.7);
-  col += keyCol * specK * specOcc * mix(0.42, 0.12, isCloth) + fillCol * specF * fillVis * 0.18 * (1.0 - isCloth);
+  col += keyCol * specK * specOcc * mix(0.30, 0.12, isCloth) + fillCol * specF * fillVis * 0.18 * (1.0 - isCloth);
 
   if (uDebug > 2.5) { col = vec3(0.5) * (diff + ambient) * cav; }
-  col = aces(col * 0.80);
+  col = aces(col * 0.70);
   frag = vec4(pow(col, vec3(1.0/2.2)), 1.0);
 }

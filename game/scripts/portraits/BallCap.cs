@@ -217,20 +217,21 @@ public static class BallCap
 		const int B = 40;
 		const int D = 10;
 		const float Th = 0.003f;
-		float span = Mathf.DegToRad(70f);
+		float span = Mathf.DegToRad(64f);
 		var grid = new Vector3[B + 1, D + 1];
 		for (int i = 0; i <= B; i++)
 		{
 			float th = -span + 2 * span * i / B;
 			float pr = RimPhi(th);
 			Vector3 b = Point(th, pr, 0.0075f);
-			var fwd = new Vector3(Mathf.Sin(th), 0, Mathf.Cos(th));
-			float len = 0.072f * Mathf.Pow(Math.Max(0f, Mathf.Cos(th * 90f / 70f)), 0.75f) + 0.002f;
+			// bills point forward (D-shaped outline), not radially out to the sides
+			var fwd = new Vector3(Mathf.Sin(th) * 0.25f, 0, Mathf.Cos(th) * 0.25f + 0.75f).Normalized();
+			float len = 0.074f * Mathf.Sqrt(Math.Max(0f, 1f - (th / span) * (th / span))) + 0.002f;
 			for (int k = 0; k <= D; k++)
 			{
 				float t = k / (float)D;
 				float o = len * t;
-				float curl = -0.026f * Mathf.Pow(Math.Abs(th) / span, 1.6f) * Mathf.Pow(t, 0.8f); // sides bend down
+				float curl = -0.032f * Mathf.Pow(Math.Abs(th) / span, 1.5f) * Mathf.Pow(t, 0.8f); // sides bend down
 				float droop = -Mathf.Tan(Mathf.DegToRad(9f)) * o; // bill tilts down
 				grid[i, k] = new Vector3(b.X + fwd.X * o, b.Y + droop + curl, b.Z + fwd.Z * o);
 			}
