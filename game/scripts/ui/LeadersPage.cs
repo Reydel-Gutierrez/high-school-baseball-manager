@@ -3,8 +3,9 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// League leaders: one stat table at a time. Batting and pitching
-/// pills pick the group; stat tabs swap the ranked column.
+/// League leaders (concept 14). Opens on a board of six leader cards (the
+/// leader's face and number, then the next three); "TOP 25" on a card, or the
+/// BATTING / PITCHING header tabs, open the full ranked table for one stat.
 /// </summary>
 public partial class LeadersPage : Control
 {
@@ -27,12 +28,25 @@ public partial class LeadersPage : Control
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
 
-	private readonly Dictionary<string, Button> _groupButtons = new();
+	/// <summary>The six boards: group, stat key, card title.</summary>
+	private static readonly (string Group, string Stat, string Title)[] Boards =
+	[
+		(ViewBatting, "AVG", "BATTING AVERAGE"),
+		(ViewBatting, "HR", "HOME RUNS"),
+		(ViewBatting, "SB", "STOLEN BASES"),
+		(ViewPitching, "SO", "STRIKEOUTS"),
+		(ViewPitching, "ERA", "ERA"),
+		(ViewBatting, "RBI", "RBI"),
+	];
+
 	private readonly Dictionary<string, Button> _statButtons = new();
 
 	private Label _subtitle = null!;
-	private Label _countValue = null!;
+	private Control _tabsHost = null!;
 	private HFlowContainer _statRow = null!;
+	private Control _listCard = null!;
+	private VBoxContainer _boardHost = null!;
+	private bool _board = true;
 	private Label _tableTitle = null!;
 	private Label _statHeader = null!;
 	private VBoxContainer _rowsHost = null!;
@@ -74,72 +88,23 @@ public partial class LeadersPage : Control
 		AddChild(margin);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
+		layout.AddThemeConstantOverride("separation", 12);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildHeader());
-		layout.AddChild(BuildGroupFilters());
+		_tabsHost = new HBoxContainer();
+		layout.AddChild(UiKit.PageHeader($"LEAGUE  ·  {DistrictHubData.SeasonYear}", "LEADERS & STATS", " ", out _subtitle, _tabsHost));
 
 		_statRow = new HFlowContainer();
 		_statRow.AddThemeConstantOverride("h_separation", 4);
 		_statRow.AddThemeConstantOverride("v_separation", 4);
 		layout.AddChild(_statRow);
 
-		layout.AddChild(BuildListCard());
-	}
+		_listCard = BuildListCard();
+		layout.AddChild(_listCard);
 
-	private Control BuildHeader()
-	{
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(UserProgram.MakeHeaderMark());
-		header.AddChild(TeamLogos.MakeHeaderRule(new Color(0.17f, 0.19f, 0.24f, 1f)));
-
-		var identity = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("LEADERS", _bold, 36, TextPrimary, HorizontalAlignment.Left));
-		_subtitle = MakeText("VARSITY  ·  FOUR DISTRICTS", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
-		identity.AddChild(_subtitle);
-		header.AddChild(identity);
-
-		var countBlock = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			Alignment = BoxContainer.AlignmentMode.End,
-		};
-		countBlock.AddThemeConstantOverride("separation", -4);
-		_countValue = MakeText("0", _bold, 28, TextPrimary, HorizontalAlignment.Right);
-		countBlock.AddChild(_countValue);
-		countBlock.AddChild(MakeText("PLAYERS", _semibold, 11, TextMuted, HorizontalAlignment.Right));
-		header.AddChild(countBlock);
-		return header;
-	}
-
-	private Control BuildGroupFilters()
-	{
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 4);
-		AddGroup(row, ViewBatting, "BATTING");
-		AddGroup(row, ViewPitching, "PITCHING");
-		return row;
-	}
-
-	private void AddGroup(HBoxContainer row, string key, string label)
-	{
-		var button = new Button { Text = label };
-		button.Pressed += () =>
-		{
-			_activeGroup = key;
-			_activeStat = key == ViewPitching ? "ERA" : "AVG";
-			Refresh();
-		};
-		_groupButtons[key] = button;
-		row.AddChild(button);
+		_boardHost = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ExpandFill };
+		_boardHost.AddThemeConstantOverride("separation", 12);
+		layout.AddChild(_boardHost);
 	}
 
 	private Control BuildListCard()
@@ -150,7 +115,7 @@ public partial class LeadersPage : Control
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 			ClipContents = true,
 		};
-		card.AddThemeStyleboxOverride("panel", MakeCardStyle());
+		card.AddThemeStyleboxOverride("panel", UiKit.Box(UiKit.Card, 16, 0, 6, UiKit.Line, 1));
 
 		var layout = new VBoxContainer();
 		layout.AddThemeConstantOverride("separation", 0);
@@ -218,15 +183,138 @@ public partial class LeadersPage : Control
 	{
 		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
 		HubStatTab tab = FindTab(_activeStat);
-		_subtitle.Text = varsity
-			? $"VARSITY  ·  {tab.Title.ToUpperInvariant()}  ·  ALL FOUR DISTRICTS"
-			: $"JV  ·  {tab.Title.ToUpperInvariant()}  ·  VARSITY BOARDS UNTIL JV BOX SCORES LAND";
+		_subtitle.Visible = true;
+		string level = varsity ? "Varsity" : "JV  ·  varsity boards until JV box scores land";
+		_subtitle.Text = _board ? $"{level}  ·  all four districts" : $"{level}  ·  {tab.Title}  ·  all four districts";
 		_tableTitle.Text = tab.Title.ToUpperInvariant();
 		_statHeader.Text = tab.Label;
 
-		StylePills(_groupButtons, _activeGroup);
+		RebuildTabs();
+		_statRow.Visible = !_board;
+		_listCard.Visible = !_board;
+		_boardHost.Visible = _board;
+		if (_board)
+		{
+			RebuildBoard();
+			return;
+		}
+
 		RebuildStatTabs();
 		RebuildRows();
+	}
+
+	private void RebuildTabs()
+	{
+		foreach (Node child in _tabsHost.GetChildren())
+		{
+			_tabsHost.RemoveChild(child);
+			child.QueueFree();
+		}
+
+		string active = _board ? "LEADERS" : _activeGroup == ViewPitching ? "PITCHING" : "BATTING";
+		_tabsHost.AddChild(UiKit.HeaderTabs(
+			[
+				("LEADERS", ShowBoard),
+				("BATTING", () => ShowList(ViewBatting, "AVG")),
+				("PITCHING", () => ShowList(ViewPitching, "ERA")),
+			],
+			active));
+	}
+
+	private void ShowBoard()
+	{
+		_board = true;
+		Refresh();
+	}
+
+	private void ShowList(string group, string stat)
+	{
+		_board = false;
+		_activeGroup = group;
+		_activeStat = stat;
+		Refresh();
+	}
+
+	private void RebuildBoard()
+	{
+		foreach (Node child in _boardHost.GetChildren())
+		{
+			_boardHost.RemoveChild(child);
+			child.QueueFree();
+		}
+
+		HBoxContainer? line = null;
+		for (int i = 0; i < Boards.Length; i++)
+		{
+			if (i % 3 == 0)
+			{
+				line = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+				line.AddThemeConstantOverride("separation", 12);
+				_boardHost.AddChild(line);
+			}
+
+			line!.AddChild(BuildBoardCard(Boards[i].Group, Boards[i].Stat, Boards[i].Title));
+		}
+	}
+
+	/// <summary>Leader with face and big number, then places two to four.</summary>
+	private Control BuildBoardCard(string group, string stat, string title)
+	{
+		PanelContainer card = UiKit.MakeCard(18, 12);
+		card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		var col = new VBoxContainer();
+		col.AddThemeConstantOverride("separation", 4);
+		card.AddChild(col);
+		col.AddChild(UiKit.CardHeader(title, "TOP 25", () => ShowList(group, stat)));
+
+		List<HubLeader> rows = DistrictHubData.LeadersFor(group, stat);
+		if (rows.Count == 0)
+		{
+			Label empty = UiKit.Text_("No qualified leaders yet. The boards fill in once games are played.", UiKit.Medium, 14, UiKit.Muted);
+			empty.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			col.AddChild(empty);
+			return card;
+		}
+
+		HubLeader top = rows[0];
+		var hero = new HBoxContainer();
+		hero.AddThemeConstantOverride("separation", 14);
+		Control? face = PlayerFaces.For(top.TeamId, top.Name, 64, 64, true, _session.ActiveTeam.Level);
+		if (face != null)
+		{
+			face.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			hero.AddChild(face);
+		}
+
+		var who = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		who.AddThemeConstantOverride("separation", -6);
+		who.AddChild(UiKit.Kicker($"{top.TeamShort.ToUpperInvariant()}  ·  {top.Position}", UiKit.Muted));
+		Label name = UiKit.Text_(top.Name.ToUpperInvariant(), UiKit.Bold, 22, top.TeamId == DistrictHubData.UserTeamId ? UiKit.Gold : UiKit.Text);
+		name.MouseFilter = MouseFilterEnum.Stop;
+		PlayerLinks.MakeClickable(name, top.TeamId, top.Name);
+		who.AddChild(name);
+		who.AddChild(UiKit.Text_(top.Display, UiKit.Bold, 32, UiKit.Gold));
+		hero.AddChild(who);
+		col.AddChild(hero);
+		col.AddChild(UiKit.Hairline());
+
+		for (int i = 1; i < rows.Count && i < 4; i++)
+		{
+			HubLeader row = rows[i];
+			var line = new HBoxContainer();
+			line.AddThemeConstantOverride("separation", 10);
+			line.AddChild(UiKit.Cell($"{i + 1}", 16, UiKit.Semibold, 14, UiKit.Muted));
+			Label rowName = UiKit.Text_(row.Name, UiKit.Semibold, 15, row.TeamId == DistrictHubData.UserTeamId ? UiKit.Gold : UiKit.Text);
+			rowName.MouseFilter = MouseFilterEnum.Stop;
+			PlayerLinks.MakeClickable(rowName, row.TeamId, row.Name);
+			line.AddChild(rowName);
+			line.AddChild(UiKit.Cell(row.TeamShort, 0, UiKit.Medium, 13, UiKit.Muted));
+			line.AddChild(UiKit.Cell(row.Display, 60, UiKit.Bold, 16, UiKit.Text, HorizontalAlignment.Right));
+			col.AddChild(line);
+		}
+
+		return card;
 	}
 
 	private void RebuildStatTabs()
@@ -263,7 +351,6 @@ public partial class LeadersPage : Control
 		}
 
 		List<HubLeader> rows = DistrictHubData.LeadersFor(_activeGroup, _activeStat);
-		_countValue.Text = $"{rows.Count}";
 		for (int i = 0; i < rows.Count; i++)
 		{
 			_rowsHost.AddChild(BuildRow(rows[i], i + 1, i % 2 == 0));
@@ -375,24 +462,6 @@ public partial class LeadersPage : Control
 		label.AddThemeFontSizeOverride("font_size", size);
 		label.AddThemeColorOverride("font_color", color);
 		return label;
-	}
-
-	private static StyleBoxFlat MakeCardStyle()
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			BorderColor = CardBorder,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-			CornerDetail = 3,
-		};
 	}
 
 	private static StyleBoxFlat MakePill(Color bg, float padX, float padY = 5)

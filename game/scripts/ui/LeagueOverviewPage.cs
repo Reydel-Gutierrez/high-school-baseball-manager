@@ -3,33 +3,15 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// District directory: pick one of the four districts (yours by default)
-/// to see its eight programs and open any school's profile. Standings,
-/// rankings, and the rest of the league desk stay in the same menu.
+/// District directory (concept 12): pick one of the four districts (yours by
+/// default) from the header tabs to see its eight programs, with the selected
+/// school's profile beside them. Standings live on their own section tab.
 /// </summary>
 public partial class LeagueOverviewPage : Control
 {
-	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
-	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
-	private static readonly Color AccentHover = new(0.850980f, 0.729412f, 0.443137f, 1f);
-	private static readonly Color TextOnAccent = new(0.070588f, 0.074510f, 0.086275f, 1f);
-	private static readonly Color HoverBg = new(0.184314f, 0.203922f, 0.239216f, 1f);
-	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
-	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
-	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
-	private static readonly Color RowEven = new(0.055f, 0.062f, 0.078f, 0.55f);
-	private static readonly Color RowOdd = new(0.070588f, 0.078431f, 0.094118f, 0.35f);
-	private static readonly Color UserRow = new(0.772549f, 0.635294f, 0.325490f, 0.14f);
-
 	private GameSession _session = null!;
-	private FontFile _bold = null!;
-	private FontFile _semibold = null!;
-	private FontFile _medium = null!;
 
 	private Label _subtitle = null!;
-	private Label _countValue = null!;
-	private Label _countLabel = null!;
 	private HBoxContainer _filterRow = null!;
 	private Control _bodyHost = null!;
 	private SchoolProfileCard? _schoolCard;
@@ -38,9 +20,6 @@ public partial class LeagueOverviewPage : Control
 
 	public override void _Ready()
 	{
-		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
-		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
-		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -126,14 +105,11 @@ public partial class LeagueOverviewPage : Control
 		AddChild(margin);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
+		layout.AddThemeConstantOverride("separation", 12);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildHeader());
-
 		_filterRow = new HBoxContainer();
-		_filterRow.AddThemeConstantOverride("separation", 4);
-		layout.AddChild(_filterRow);
+		layout.AddChild(UiKit.PageHeader($"LEAGUE  ·  {DistrictHubData.SeasonYear}", "DISTRICTS", " ", out _subtitle, _filterRow));
 
 		_bodyHost = new VBoxContainer
 		{
@@ -142,40 +118,6 @@ public partial class LeagueOverviewPage : Control
 		};
 		layout.AddChild(_bodyHost);
 	}
-
-	private Control BuildHeader()
-	{
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(UserProgram.MakeHeaderMark());
-		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
-
-		var identity = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("DISTRICTS", _bold, 36, TextPrimary, HorizontalAlignment.Left));
-		_subtitle = MakeText("FOUR DISTRICTS  ·  32 PROGRAMS", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
-		identity.AddChild(_subtitle);
-		header.AddChild(identity);
-
-		var countBlock = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			Alignment = BoxContainer.AlignmentMode.End,
-		};
-		countBlock.AddThemeConstantOverride("separation", -4);
-		_countValue = MakeText("32", _bold, 28, TextPrimary, HorizontalAlignment.Right);
-		countBlock.AddChild(_countValue);
-		_countLabel = MakeText("PROGRAMS", _semibold, 11, TextMuted, HorizontalAlignment.Right);
-		countBlock.AddChild(_countLabel);
-		header.AddChild(countBlock);
-		return header;
-	}
-
 
 	private string _boundUserProgram = "";
 
@@ -209,12 +151,8 @@ public partial class LeagueOverviewPage : Control
 
 	private void ApplyHeaderCopy()
 	{
-		bool varsity = Level() == TeamLevel.Varsity;
-		string level = varsity ? "VARSITY" : "JV";
-		HubDistrict district = DistrictHubData.GetDistrict(_focusedDistrict!);
-		_subtitle.Text = $"{level}  ·  {district.Name.ToUpperInvariant()} DISTRICT  ·  {district.Region.ToUpperInvariant()} REGION";
-		_countValue.Text = "8";
-		_countLabel.Text = "PROGRAMS";
+		string level = Level() == TeamLevel.Varsity ? "Varsity" : "JV";
+		_subtitle.Text = $"{level}  ·  four districts, eight programs each";
 	}
 
 	private void RebuildFilters()
@@ -225,30 +163,14 @@ public partial class LeagueOverviewPage : Control
 			child.QueueFree();
 		}
 
-		_filterRow.Visible = true;
-
+		var tabs = new List<(string Label, System.Action Open)>();
 		foreach (HubDistrict district in DistrictHubData.Districts)
 		{
 			string id = district.Id;
-			AddFilter(district.Name.ToUpperInvariant(), () => ShowDistrict(id), _focusedDistrict == id);
+			tabs.Add((district.Name.ToUpperInvariant(), () => ShowDistrict(id)));
 		}
 
-		if (_focusedDistrict != null)
-		{
-			string districtId = _focusedDistrict;
-			var standings = new Button { Text = "STANDINGS" };
-			standings.Pressed += () => OpenDistrictStandings(districtId);
-			StyleActionPill(standings);
-			_filterRow.AddChild(standings);
-		}
-	}
-
-	private void AddFilter(string label, System.Action onPressed, bool active)
-	{
-		var button = new Button { Text = label };
-		button.Pressed += onPressed;
-		StylePill(button, active);
-		_filterRow.AddChild(button);
+		_filterRow.AddChild(UiKit.HeaderTabs(tabs, DistrictHubData.GetDistrict(_focusedDistrict!).Name.ToUpperInvariant()));
 	}
 
 	private void RebuildBody()
@@ -271,7 +193,7 @@ public partial class LeagueOverviewPage : Control
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
-		row.AddThemeConstantOverride("separation", 8);
+		row.AddThemeConstantOverride("separation", 12);
 
 		row.AddChild(BuildDistrictTable(_focusedDistrict!));
 
@@ -289,22 +211,36 @@ public partial class LeagueOverviewPage : Control
 	private Control BuildDistrictTable(string districtId)
 	{
 		HubDistrict district = DistrictHubData.GetDistrict(districtId);
-		var card = new PanelContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 1.55f,
-			ClipContents = true,
-		};
-		card.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
+		PanelContainer card = UiKit.MakeCard(22, 16);
+		card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		card.SizeFlagsStretchRatio = 1.2f;
 
 		var layout = new VBoxContainer();
 		layout.AddThemeConstantOverride("separation", 0);
 		card.AddChild(layout);
 
-		layout.AddChild(BuildDistrictHeading(district, compact: false));
-		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
-		layout.AddChild(BuildFullColumnHeader());
+		string title = $"{district.Name.ToUpperInvariant()} DISTRICT  ·  {district.Region.ToUpperInvariant()} REGION";
+		if (district.Id == UserDistrictId())
+		{
+			title += "  ·  YOUR DISTRICT";
+		}
+
+		layout.AddChild(UiKit.CardHeader(title, "STANDINGS", () => OpenDistrictStandings(districtId)));
+		layout.AddChild(UiKit.Spacer(0, 6));
+		var header = new MarginContainer();
+		header.AddThemeConstantOverride("margin_left", 8);
+		header.AddThemeConstantOverride("margin_right", 8);
+		header.AddThemeConstantOverride("margin_bottom", 4);
+		header.AddChild(LeagueUi.ColumnHeader(
+			("#", 22, HorizontalAlignment.Right),
+			("PROGRAM", 0, HorizontalAlignment.Left),
+			("W-L", 56, HorizontalAlignment.Center),
+			("PCT", 52, HorizontalAlignment.Center),
+			("GB", 40, HorizontalAlignment.Center),
+			("STRK", 44, HorizontalAlignment.Center)));
+		layout.AddChild(header);
+		layout.AddChild(UiKit.Hairline());
 
 		var scroll = new ScrollContainer
 		{
@@ -319,133 +255,37 @@ public partial class LeagueOverviewPage : Control
 		rows.AddThemeConstantOverride("separation", 0);
 		scroll.AddChild(rows);
 
-		List<HubStandingRow> standings = DistrictHubData.StandingsFor(districtId, Level());
 		string userId = UserTeamId();
-		for (int i = 0; i < standings.Count; i++)
+		foreach (HubStandingRow row in DistrictHubData.StandingsFor(districtId, Level()))
 		{
-			rows.AddChild(BuildFullRow(standings[i], i % 2 == 0, userId));
+			rows.AddChild(BuildFullRow(row, userId));
 		}
 
 		return card;
 	}
 
-	private Control BuildDistrictHeading(HubDistrict district, bool compact)
+	private Control BuildFullRow(HubStandingRow row, string userId)
 	{
-		var header = new PanelContainer();
-		header.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			ContentMarginLeft = 12,
-			ContentMarginTop = 10,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 8,
-		});
-		header.MouseFilter = MouseFilterEnum.Stop;
-		header.MouseDefaultCursorShape = CursorShape.PointingHand;
-		string districtId = district.Id;
-		header.GuiInput += (InputEvent ev) =>
-		{
-			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
-			{
-				ShowDistrict(districtId);
-				header.AcceptEvent();
-			}
-		};
-
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 10);
-		row.AddChild(MakeText(district.Name.ToUpperInvariant() + " DISTRICT", _bold, compact ? 15 : 16, TextPrimary, HorizontalAlignment.Left));
-		row.AddChild(MakeText(district.Region.ToUpperInvariant(), _semibold, 12, TextMuted, HorizontalAlignment.Left));
-		var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		row.AddChild(spacer);
-
-		List<HubStandingRow> standings = DistrictHubData.StandingsFor(district.Id, Level());
-		if (standings.Count > 0)
-		{
-			row.AddChild(MakeText("LEADER  " + standings[0].Team.ShortName.ToUpperInvariant() + "  " + standings[0].Team.Record(Level()), _semibold, 12, Accent, HorizontalAlignment.Right));
-		}
-
-		if (district.Id == DistrictHubData.GetTeam(UserTeamId()).DistrictId)
-		{
-			row.AddChild(MakeTag("YOUR DISTRICT", Accent, TextOnAccent));
-		}
-
-		header.AddChild(row);
-		return header;
-	}
-
-	private Control BuildFullColumnHeader()
-	{
-		var header = new PanelContainer();
-		header.AddThemeStyleboxOverride("panel", ColumnHeaderStyle());
-		var columns = new HBoxContainer();
-		columns.AddThemeConstantOverride("separation", 10);
-		columns.AddChild(MakeFixed("#", 28, _semibold, 10, TextMuted, HorizontalAlignment.Center));
-		var team = MakeText("PROGRAM", _semibold, 10, TextMuted, HorizontalAlignment.Left);
-		team.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		columns.AddChild(team);
-		columns.AddChild(MakeFixed("W-L", 56, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed("PCT", 48, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed("GB", 40, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed("STR", 44, _semibold, 10, TextMuted, HorizontalAlignment.Right));
-		header.AddChild(columns);
-		return header;
-	}
-
-	private Control BuildFullRow(HubStandingRow row, bool even, string userId)
-	{
-		PanelContainer panel = MakeRowPanel(row.Team.Id, even, userId);
+		bool user = row.Team.Id == userId;
+		bool selected = row.Team.Id == _selectedSchoolId;
+		PanelContainer panel = LeagueUi.RowPanel(user || selected, 7);
 		SchoolLinks.MakeClickable(panel, row.Team.Id);
 
-		var columns = new HBoxContainer();
-		columns.AddThemeConstantOverride("separation", 10);
-		columns.AddChild(MakeFixed($"{row.Rank}", 28, _bold, 14, row.Qualifies ? Green : TextMuted, HorizontalAlignment.Center));
-		columns.AddChild(BuildTeamIdentity(row.Team.Id, row.Team.Name.ToUpperInvariant(), row.Team.Id == userId, 15, 26));
-		columns.AddChild(MakeFixed(row.Team.Record(Level()), 56, _bold, 15, TextPrimary, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed(row.Pct, 48, _semibold, 14, TextMuted, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed(row.GamesBack, 40, _semibold, 14, TextMuted, HorizontalAlignment.Right));
-		columns.AddChild(MakeFixed(row.Streak, 44, _bold, 13, row.Streak.StartsWith('W') ? Green : new Color(0.906f, 0.298f, 0.235f), HorizontalAlignment.Right));
-		panel.AddChild(columns);
+		var cells = new HBoxContainer();
+		cells.AddThemeConstantOverride("separation", 10);
+		cells.AddChild(UiKit.Cell($"{row.Rank}", 22, UiKit.Semibold, 16, UiKit.Muted, HorizontalAlignment.Right));
+		var identity = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		identity.AddThemeConstantOverride("separation", 10);
+		identity.AddChild(LeagueUi.TeamBadge(row.Team.Id, row.Team.Name, 28));
+		identity.AddChild(UiKit.Cell(row.Team.Name.ToUpperInvariant(), 0, UiKit.Bold, 17, user ? UiKit.Gold : UiKit.Text));
+		cells.AddChild(identity);
+		cells.AddChild(UiKit.Cell(row.Team.Record(Level()), 56, UiKit.Bold, 16, UiKit.Text, HorizontalAlignment.Center));
+		cells.AddChild(UiKit.Cell(row.Pct, 52, UiKit.Medium, 15, UiKit.Muted, HorizontalAlignment.Center));
+		cells.AddChild(UiKit.Cell(row.GamesBack, 40, UiKit.Medium, 15, UiKit.Muted, HorizontalAlignment.Center));
+		Color streak = row.Streak.StartsWith('W') ? UiKit.Green : row.Streak.StartsWith('L') ? UiKit.Red : UiKit.Muted;
+		cells.AddChild(UiKit.Cell(string.IsNullOrEmpty(row.Streak) ? "–" : row.Streak, 44, UiKit.Bold, 15, streak, HorizontalAlignment.Center));
+		panel.AddChild(cells);
 		return panel;
-	}
-
-	private PanelContainer MakeRowPanel(string teamId, bool even, string userId)
-	{
-		bool user = teamId == userId;
-		bool selected = teamId == _selectedSchoolId && _focusedDistrict != null;
-		var panel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = selected || user ? UserRow : even ? RowEven : RowOdd,
-			BorderColor = selected || user ? Accent : new Color(0.18f, 0.20f, 0.24f, 1f),
-			BorderWidthLeft = selected || user ? 2 : 0,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 12,
-			ContentMarginTop = 7,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 7,
-		});
-		return panel;
-	}
-
-	private Control BuildTeamIdentity(string teamId, string name, bool user, int fontSize, float logoSize)
-	{
-		var identity = new HBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		identity.AddThemeConstantOverride("separation", 8);
-		TextureRect? logo = TeamLogos.TryMakeIcon(teamId, logoSize);
-		if (logo != null)
-		{
-			identity.AddChild(logo);
-		}
-
-		var label = MakeText(name.ToUpperInvariant(), user ? _bold : _semibold, fontSize, user ? Accent : TextPrimary, HorizontalAlignment.Left);
-		label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
-		identity.AddChild(label);
-		return identity;
 	}
 
 	private void OpenDistrictStandings(string districtId)
@@ -469,124 +309,5 @@ public partial class LeagueOverviewPage : Control
 	{
 		string catalog = SchoolProfiles.NormalizeId(_session.CatalogOrganizationId);
 		return string.IsNullOrWhiteSpace(catalog) ? DistrictHubData.UserTeamId : catalog;
-	}
-
-	private void StylePill(Button button, bool isActive)
-	{
-		button.Flat = false;
-		button.AddThemeFontOverride("font", _semibold);
-		button.AddThemeFontSizeOverride("font_size", 12);
-		button.AddThemeColorOverride("font_color", isActive ? TextOnAccent : TextPrimary);
-		button.AddThemeColorOverride("font_hover_color", isActive ? TextOnAccent : Colors.White);
-		button.AddThemeColorOverride("font_pressed_color", isActive ? TextOnAccent : TextPrimary);
-		button.AddThemeColorOverride("font_focus_color", isActive ? TextOnAccent : Colors.White);
-		button.AddThemeStyleboxOverride("normal", MakePill(isActive ? Accent : Colors.Transparent, 12));
-		button.AddThemeStyleboxOverride("hover", MakePill(isActive ? AccentHover : HoverBg, 12));
-		button.AddThemeStyleboxOverride("pressed", MakePill(isActive ? AccentHover : HoverBg, 12));
-		button.AddThemeStyleboxOverride("focus", MakePill(isActive ? AccentHover : HoverBg, 12));
-	}
-
-	private void StyleActionPill(Button button)
-	{
-		button.Flat = false;
-		button.MouseDefaultCursorShape = CursorShape.PointingHand;
-		button.AddThemeFontOverride("font", _semibold);
-		button.AddThemeFontSizeOverride("font_size", 12);
-		button.AddThemeColorOverride("font_color", TextPrimary);
-		button.AddThemeColorOverride("font_hover_color", Colors.White);
-		button.AddThemeStyleboxOverride("normal", MakePill(Colors.Transparent, 12));
-		button.AddThemeStyleboxOverride("hover", MakePill(HoverBg, 12));
-		button.AddThemeStyleboxOverride("pressed", MakePill(HoverBg, 12));
-		button.AddThemeStyleboxOverride("focus", MakePill(HoverBg, 12));
-	}
-
-	private PanelContainer MakeTag(string text, Color border, Color font)
-	{
-		var pill = new PanelContainer();
-		pill.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(border.R, border.G, border.B, 1f),
-			BorderColor = border,
-			ContentMarginLeft = 7,
-			ContentMarginTop = 3,
-			ContentMarginRight = 7,
-			ContentMarginBottom = 3,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-		});
-		pill.AddChild(MakeText(text, _bold, 10, font, HorizontalAlignment.Center));
-		return pill;
-	}
-
-	private Label MakeFixed(string text, float width, FontFile font, int size, Color color, HorizontalAlignment align)
-	{
-		Label label = MakeText(text, font, size, color, align);
-		label.CustomMinimumSize = new Vector2(width, 0);
-		return label;
-	}
-
-	private static Label MakeText(string text, FontFile font, int size, Color color, HorizontalAlignment align)
-	{
-		var label = new Label { Text = text, HorizontalAlignment = align };
-		label.AddThemeFontOverride("font", font);
-		label.AddThemeFontSizeOverride("font_size", size);
-		label.AddThemeColorOverride("font_color", color);
-		return label;
-	}
-
-	private static StyleBoxFlat ColumnHeaderStyle()
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			BorderColor = CardBorder,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 12,
-			ContentMarginTop = 7,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 7,
-		};
-	}
-
-	private static StyleBoxFlat MakeCardStyle(float pad)
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			BorderColor = CardBorder,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = pad,
-			ContentMarginTop = pad,
-			ContentMarginRight = pad,
-			ContentMarginBottom = pad,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-			CornerDetail = 3,
-		};
-	}
-
-	private static StyleBoxFlat MakePill(Color bg, float padX, float padY = 5)
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = bg,
-			DrawCenter = true,
-			ContentMarginLeft = padX,
-			ContentMarginTop = padY,
-			ContentMarginRight = padX,
-			ContentMarginBottom = padY,
-			CornerRadiusTopLeft = 10,
-			CornerRadiusTopRight = 10,
-			CornerRadiusBottomRight = 10,
-			CornerRadiusBottomLeft = 10,
-			CornerDetail = 5,
-		};
 	}
 }

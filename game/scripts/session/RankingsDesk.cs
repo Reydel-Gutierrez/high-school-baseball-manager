@@ -13,8 +13,10 @@ public static class RankingsDesk
 	{
 		TeamLevel level = session.ActiveTeam.Level;
 		var entries = new List<PowerRankingEntry>(DistrictHubData.Teams.Count);
-		foreach (HubTeam team in DistrictHubData.Teams)
+		foreach (HubTeam fixture in DistrictHubData.Teams)
 		{
+			// Live records from the world (the raw list is the prototype fixture).
+			HubTeam team = DistrictHubData.GetTeam(fixture.Id);
 			HubDistrict district = DistrictHubData.GetDistrict(team.DistrictId);
 			SchoolSnapshot school = SchoolProfiles.For(team.Id, level, session);
 			entries.Add(new PowerRankingEntry(

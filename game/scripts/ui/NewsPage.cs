@@ -5,38 +5,32 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// League news desk: condition-triggered wire copy from the live
-/// season, not a static briefing.
+/// League news desk (concept 16): condition-triggered wire copy from the live
+/// season. The selected story runs as a team-branded banner with the
+/// subject's face, the next two sit underneath as smaller banners, and the
+/// latest wire runs down the right. Header tabs filter to your district or
+/// your own team.
 /// </summary>
 public partial class NewsPage : Control
 {
-	private static readonly Color TextPrimary = new(0.956863f, 0.964706f, 0.972549f, 1f);
-	private static readonly Color TextMuted = new(0.55f, 0.58f, 0.64f, 1f);
-	private static readonly Color Accent = new(0.772549f, 0.635294f, 0.325490f, 1f);
-	private static readonly Color Green = new(0.239216f, 0.862745f, 0.450980f, 1f);
-	private static readonly Color CardInner = new(0.090196f, 0.105882f, 0.141176f, 1f);
-	private static readonly Color CardBorder = new(0.137255f, 0.152941f, 0.200000f, 1f);
-	private static readonly Color Hairline = new(0.17f, 0.19f, 0.24f, 1f);
-	private static readonly Color RowEven = new(0.055f, 0.062f, 0.078f, 0.55f);
-	private static readonly Color RowOdd = new(0.070588f, 0.078431f, 0.094118f, 0.35f);
-	private static readonly Color LakesBlue = new(0.45f, 0.72f, 0.88f, 1f);
+	private const string FeedAll = "ALL";
+	private const string FeedMine = "MY TEAM";
+
+	private static readonly Color Blue = new(0.45f, 0.72f, 0.88f, 1f);
 
 	private GameSession _session = null!;
-	private FontFile _bold = null!;
-	private FontFile _semibold = null!;
-	private FontFile _medium = null!;
 
 	private Label _subtitle = null!;
+	private Control _tabsHost = null!;
 	private VBoxContainer _featureHost = null!;
 	private VBoxContainer _listHost = null!;
+	private string _feed = FeedAll;
 	private int _selectedIndex;
+	private List<NewsStory> _all = new();
 	private List<NewsStory> _stories = new();
 
 	public override void _Ready()
 	{
-		_bold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Bold.ttf");
-		_semibold = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-SemiBold.ttf");
-		_medium = GD.Load<FontFile>("res://assets/fonts/BarlowCondensed-Medium.ttf");
 		_session = GetNode<GameSession>("/root/GameSession");
 
 		BuildPage();
@@ -80,12 +74,12 @@ public partial class NewsPage : Control
 
 	private void ApplyActiveTeam()
 	{
-		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
-		string desk = DistrictHubData.GetDistrict(DistrictHubData.UserDistrictId).Name.ToUpperInvariant();
-		_subtitle.Text = varsity
-			? $"VARSITY  ·  {desk} DESK  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}"
-			: $"JV  ·  {desk} DESK  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
+		string level = _session.ActiveTeam.Level == TeamLevel.Varsity ? "Varsity" : "JV";
+		_subtitle.Visible = true;
+		_subtitle.Text = $"{level}  ·  around the four districts  ·  {_session.CurrentDate.ToString("dddd, MMMM d", CultureInfo.InvariantCulture)}";
 	}
+
+	private string UserDistrictName() => DistrictHubData.GetDistrict(DistrictHubData.UserDistrictId).Name.ToUpperInvariant();
 
 	private void BuildPage()
 	{
@@ -98,55 +92,35 @@ public partial class NewsPage : Control
 		AddChild(margin);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
+		layout.AddThemeConstantOverride("separation", 12);
 		margin.AddChild(layout);
-		layout.AddChild(BuildHeader());
+		_tabsHost = new HBoxContainer();
+		layout.AddChild(UiKit.PageHeader($"LEAGUE  ·  {DistrictHubData.SeasonYear}", "NEWS", " ", out _subtitle, _tabsHost));
 
 		var body = new HBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
-		body.AddThemeConstantOverride("separation", 8);
+		body.AddThemeConstantOverride("separation", 12);
 		layout.AddChild(body);
 
-		var featureCard = new PanelContainer
+		_featureHost = new VBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
-			SizeFlagsStretchRatio = 1.15f,
-			ClipContents = true,
+			SizeFlagsStretchRatio = 1.4f,
 		};
-		featureCard.AddThemeStyleboxOverride("panel", MakeCardStyle(12));
-		_featureHost = new VBoxContainer();
-		_featureHost.AddThemeConstantOverride("separation", 8);
-		featureCard.AddChild(_featureHost);
-		body.AddChild(featureCard);
+		_featureHost.AddThemeConstantOverride("separation", 12);
+		body.AddChild(_featureHost);
 
-		var listCard = new PanelContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			ClipContents = true,
-		};
-		listCard.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
-
+		PanelContainer listCard = UiKit.MakeCard(22, 14);
+		listCard.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+		listCard.SizeFlagsVertical = SizeFlags.ExpandFill;
 		var listLayout = new VBoxContainer();
-		listLayout.AddThemeConstantOverride("separation", 0);
+		listLayout.AddThemeConstantOverride("separation", 6);
 		listCard.AddChild(listLayout);
-
-		var listHeading = new PanelContainer();
-		listHeading.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			ContentMarginLeft = 12,
-			ContentMarginTop = 10,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 8,
-		});
-		listHeading.AddChild(MakeText("THE WIRE", _bold, 14, TextPrimary, HorizontalAlignment.Left));
-		listLayout.AddChild(listHeading);
-		listLayout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
+		listLayout.AddChild(UiKit.CardHeader("LATEST"));
 
 		var scroll = new ScrollContainer
 		{
@@ -163,107 +137,63 @@ public partial class NewsPage : Control
 		body.AddChild(listCard);
 	}
 
-	private Control BuildHeader()
+	private void RebuildTabs()
 	{
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(UserProgram.MakeHeaderMark());
-		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
+		Clear(_tabsHost);
+		string district = UserDistrictName();
+		_tabsHost.AddChild(UiKit.HeaderTabs(
+			[
+				(FeedAll, () => SetFeed(FeedAll)),
+				(district, () => SetFeed(district)),
+				(FeedMine, () => SetFeed(FeedMine)),
+			],
+			_feed == FeedAll || _feed == FeedMine ? _feed : district));
+	}
 
-		var identity = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("NEWS", _bold, 36, TextPrimary, HorizontalAlignment.Left));
-		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DESK", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
-		identity.AddChild(_subtitle);
-		header.AddChild(identity);
-		return header;
+	private void SetFeed(string feed)
+	{
+		_feed = feed;
+		_selectedIndex = 0;
+		BindStories();
 	}
 
 	private void BindStories()
 	{
 		_session.EnsureNews();
-		_stories = new List<NewsStory>(NewsDesk.For(_session));
+		_all = new List<NewsStory>(NewsDesk.For(_session));
+		_stories = _all.FindAll(InFeed);
 		if (_selectedIndex >= _stories.Count)
 		{
 			_selectedIndex = 0;
 		}
 
-		RebuildList();
-		if (_stories.Count > 0)
-		{
-			SelectStory(_selectedIndex);
-		}
-		else
-		{
-			BindEmpty();
-		}
+		RebuildTabs();
+		SelectStory(_selectedIndex);
 	}
 
-	private void RebuildList()
+	private bool InFeed(NewsStory story)
 	{
-		foreach (Node child in _listHost.GetChildren())
+		if (_feed == FeedAll)
 		{
-			_listHost.RemoveChild(child);
-			child.QueueFree();
+			return true;
 		}
 
-		for (int i = 0; i < _stories.Count; i++)
+		string user = UserProgram.OrganizationId;
+		string? subject = string.IsNullOrEmpty(story.SubjectOrganizationId) ? null : SchoolProfiles.NormalizeId(story.SubjectOrganizationId);
+		if (_feed == FeedMine)
 		{
-			int index = i;
-			_listHost.AddChild(BuildListRow(_stories[i], i, index == _selectedIndex));
+			return subject == user;
 		}
-	}
 
-	private Control BuildListRow(NewsStory item, int index, bool selected)
-	{
-		var row = new PanelContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			MouseFilter = MouseFilterEnum.Stop,
-		};
-		row.AddThemeStyleboxOverride("panel", MakeRowStyle(selected, index % 2 == 0));
-		row.GuiInput += (InputEvent evt) =>
-		{
-			if (evt is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
-			{
-				SelectStory(index);
-			}
-		};
-		row.MouseEntered += () =>
-		{
-			if (!selected)
-			{
-				row.AddThemeStyleboxOverride("panel", MakeRowStyle(true, true));
-			}
-		};
-		row.MouseExited += () => row.AddThemeStyleboxOverride("panel", MakeRowStyle(selected, index % 2 == 0));
-
-		var columns = new HBoxContainer();
-		columns.AddThemeConstantOverride("separation", 10);
-
-		var date = MakeText(item.DateLabel, _semibold, 11, TextMuted, HorizontalAlignment.Left);
-		date.CustomMinimumSize = new Vector2(52, 0);
-		columns.AddChild(date);
-
-		var copy = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		copy.AddThemeConstantOverride("separation", 2);
-		copy.AddChild(MakeTag(item.Tag));
-		var headline = MakeText(item.Headline, selected ? _bold : _semibold, 13, selected ? Accent : TextPrimary, HorizontalAlignment.Left);
-		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		copy.AddChild(headline);
-		columns.AddChild(copy);
-
-		row.AddChild(columns);
-		return row;
+		return subject != null
+			? DistrictHubData.GetTeam(subject).DistrictId == DistrictHubData.UserDistrictId
+			: story.Tag == NewsTag.District;
 	}
 
 	private void SelectStory(int index)
 	{
+		Clear(_featureHost);
+		Clear(_listHost);
 		if (_stories.Count == 0)
 		{
 			BindEmpty();
@@ -271,184 +201,245 @@ public partial class NewsPage : Control
 		}
 
 		_selectedIndex = Math.Clamp(index, 0, _stories.Count - 1);
-		RebuildList();
-		BindFeature(_stories[_selectedIndex]);
+		for (int i = 0; i < _stories.Count; i++)
+		{
+			_listHost.AddChild(BuildListRow(_stories[i], i, i == _selectedIndex));
+		}
+
+		_featureHost.AddChild(BuildFeature(_stories[_selectedIndex]));
+
+		var seconds = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+		seconds.AddThemeConstantOverride("separation", 12);
+		int shown = 0;
+		for (int i = 1; i < _stories.Count && shown < 2; i++)
+		{
+			int next = (_selectedIndex + i) % _stories.Count;
+			seconds.AddChild(BuildSecondary(_stories[next], next));
+			shown++;
+		}
+
+		if (shown > 0)
+		{
+			_featureHost.AddChild(seconds);
+		}
 	}
 
 	private void BindEmpty()
 	{
-		foreach (Node child in _featureHost.GetChildren())
-		{
-			_featureHost.RemoveChild(child);
-			child.QueueFree();
-		}
-
-		_featureHost.AddChild(MakeTag(NewsTag.Note));
-		_featureHost.AddChild(MakeText("THE WIRE", _semibold, 11, TextMuted, HorizontalAlignment.Left));
-		var headline = MakeText("NO COPY YET", _bold, 26, TextPrimary, HorizontalAlignment.Left);
-		_featureHost.AddChild(headline);
-		var body = MakeText(
-			"Stories land when the season does something: a streak, a freshman who sticks, a board that starts asking questions, a bracket that locks.",
-			_medium,
-			15,
-			new Color(0.78f, 0.81f, 0.86f),
-			HorizontalAlignment.Left);
+		PanelContainer card = UiKit.MakeCard(26, 22);
+		card.SizeFlagsVertical = SizeFlags.ExpandFill;
+		var col = new VBoxContainer();
+		col.AddThemeConstantOverride("separation", 6);
+		card.AddChild(col);
+		col.AddChild(UiKit.Kicker("THE WIRE"));
+		col.AddChild(UiKit.Text_("NO COPY YET", UiKit.Bold, 30, UiKit.Text));
+		Label body = UiKit.Text_(
+			_feed == FeedAll
+				? "Stories land when the season does something: a streak, a freshman who sticks, a board that starts asking questions, a bracket that locks."
+				: "Nothing on this desk yet. Switch to ALL for the whole wire.",
+			UiKit.Medium,
+			16,
+			UiKit.Muted);
 		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		_featureHost.AddChild(body);
+		col.AddChild(body);
+		_featureHost.AddChild(card);
+		_listHost.AddChild(UiKit.Text_("Quiet wire.", UiKit.Medium, 14, UiKit.Muted));
 	}
 
-	private void BindFeature(NewsStory item)
+	private static string Desk(NewsStory item)
 	{
-		foreach (Node child in _featureHost.GetChildren())
+		if (string.IsNullOrEmpty(item.SubjectOrganizationId))
 		{
-			_featureHost.RemoveChild(child);
-			child.QueueFree();
+			return "STATE DESK";
 		}
 
-		_featureHost.AddChild(MakeTag(item.Tag));
-		string desk = "STATE DESK";
-		if (!string.IsNullOrEmpty(item.SubjectOrganizationId))
-		{
-			HubTeam mentioned = DistrictHubData.GetTeam(SchoolProfiles.NormalizeId(item.SubjectOrganizationId));
-			desk = DistrictHubData.GetDistrict(mentioned.DistrictId).Name.ToUpperInvariant() + " DESK";
-		}
+		HubTeam team = DistrictHubData.GetTeam(SchoolProfiles.NormalizeId(item.SubjectOrganizationId));
+		return DistrictHubData.GetDistrict(team.DistrictId).Name.ToUpperInvariant();
+	}
 
-		_featureHost.AddChild(MakeText(item.DateLabel + "  ·  " + desk, _semibold, 11, TextMuted, HorizontalAlignment.Left));
+	private string SubjectTeam(NewsStory item) =>
+		string.IsNullOrEmpty(item.SubjectOrganizationId) ? UserProgram.OrganizationId : SchoolProfiles.NormalizeId(item.SubjectOrganizationId);
 
-		var headline = MakeText(item.Headline.ToUpperInvariant(), _bold, 26, TextPrimary, HorizontalAlignment.Left);
-		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		_featureHost.AddChild(headline);
-		Control chips = SchoolLinks.MakeMentionChips(item.Headline + " " + item.Body, _semibold);
-		if (chips.GetChildCount() > 0)
-		{
-			_featureHost.AddChild(chips);
-		}
-		_featureHost.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
-
-		var body = MakeText(item.Body, _medium, 15, new Color(0.78f, 0.81f, 0.86f), HorizontalAlignment.Left);
-		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		_featureHost.AddChild(body);
-
-		var pull = new PanelContainer
+	/// <summary>The lead story: team banner, face of the player it is about, headline, body and the pull line.</summary>
+	private Control BuildFeature(NewsStory item)
+	{
+		string teamId = SubjectTeam(item);
+		var banner = new BroadcastPanel
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
+			SizeFlagsStretchRatio = 1.5f,
+			CustomMinimumSize = new Vector2(0, 220),
 		};
-		pull.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+		banner.UseTeam(teamId);
+
+		var row = new HBoxContainer();
+		row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		row.AddThemeConstantOverride("separation", 24);
+		banner.AddChild(row);
+
+		Control? face = string.IsNullOrEmpty(item.SubjectPlayerName)
+			? null
+			: PlayerFaces.For(teamId, item.SubjectPlayerName, 180, 225, false, _session.ActiveTeam.Level);
+		if (face != null)
 		{
-			BgColor = CardInner,
-			BorderColor = Hairline,
-			BorderWidthLeft = 2,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 12,
-			ContentMarginTop = 10,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 10,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-		});
-		var pullCopy = new VBoxContainer();
-		pullCopy.AddThemeConstantOverride("separation", 4);
-		pullCopy.AddChild(MakeText("WHY IT MATTERS", _semibold, 10, Accent, HorizontalAlignment.Left));
-		var pullBody = MakeText(item.Pull, _medium, 13, TextMuted, HorizontalAlignment.Left);
-		pullBody.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		pullCopy.AddChild(pullBody);
-		pull.AddChild(pullCopy);
-		_featureHost.AddChild(pull);
+			face.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+			row.AddChild(UiKit.Spacer(8));
+			row.AddChild(face);
+		}
+		else
+		{
+			row.AddChild(UiKit.Spacer(12));
+			Control mark = LeagueUi.TeamBadge(teamId, DistrictHubData.GetTeam(teamId).Name, 150);
+			mark.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			row.AddChild(mark);
+		}
+
+		var copy = new VBoxContainer
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+		};
+		copy.AddThemeConstantOverride("separation", 4);
+		copy.AddChild(UiKit.Kicker($"{Desk(item)}  ·  {item.DateLabel}  ·  {item.Tag}"));
+		Label headline = UiKit.Text_(item.Headline.ToUpperInvariant(), UiKit.Bold, 34, UiKit.Text);
+		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		copy.AddChild(headline);
+		Label body = UiKit.Text_(item.Body, UiKit.Medium, 16, new Color(0.86f, 0.88f, 0.92f));
+		body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		copy.AddChild(body);
+		if (!string.IsNullOrWhiteSpace(item.Pull))
+		{
+			Label pull = UiKit.Text_("Why it matters:  " + item.Pull, UiKit.Medium, 14, UiKit.Gold);
+			pull.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			copy.AddChild(pull);
+		}
+
+		Control chips = SchoolLinks.MakeMentionChips(item.Headline + " " + item.Body, UiKit.Semibold);
+		if (chips.GetChildCount() > 0)
+		{
+			copy.AddChild(chips);
+		}
+		else
+		{
+			chips.QueueFree();
+		}
+
+		row.AddChild(copy);
+		row.AddChild(UiKit.Spacer(16));
+		return banner;
 	}
 
-	private PanelContainer MakeTag(string tag)
+	/// <summary>A smaller banner for the next stories; click to lead with it.</summary>
+	private Control BuildSecondary(NewsStory item, int index)
+	{
+		string teamId = SubjectTeam(item);
+		var banner = new BroadcastPanel
+		{
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+			CustomMinimumSize = new Vector2(0, 110),
+			MouseDefaultCursorShape = CursorShape.PointingHand,
+			MouseFilter = MouseFilterEnum.Stop,
+		};
+		banner.UseTeam(teamId);
+		banner.GuiInput += ev =>
+		{
+			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
+			{
+				SelectStory(index);
+			}
+		};
+
+		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		row.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		row.AddThemeConstantOverride("separation", 16);
+		banner.AddChild(row);
+		Control? face = string.IsNullOrEmpty(item.SubjectPlayerName)
+			? null
+			: PlayerFaces.For(teamId, item.SubjectPlayerName, 96, 120, false, _session.ActiveTeam.Level);
+		row.AddChild(UiKit.Spacer(6));
+		if (face != null)
+		{
+			face.SizeFlagsVertical = SizeFlags.ShrinkEnd;
+			face.MouseFilter = MouseFilterEnum.Ignore;
+			row.AddChild(face);
+		}
+		else
+		{
+			Control mark = LeagueUi.TeamBadge(teamId, DistrictHubData.GetTeam(teamId).Name, 72);
+			mark.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			row.AddChild(mark);
+		}
+
+		var copy = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+		copy.AddThemeConstantOverride("separation", 0);
+		copy.AddChild(UiKit.Kicker($"{Desk(item)}  ·  {item.DateLabel}"));
+		Label headline = UiKit.Text_(item.Headline.ToUpperInvariant(), UiKit.Bold, 22, UiKit.Text);
+		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		copy.AddChild(headline);
+		row.AddChild(copy);
+		row.AddChild(UiKit.Spacer(10));
+		return banner;
+	}
+
+	private Control BuildListRow(NewsStory item, int index, bool selected)
+	{
+		PanelContainer row = LeagueUi.RowPanel(selected, 7);
+		row.MouseFilter = MouseFilterEnum.Stop;
+		row.MouseDefaultCursorShape = CursorShape.PointingHand;
+		row.GuiInput += ev =>
+		{
+			if (ev is InputEventMouseButton mouse && mouse.Pressed && mouse.ButtonIndex == MouseButton.Left)
+			{
+				SelectStory(index);
+			}
+		};
+
+		var cells = new HBoxContainer();
+		cells.AddThemeConstantOverride("separation", 14);
+		var tagBox = new HBoxContainer { CustomMinimumSize = new Vector2(96, 0) };
+		tagBox.AddChild(MakeTag(item.Tag));
+		cells.AddChild(tagBox);
+
+		var copy = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		copy.AddThemeConstantOverride("separation", -3);
+		Label headline = UiKit.Text_(item.Headline, UiKit.Semibold, 16, selected ? UiKit.Gold : UiKit.Text);
+		headline.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		copy.AddChild(headline);
+		copy.AddChild(UiKit.Text_($"{item.DateLabel}  ·  {Desk(item)}", UiKit.Medium, 13, UiKit.Muted));
+		cells.AddChild(copy);
+		row.AddChild(cells);
+		return row;
+	}
+
+	private static PanelContainer MakeTag(string tag)
 	{
 		Color color = tag switch
 		{
-			NewsTag.Playoffs => Green,
-			NewsTag.Rankings => Accent,
-			NewsTag.Freshman => LakesBlue,
-			NewsTag.Coach => new Color(0.906f, 0.298f, 0.235f, 1f),
-			NewsTag.Pitching or NewsTag.Hitting => LakesBlue,
-			NewsTag.Rivalry => new Color(0.906f, 0.298f, 0.235f, 1f),
-			NewsTag.Calendar => Accent,
-			NewsTag.District => Green,
-			NewsTag.Results => Green,
-			_ => Hairline,
+			NewsTag.Playoffs or NewsTag.Results or NewsTag.District => UiKit.Green,
+			NewsTag.Rankings or NewsTag.Calendar or NewsTag.Tryouts => UiKit.Gold,
+			NewsTag.Freshman or NewsTag.Pitching or NewsTag.Hitting => Blue,
+			NewsTag.Coach or NewsTag.Rivalry => new Color("#ff7a6b"),
+			_ => UiKit.Muted,
 		};
 		var pill = new PanelContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+			SizeFlagsVertical = SizeFlags.ShrinkCenter,
+			MouseFilter = MouseFilterEnum.Ignore,
 		};
-		pill.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(color.R, color.G, color.B, 0.16f),
-			BorderColor = color,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 7,
-			ContentMarginTop = 2,
-			ContentMarginRight = 7,
-			ContentMarginBottom = 2,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-		});
-		pill.AddChild(MakeText(tag, _bold, 10, color, HorizontalAlignment.Center));
+		pill.AddThemeStyleboxOverride("panel", UiKit.Box(new Color(color, 0.14f), 10, 10, 2));
+		pill.AddChild(UiKit.Text_(tag, UiKit.Semibold, 11, color, HorizontalAlignment.Center));
 		return pill;
 	}
 
-	private static StyleBoxFlat MakeRowStyle(bool selected, bool even)
+	private static void Clear(Node host)
 	{
-		return new StyleBoxFlat
+		foreach (Node child in host.GetChildren())
 		{
-			BgColor = selected ? new Color(0.772549f, 0.635294f, 0.325490f, 0.14f) : even ? RowEven : RowOdd,
-			BorderColor = selected ? Accent : new Color(0.18f, 0.20f, 0.24f, 1f),
-			BorderWidthLeft = selected ? 2 : 0,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 12,
-			ContentMarginTop = 10,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 10,
-		};
-	}
-
-	private static Label MakeText(string text, FontFile font, int size, Color color, HorizontalAlignment align)
-	{
-		var label = new Label
-		{
-			Text = text,
-			HorizontalAlignment = align,
-			MouseFilter = MouseFilterEnum.Ignore,
-		};
-		label.AddThemeFontOverride("font", font);
-		label.AddThemeFontSizeOverride("font_size", size);
-		label.AddThemeColorOverride("font_color", color);
-		return label;
-	}
-
-	private static StyleBoxFlat MakeCardStyle(float pad)
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			BorderColor = CardBorder,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = pad,
-			ContentMarginTop = pad,
-			ContentMarginRight = pad,
-			ContentMarginBottom = pad,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-			CornerDetail = 3,
-		};
+			host.RemoveChild(child);
+			child.QueueFree();
+		}
 	}
 }

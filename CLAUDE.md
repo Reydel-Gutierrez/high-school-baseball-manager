@@ -9,7 +9,7 @@ first, then `docs/ui-concepts/README.md`.
 - `src/HSBM.Domain` (pure model), `src/HSBM.Simulation` (world gen, game engine, day processor),
   `src/HSBM.Application` (CareerService), `src/HSBM.Persistence` (SQLite), `game/` (Godot UI), `tests/` (xUnit).
 - Build: Alt+B in the Godot editor, or `dotnet build "game/High School Baseball Manager.csproj"`.
-  Tests: `dotnet test HSBM.sln` (or VS Test Explorer → Run All). All 271 pass as of Oct 19 2026.
+  Tests: `dotnet test HSBM.sln` (or VS Test Explorer → Run All). All 239 pass (3 projects) as of Oct 19 2026.
 - Viewport is 1152×648 with `canvas_items` + `expand`: on the owner's 3428×1368 ultrawide the logical
   canvas is about **1620×648**. Vertical space is the scarce resource; check every page fits without scrolling.
 
@@ -30,7 +30,10 @@ One left rail, one gold CONTINUE button, team-branded banners, two text sizes pe
 Building blocks (use these, don't hand-roll styles):
 - `game/scripts/ui/UiKit.cs` — tokens (`Bg #0b0d12`, `Card #12151c`, `Line #232733`, `Text`, `Muted #8a909c`,
   `Gold #C5A253`, `Green`, `Red`), Barlow Condensed fonts, `MakeCard`, `CardHeader`, `Action`, `Pill`, `Kpi`,
-  `KpiLive` (updatable KPI tile), `PageHeader`, `Meter`, `Box`.
+  `KpiLive` (updatable KPI tile), `PageHeader` (overload with `out Label subtitle`), `HeaderTabs` (page filters on
+  the header's right), `Cell`, `Hairline`, `Meter`, `Box`.
+- `LeagueUi.cs` — `TeamBadge` (logo or team-color monogram), `SmallPill`/`RacePill`, `RowPanel`, `ColumnHeader`,
+  `StandingsCard` (one district's compact table, used by the Standings grid).
 - `ShellRail.cs` (left rail), `SectionBar.cs` (section tabs), shell wiring in `AppNavigator.BuildShell`
   (`ViewSections` maps each view to rail section + tab; `TabsFor` lists a section's tabs).
 - `BroadcastPanel` — team banner art + team-color gradient; `UseTeam(orgId)`. Use for any featured player/team.
@@ -46,8 +49,13 @@ Status:
 - [x] Phase 3 Team: ballfield depth chart (`DepthChartField.cs`), pitching staff + medical KPI rows.
 - [x] Phase 4 Season: calendar cells/chips, live game broadcast layout (pitcher | field | batter),
       game preview faces, graduation send-off banner. Duplicate CALENDAR/SCHEDULE pills hidden (`SeasonDeskTabs`).
-- [ ] Phase 5 League (concepts 12–16): districts, standings as a 2×2 grid of the four districts, leaders,
-      rankings & awards, news. Remove the Districts page's own STANDINGS pill (section tabs cover it).
+- [x] Phase 5 League (concepts 12–16): Districts (header tabs, rounded table, STANDINGS pill gone), Standings
+      (2×2 grid of all four districts with race pills; FULL → one district beside the school card; playoffs use
+      EAST/WEST/STATE header tabs), Leaders (six leader cards with faces; TOP 25 → full table), Rankings & Awards
+      (live poll + state award races + last season's winners from `HistoricalSeasons`), News (team banner feature,
+      two secondary banners, LATEST list; ALL / district / MY TEAM). `RankingsDesk` now uses live records.
+      Not built: district storylines card and TOWN/REP/LAST SEASON columns on Districts (only 2 schools have
+      towns); Awards page itself still has the old look.
 - [ ] Phase 6 Scout & Office (17–21): player search, career & mail, board & goals, budget & sponsors, job market.
 - [ ] Phase 7 Main menu & coach creator (22–23). Creator: RANDOMIZE should use the coherent appearance
       generator; at 3428×1368 its CONTINUE button falls off-screen.

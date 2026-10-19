@@ -4,8 +4,10 @@ using Godot;
 using HSBM.Domain;
 
 /// <summary>
-/// League standings. District uses one table at a time with district
-/// pills. Regional is one East or West bracket. State is only the title game.
+/// League standings. District opens on all four districts as a 2×2 grid
+/// (concept 13); "FULL" opens one district's detailed table beside the
+/// school profile. Regional is one East or West bracket. State is only the
+/// title game. The filters live on the right of the page header.
 /// </summary>
 public partial class StandingsPage : Control
 {
@@ -35,18 +37,16 @@ public partial class StandingsPage : Control
 	private FontFile _semibold = null!;
 	private FontFile _medium = null!;
 
-	private readonly Dictionary<string, Button> _stageButtons = new();
-	private readonly Dictionary<string, Button> _subButtons = new();
-
 	private Label _subtitle = null!;
-	private Label _countValue = null!;
-	private Label _countLabel = null!;
-	private HBoxContainer _subFilterRow = null!;
+	private Control _tabsHost = null!;
 	private VBoxContainer _bodyHost = null!;
 	private SchoolProfileCard _schoolCard = null!;
 	private string _selectedSchoolId = DistrictHubData.UserTeamId;
 	private string _activeView = ViewDistrict;
 	private string _activeDistrict = DistrictHubData.UserDistrictId;
+
+	/// <summary>False shows all four districts; true shows <see cref="_activeDistrict"/> in full.</summary>
+	private bool _districtDetail;
 	private string _activeRegional = RegionalEast;
 
 	public override void _Ready()
@@ -80,6 +80,7 @@ public partial class StandingsPage : Control
 		HubTeam team = DistrictHubData.GetTeam(_selectedSchoolId);
 		_activeDistrict = team.DistrictId;
 		_activeView = ViewDistrict;
+		_districtDetail = true;
 		Refresh();
 	}
 
@@ -88,12 +89,14 @@ public partial class StandingsPage : Control
 		_boundUserProgram = UserProgram.OrganizationId;
 		_activeDistrict = districtId;
 		_activeView = ViewDistrict;
+		_districtDetail = true;
 		Refresh();
 	}
 
 	public void ShowLeagueTable()
 	{
 		_activeView = ViewDistrict;
+		_districtDetail = false;
 		Refresh();
 	}
 
@@ -119,22 +122,18 @@ public partial class StandingsPage : Control
 		AddChild(margin);
 
 		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 8);
+		layout.AddThemeConstantOverride("separation", 12);
 		margin.AddChild(layout);
 
-		layout.AddChild(BuildHeader());
-		layout.AddChild(BuildStageFilters());
-
-		_subFilterRow = new HBoxContainer();
-		_subFilterRow.AddThemeConstantOverride("separation", 4);
-		layout.AddChild(_subFilterRow);
+		_tabsHost = new HBoxContainer();
+		layout.AddChild(UiKit.PageHeader($"LEAGUE  ·  {DistrictHubData.SeasonYear}", "STANDINGS", " ", out _subtitle, _tabsHost));
 
 		var bodyRow = new HBoxContainer
 		{
 			SizeFlagsHorizontal = SizeFlags.ExpandFill,
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
-		bodyRow.AddThemeConstantOverride("separation", 8);
+		bodyRow.AddThemeConstantOverride("separation", 12);
 		layout.AddChild(bodyRow);
 
 		_bodyHost = new VBoxContainer
@@ -153,62 +152,6 @@ public partial class StandingsPage : Control
 		};
 		bodyRow.AddChild(_schoolCard);
 	}
-
-	private Control BuildHeader()
-	{
-		var header = new HBoxContainer();
-		header.AddThemeConstantOverride("separation", 14);
-		header.AddChild(UserProgram.MakeHeaderMark());
-		header.AddChild(TeamLogos.MakeHeaderRule(Hairline));
-
-		var identity = new VBoxContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-		};
-		identity.AddThemeConstantOverride("separation", -2);
-		identity.AddChild(MakeText($"LEAGUE  ·  {DistrictHubData.SeasonYear} SEASON", _semibold, 12, Accent, HorizontalAlignment.Left));
-		identity.AddChild(MakeText("STANDINGS", _bold, 36, TextPrimary, HorizontalAlignment.Left));
-		_subtitle = MakeText("VARSITY  ·  GREAT LAKES DISTRICT", _medium, 12, new Color(0.72f, 0.76f, 0.82f), HorizontalAlignment.Left);
-		identity.AddChild(_subtitle);
-		header.AddChild(identity);
-
-		var countBlock = new VBoxContainer
-		{
-			SizeFlagsVertical = SizeFlags.ShrinkCenter,
-			Alignment = BoxContainer.AlignmentMode.End,
-		};
-		countBlock.AddThemeConstantOverride("separation", -4);
-		_countValue = MakeText("8", _bold, 28, TextPrimary, HorizontalAlignment.Right);
-		countBlock.AddChild(_countValue);
-		_countLabel = MakeText("TEAMS", _semibold, 11, TextMuted, HorizontalAlignment.Right);
-		countBlock.AddChild(_countLabel);
-		header.AddChild(countBlock);
-		return header;
-	}
-
-	private Control BuildStageFilters()
-	{
-		var row = new HBoxContainer();
-		row.AddThemeConstantOverride("separation", 4);
-		AddStage(row, ViewDistrict, "DISTRICT");
-		AddStage(row, ViewRegional, "REGIONAL PLAYOFF");
-		AddStage(row, ViewState, "STATE");
-		return row;
-	}
-
-	private void AddStage(HBoxContainer row, string key, string label)
-	{
-		var button = new Button { Text = label };
-		button.Pressed += () =>
-		{
-			_activeView = key;
-			Refresh();
-		};
-		_stageButtons[key] = button;
-		row.AddChild(button);
-	}
-
 
 	private string _boundUserProgram = "";
 
@@ -235,89 +178,94 @@ public partial class StandingsPage : Control
 		}
 
 		ApplyHeaderCopy();
-		StylePills(_stageButtons, _activeView);
-		RebuildSubFilters();
+		RebuildTabs();
 		RebuildBody();
 	}
 
 	private void ApplyHeaderCopy()
 	{
-		bool varsity = _session.ActiveTeam.Level == TeamLevel.Varsity;
-		string level = varsity ? "VARSITY" : "JV";
-
+		string level = _session.ActiveTeam.Level == TeamLevel.Varsity ? "Varsity" : "JV";
+		_subtitle.Visible = true;
 		if (_activeView == ViewDistrict)
 		{
-			HubDistrict district = DistrictHubData.GetDistrict(_activeDistrict);
-			_subtitle.Text = $"{level}  ·  {district.Name.ToUpperInvariant()} DISTRICT  ·  TOP TWO QUALIFY FOR REGIONAL";
-			_countValue.Text = "8";
-			_countLabel.Text = "TEAMS";
+			int left = DistrictGamesLeft();
+			string games = left > 0 ? $"  ·  {left} district games left" : "";
+			_subtitle.Text = _districtDetail
+				? $"{level}  ·  {DistrictHubData.GetDistrict(_activeDistrict).Name} District  ·  top two qualify for the regional"
+				: $"{level}  ·  top two in each district qualify for the regional{games}";
 			return;
 		}
 
 		if (_activeView == ViewRegional)
 		{
-			bool east = _activeRegional == RegionalEast;
-			_subtitle.Text = east
-				? $"{level}  ·  EAST REGIONAL  ·  GREAT LAKES vs NORTH SHORE"
-				: $"{level}  ·  WEST REGIONAL  ·  CAPITAL VALLEY vs IRON RANGE";
-			_countValue.Text = "4";
-			_countLabel.Text = "TEAMS";
+			_subtitle.Text = _activeRegional == RegionalEast
+				? $"{level}  ·  East regional  ·  Great Lakes vs North Shore"
+				: $"{level}  ·  West regional  ·  Capital Valley vs Iron Range";
 			return;
 		}
 
-		_subtitle.Text = $"{level}  ·  STATE CHAMPIONSHIP  ·  EAST CHAMPION vs WEST CHAMPION";
-		_countValue.Text = "2";
-		_countLabel.Text = "TEAMS";
+		_subtitle.Text = $"{level}  ·  State championship  ·  East champion vs West champion";
 	}
 
-	private void RebuildSubFilters()
+	/// <summary>District games the user's team still has to play (0 without a world).</summary>
+	private int DistrictGamesLeft()
 	{
-		foreach (Node child in _subFilterRow.GetChildren())
+		GameWorld? world = _session.World;
+		if (world == null)
 		{
-			_subFilterRow.RemoveChild(child);
+			return 0;
+		}
+
+		string teamId = LeagueCatalog.TeamIdFor(UserProgram.OrganizationId, _session.ActiveTeam.Level);
+		int left = 0;
+		foreach (ScheduledGame game in world.Games)
+		{
+			if (game.SeasonYear == GameSession.SeasonYear && game.Status != GameStatus.Completed && game.GameType == GameType.District && game.Involves(teamId))
+			{
+				left++;
+			}
+		}
+
+		return left;
+	}
+
+	private void RebuildTabs()
+	{
+		foreach (Node child in _tabsHost.GetChildren())
+		{
+			_tabsHost.RemoveChild(child);
 			child.QueueFree();
 		}
 
-		_subButtons.Clear();
-		_subFilterRow.Visible = _activeView != ViewState;
-
+		var tabs = new List<(string Label, System.Action Open)>();
+		string active;
 		if (_activeView == ViewDistrict)
 		{
+			tabs.Add(("ALL DISTRICTS", ShowLeagueTable));
 			foreach (HubDistrict district in DistrictHubData.Districts)
 			{
-				AddSubFilter(district.Id, district.Name.ToUpperInvariant(), () =>
-				{
-					_activeDistrict = district.Id;
-					Refresh();
-				});
+				string id = district.Id;
+				tabs.Add((district.Name.ToUpperInvariant(), () => ShowDistrictTable(id)));
 			}
 
-			StylePills(_subButtons, _activeDistrict);
-			return;
+			active = _districtDetail ? DistrictHubData.GetDistrict(_activeDistrict).Name.ToUpperInvariant() : "ALL DISTRICTS";
+		}
+		else
+		{
+			tabs.Add(("EAST REGIONAL", () => ShowStage(ViewRegional, RegionalEast)));
+			tabs.Add(("WEST REGIONAL", () => ShowStage(ViewRegional, RegionalWest)));
+			tabs.Add(("STATE FINAL", () => ShowStage(ViewState, _activeRegional)));
+			active = _activeView == ViewState ? "STATE FINAL" : _activeRegional == RegionalEast ? "EAST REGIONAL" : "WEST REGIONAL";
 		}
 
-		if (_activeView == ViewRegional)
-		{
-			AddSubFilter(RegionalEast, "EAST", () =>
-			{
-				_activeRegional = RegionalEast;
-				Refresh();
-			});
-			AddSubFilter(RegionalWest, "WEST", () =>
-			{
-				_activeRegional = RegionalWest;
-				Refresh();
-			});
-			StylePills(_subButtons, _activeRegional);
-		}
+		_tabsHost.AddChild(UiKit.HeaderTabs(tabs, active));
 	}
 
-	private void AddSubFilter(string key, string label, System.Action onPressed)
+	private void ShowStage(string view, string regional)
 	{
-		var button = new Button { Text = label };
-		button.Pressed += onPressed;
-		_subButtons[key] = button;
-		_subFilterRow.AddChild(button);
+		_activeView = view;
+		_activeRegional = regional;
+		Refresh();
 	}
 
 	private void RebuildBody()
@@ -328,16 +276,40 @@ public partial class StandingsPage : Control
 			child.QueueFree();
 		}
 
+		bool grid = _activeView == ViewDistrict && !_districtDetail;
+		_schoolCard.Visible = !grid;
 		Control body = _activeView switch
 		{
 			ViewRegional => BuildRegionalBody(),
 			ViewState => BuildStateBody(),
-			_ => BuildDistrictBody(),
+			_ => grid ? BuildDistrictGrid() : BuildDistrictBody(),
 		};
 		body.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		body.SizeFlagsVertical = SizeFlags.ExpandFill;
 		_bodyHost.AddChild(body);
 		_schoolCard.Bind(_selectedSchoolId, _session.ActiveTeam.Level);
+	}
+
+	/// <summary>All four districts, East on top, West below (concept 13).</summary>
+	private Control BuildDistrictGrid()
+	{
+		var grid = new VBoxContainer();
+		grid.AddThemeConstantOverride("separation", 10);
+		HBoxContainer? line = null;
+		for (int i = 0; i < DistrictHubData.Districts.Count; i++)
+		{
+			if (i % 2 == 0)
+			{
+				line = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+				line.AddThemeConstantOverride("separation", 12);
+				grid.AddChild(line);
+			}
+
+			string id = DistrictHubData.Districts[i].Id;
+			line!.AddChild(LeagueUi.StandingsCard(id, _session.ActiveTeam.Level, UserProgram.OrganizationId, () => ShowDistrictTable(id)));
+		}
+
+		return grid;
 	}
 
 	private Control BuildDistrictBody()
@@ -355,7 +327,6 @@ public partial class StandingsPage : Control
 		card.AddChild(layout);
 
 		layout.AddChild(BuildTableHeading());
-		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Accent });
 		layout.AddChild(BuildStandingsColumnHeader());
 
 		var scroll = new ScrollContainer
@@ -948,26 +919,6 @@ public partial class StandingsPage : Control
 		return col;
 	}
 
-	private void StylePills(Dictionary<string, Button> buttons, string active)
-	{
-		foreach (KeyValuePair<string, Button> pair in buttons)
-		{
-			bool isActive = pair.Key == active;
-			Button button = pair.Value;
-			button.Flat = false;
-			button.AddThemeFontOverride("font", _semibold);
-			button.AddThemeFontSizeOverride("font_size", 12);
-			button.AddThemeColorOverride("font_color", isActive ? TextOnAccent : TextPrimary);
-			button.AddThemeColorOverride("font_hover_color", isActive ? TextOnAccent : Colors.White);
-			button.AddThemeColorOverride("font_pressed_color", isActive ? TextOnAccent : TextPrimary);
-			button.AddThemeColorOverride("font_focus_color", isActive ? TextOnAccent : Colors.White);
-			button.AddThemeStyleboxOverride("normal", MakePill(isActive ? Accent : Colors.Transparent, 12));
-			button.AddThemeStyleboxOverride("hover", MakePill(isActive ? AccentHover : HoverBg, 12));
-			button.AddThemeStyleboxOverride("pressed", MakePill(isActive ? AccentHover : HoverBg, 12));
-			button.AddThemeStyleboxOverride("focus", MakePill(isActive ? AccentHover : HoverBg, 12));
-		}
-	}
-
 	private Control BuildTeamIdentity(string teamId, string name, bool user, int fontSize = 14)
 	{
 		var identity = new HBoxContainer
@@ -1027,27 +978,7 @@ public partial class StandingsPage : Control
 		return label;
 	}
 
-	private static StyleBoxFlat MakeCardStyle(float pad)
-	{
-		return new StyleBoxFlat
-		{
-			BgColor = new Color(0.070588f, 0.082353f, 0.109804f, 1f),
-			BorderColor = CardBorder,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = pad,
-			ContentMarginTop = pad,
-			ContentMarginRight = pad,
-			ContentMarginBottom = pad,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-			CornerDetail = 3,
-		};
-	}
+	private static StyleBoxFlat MakeCardStyle(float pad) => UiKit.Box(UiKit.Card, 16, pad, pad, UiKit.Line, 1);
 
 	private static StyleBoxFlat MakeInnerCard(bool user)
 	{

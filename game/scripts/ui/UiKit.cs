@@ -191,7 +191,11 @@ public static class UiKit
 	/// Page header from the concepts: school crest, gold kicker, big title,
 	/// muted subtitle, then anything passed in <paramref name="right"/>.
 	/// </summary>
-	public static HBoxContainer PageHeader(string kicker, string title, string subtitle = "", Control? right = null, bool crest = true)
+	public static HBoxContainer PageHeader(string kicker, string title, string subtitle = "", Control? right = null, bool crest = true) =>
+		PageHeader(kicker, title, subtitle, out _, right, crest);
+
+	/// <summary>Same header, handing back the subtitle so the page can update it.</summary>
+	public static HBoxContainer PageHeader(string kicker, string title, string subtitle, out Label subtitleLabel, Control? right = null, bool crest = true)
 	{
 		var row = new HBoxContainer();
 		row.AddThemeConstantOverride("separation", 18);
@@ -204,10 +208,9 @@ public static class UiKit
 		col.AddThemeConstantOverride("separation", -4);
 		col.AddChild(Kicker(kicker));
 		col.AddChild(Text_(title, Bold, 42, Text));
-		if (!string.IsNullOrEmpty(subtitle))
-		{
-			col.AddChild(Text_(subtitle, Medium, 16, Muted));
-		}
+		subtitleLabel = Text_(subtitle, Medium, 16, Muted);
+		subtitleLabel.Visible = !string.IsNullOrEmpty(subtitle);
+		col.AddChild(subtitleLabel);
 
 		row.AddChild(col);
 		if (right != null)
@@ -235,6 +238,64 @@ public static class UiKit
 		bar.AddThemeStyleboxOverride("fill", Box(fill ?? Gold, (int)(height / 2)));
 		return bar;
 	}
+
+	/// <summary>
+	/// Page-level filter tabs that sit on the right of a <see cref="PageHeader"/>
+	/// (districts, leader groups, news feeds): flat caps labels, the active one
+	/// on a raised chip with a gold underline.
+	/// </summary>
+	public static HBoxContainer HeaderTabs(System.Collections.Generic.IEnumerable<(string Label, System.Action Open)> tabs, string active)
+	{
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 4);
+		foreach ((string label, System.Action open) in tabs)
+		{
+			bool on = label == active;
+			var b = new Button { Text = label, FocusMode = Control.FocusModeEnum.None, MouseDefaultCursorShape = Control.CursorShape.PointingHand };
+			b.AddThemeFontOverride("font", Semibold);
+			b.AddThemeFontSizeOverride("font_size", 13);
+			b.AddThemeColorOverride("font_color", on ? Text : Muted);
+			b.AddThemeColorOverride("font_hover_color", Text);
+			b.AddThemeColorOverride("font_pressed_color", Text);
+			StyleBoxFlat chip = Box(on ? Selected : Colors.Transparent, 8, 14, 6);
+			if (on)
+			{
+				chip.BorderColor = Gold;
+				chip.BorderWidthBottom = 2;
+			}
+
+			b.AddThemeStyleboxOverride("normal", chip);
+			b.AddThemeStyleboxOverride("hover", on ? chip : Box(Selected, 8, 14, 6));
+			b.AddThemeStyleboxOverride("pressed", chip);
+			b.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+			b.Pressed += open;
+			row.AddChild(b);
+		}
+
+		return row;
+	}
+
+	/// <summary>Fixed-width table cell (pass width 0 for the expanding column).</summary>
+	public static Label Cell(string text, float width, FontFile font, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Left)
+	{
+		Label label = Text_(text, font, size, color, align);
+		label.ClipText = true;
+		if (width > 0)
+		{
+			label.CustomMinimumSize = new Vector2(width, 0);
+		}
+		else
+		{
+			label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+			label.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+		}
+
+		return label;
+	}
+
+	/// <summary>Hairline row divider for card tables.</summary>
+	public static ColorRect Hairline() =>
+		new() { Color = Line, CustomMinimumSize = new Vector2(0, 1), MouseFilter = Control.MouseFilterEnum.Ignore };
 
 	public static Control Spacer(float w = 0, float h = 0, bool expand = false) =>
 		new Control { CustomMinimumSize = new Vector2(w, h), SizeFlagsHorizontal = expand ? Control.SizeFlags.ExpandFill : Control.SizeFlags.Fill, MouseFilter = Control.MouseFilterEnum.Ignore };

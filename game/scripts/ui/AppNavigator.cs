@@ -585,7 +585,7 @@ public partial class AppNavigator : MarginContainer
 	public void ShowStandingsForDistrict(string districtId)
 	{
 		_standingsPage.ShowDistrictTable(districtId);
-		ShowStandings();
+		ShowView(StandingsViewKey, TopBarNavigation.LeagueKey);
 	}
 
 	public void ShowPlayoffs()
@@ -624,12 +624,6 @@ public partial class AppNavigator : MarginContainer
 		if (_activeView == StandingsViewKey)
 		{
 			_standingsPage.SelectSchool(id);
-			return;
-		}
-
-		if (_activeView == RankingsViewKey)
-		{
-			_rankingsPage.SelectSchool(id);
 			return;
 		}
 
