@@ -546,7 +546,7 @@ public partial class CalendarPage : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		top.AddThemeConstantOverride("separation", 4);
-		var dayLabel = MakeText(date.Day.ToString(CultureInfo.InvariantCulture), _bold, 13, TextPrimary, HorizontalAlignment.Left);
+		var dayLabel = MakeText(date.Day.ToString(CultureInfo.InvariantCulture), _bold, 18, date == _session.CurrentDate ? UiKit.Gold : TextPrimary, HorizontalAlignment.Left);
 		dayLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		top.AddChild(dayLabel);
 		if (hasEvent)
@@ -602,10 +602,13 @@ public partial class CalendarPage : Control
 			int span = labelEvent.End.DayNumber - labelEvent.Start.DayNumber;
 			if (labelEvent.Featured || span <= 14)
 			{
-				var name = MakeText(labelEvent.Name.ToUpperInvariant(), _medium, 9, Accent, HorizontalAlignment.Left);
-				name.AutowrapMode = TextServer.AutowrapMode.Word;
+				var name = MakeText(labelEvent.Name, _semibold, 11, Accent, HorizontalAlignment.Left);
 				name.ClipText = true;
-				stack.AddChild(name);
+				name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+				var chip = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+				chip.AddThemeStyleboxOverride("panel", UiKit.Box(new Color(UiKit.Gold, 0.16f), 8, 6, 1));
+				chip.AddChild(name);
+				stack.AddChild(chip);
 			}
 		}
 
@@ -725,25 +728,25 @@ public partial class CalendarPage : Control
 		bool selected = date == _selected;
 		bool past = date < _session.CurrentDate;
 		bool inMonth = date.Month == _viewMonth && date.Year == _viewYear;
-		int borderWidth = selected ? 3 : today || hovered ? 2 : 1;
+		int borderWidth = selected ? 2 : today ? 2 : hovered ? 1 : 0;
 		Color border = today ? Accent : selected ? TextPrimary : hovered ? new Color(0.72f, 0.76f, 0.82f) : Hairline;
 		cell.AddThemeStyleboxOverride("panel", new StyleBoxFlat
 		{
-			BgColor = CardInner,
+			BgColor = today ? new Color(UiKit.Gold, 0.20f) : hovered ? new Color("#1b2030") : CardInner,
 			BorderColor = border,
 			BorderWidthLeft = borderWidth,
 			BorderWidthTop = borderWidth,
 			BorderWidthRight = borderWidth,
 			BorderWidthBottom = borderWidth,
-			ContentMarginLeft = 3,
+			ContentMarginLeft = 4,
 			ContentMarginTop = 3,
-			ContentMarginRight = 3,
+			ContentMarginRight = 4,
 			ContentMarginBottom = 3,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-			CornerDetail = 3,
+			CornerRadiusTopLeft = 10,
+			CornerRadiusTopRight = 10,
+			CornerRadiusBottomRight = 10,
+			CornerRadiusBottomLeft = 10,
+			CornerDetail = 5,
 		});
 
 		if (!inMonth)

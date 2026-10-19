@@ -18,7 +18,8 @@ public static class SeasonDeskTabs
 
 	public static Control Build(FontFile semibold, string active, Action<string> onPicked)
 	{
-		var row = new HBoxContainer();
+		// The shell's section tabs (Season: Calendar · Schedule …) replace these pills.
+		var row = new HBoxContainer { Visible = false };
 		row.AddThemeConstantOverride("separation", 4);
 		AddPill(row, semibold, Calendar, "CALENDAR", active, onPicked);
 		AddPill(row, semibold, Schedule, "SEASON SCHEDULE", active, onPicked);

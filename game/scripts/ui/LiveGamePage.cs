@@ -130,7 +130,8 @@ public partial class LiveGamePage : Control
 		backdrop.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(backdrop);
 
-		var dim = new ColorRect { Color = new Color(0.02f, 0.025f, 0.04f, 0.55f), MouseFilter = MouseFilterEnum.Ignore };
+		backdrop.Visible = false;
+		var dim = new ColorRect { Color = UiKit.Bg, MouseFilter = MouseFilterEnum.Ignore };
 		dim.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(dim);
 
@@ -205,7 +206,7 @@ public partial class LiveGamePage : Control
 
 	private Control BuildFieldColumn()
 	{
-		var column = new VBoxContainer { CustomMinimumSize = new Vector2(330, 0) };
+		var column = new VBoxContainer { CustomMinimumSize = new Vector2(400, 0) };
 		column.AddThemeConstantOverride("separation", 10);
 
 		var fieldCard = MakeCard(12, 10);
@@ -227,20 +228,58 @@ public partial class LiveGamePage : Control
 		matchup.AddThemeConstantOverride("separation", 10);
 		matchupScroll.AddChild(matchup);
 
-		var batterCard = MakeCard(12, 10);
-		_batterCard = new VBoxContainer();
-		_batterCard.AddThemeConstantOverride("separation", 3);
-		batterCard.AddChild(_batterCard);
-		matchup.AddChild(batterCard);
-
-		var pitcherCard = MakeCard(12, 10);
-		_pitcherCard = new VBoxContainer();
-		_pitcherCard.AddThemeConstantOverride("separation", 3);
-		pitcherCard.AddChild(_pitcherCard);
-		matchup.AddChild(pitcherCard);
+		(_batterPanel, _batterCard, _batterFace) = BuildPlayerBanner();
+		matchup.AddChild(_batterPanel);
+		(_pitcherPanel, _pitcherCard, _pitcherFace) = BuildPlayerBanner();
+		matchup.AddChild(_pitcherPanel);
 
 		column.AddChild(matchupScroll);
 		return column;
+	}
+
+	private BroadcastPanel _batterPanel = null!;
+	private BroadcastPanel _pitcherPanel = null!;
+	private Control _batterFace = null!;
+	private Control _pitcherFace = null!;
+
+	/// <summary>Broadcast banner for the batter or pitcher: team art, headshot on the right, line on the left.</summary>
+	private static (BroadcastPanel Panel, VBoxContainer Body, Control Face) BuildPlayerBanner()
+	{
+		var panel = new BroadcastPanel { CustomMinimumSize = new Vector2(0, 150), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		var face = new Control { MouseFilter = MouseFilterEnum.Ignore, AnchorLeft = 0.60f, AnchorRight = 1f, AnchorTop = 0f, AnchorBottom = 1f, OffsetTop = 8, OffsetBottom = -3 };
+		panel.AddChild(face);
+		var body = new VBoxContainer
+		{
+			MouseFilter = MouseFilterEnum.Ignore,
+			AnchorLeft = 0f,
+			AnchorRight = 0.66f,
+			AnchorTop = 0f,
+			AnchorBottom = 1f,
+			OffsetLeft = 12,
+			OffsetTop = 10,
+			OffsetRight = 0,
+			OffsetBottom = -10,
+			Alignment = BoxContainer.AlignmentMode.End,
+		};
+		body.AddThemeConstantOverride("separation", 2);
+		panel.AddChild(body);
+		return (panel, body, face);
+	}
+
+	private void SetBannerFace(Control host, Player player)
+	{
+		Clear(host);
+		PersonPortrait? face = PlayerFaces.For(player, 130, 160);
+		if (face == null)
+		{
+			return;
+		}
+
+		face.Backdrop = false;
+		face.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		face.CustomMinimumSize = Vector2.Zero;
+		face.MouseFilter = MouseFilterEnum.Ignore;
+		host.AddChild(face);
 	}
 
 	private Control BuildFeedColumn()
@@ -547,18 +586,24 @@ public partial class LiveGamePage : Control
 		{
 			_batterCard.AddChild(MakeText("GAME OVER", _bold, 13, TextMuted, HorizontalAlignment.Left));
 			_batterCard.AddChild(MakeText("Finish the game to post the result, update stats, and move to tomorrow.", _medium, 13, TextMuted, HorizontalAlignment.Left, wrap: true));
-			_pitcherCard.Visible = false;
+			_pitcherPanel.Visible = false;
+			Clear(_batterFace);
 			return;
 		}
 
-		_pitcherCard.Visible = true;
+		_pitcherPanel.Visible = true;
 		bool homeBatting = live.HomeBatting;
 		bool userBatting = homeBatting == _userHome;
 		Player batter = live.NextBatter;
 		PlayerGameBatting? line = live.BattingLine(batter.Id);
+		string userOrg = _session.CatalogOrganizationId;
+		string oppOrg = _contest?.OpponentId ?? "";
+		_batterPanel.UseTeam(userBatting ? userOrg : oppOrg);
+		_batterPanel.Number = batter.JerseyNumber > 0 ? batter.JerseyNumber.ToString(CultureInfo.InvariantCulture) : "";
+		SetBannerFace(_batterFace, batter);
 		_batterCard.AddChild(MakeText($"AT BAT  ·  {(userBatting ? _userShort : _oppShort)}", _bold, 11, userBatting ? Accent : Opponent, HorizontalAlignment.Left));
-		_batterCard.AddChild(MakeText($"#{batter.JerseyNumber}  {batter.FullName.ToUpperInvariant()}", _bold, 18, TextPrimary, HorizontalAlignment.Left));
-		_batterCard.AddChild(MakeText($"{SlotPosition(live, batter)}  ·  Bats {batter.Bats.ToAbbrev()}  ·  Today {TodayBatting(line)}", _medium, 13, TextMuted, HorizontalAlignment.Left));
+		_batterCard.AddChild(MakeText(batter.FullName.ToUpperInvariant(), _bold, 24, TextPrimary, HorizontalAlignment.Left));
+		_batterCard.AddChild(MakeText($"{SlotPosition(live, batter)}  ·  Bats {batter.Bats.ToAbbrev()}  ·  Today {TodayBatting(line)}", _medium, 13, new Color(1, 1, 1, 0.78f), HorizontalAlignment.Left));
 		_batterCard.AddChild(RatingRow("CON", batter.Ratings.Contact, "POW", batter.Ratings.Power));
 		_batterCard.AddChild(RatingRow("EYE", batter.Ratings.PlateDiscipline, "SPD", batter.Ratings.Speed));
 
@@ -568,9 +613,12 @@ public partial class LiveGamePage : Control
 		int pitches = live.PitchCount(homePitching);
 		int limit = Math.Max(1, live.PitchLimit(homePitching));
 		PlayerGamePitching? arm = live.PitchingLine(homePitching, pitcher.Id);
+		_pitcherPanel.UseTeam(userPitching ? userOrg : oppOrg);
+		_pitcherPanel.Number = pitcher.JerseyNumber > 0 ? pitcher.JerseyNumber.ToString(CultureInfo.InvariantCulture) : "";
+		SetBannerFace(_pitcherFace, pitcher);
 		_pitcherCard.AddChild(MakeText($"ON THE MOUND  ·  {(userPitching ? _userShort : _oppShort)}", _bold, 11, userPitching ? Accent : Opponent, HorizontalAlignment.Left));
-		_pitcherCard.AddChild(MakeText($"#{pitcher.JerseyNumber}  {pitcher.FullName.ToUpperInvariant()}", _bold, 18, TextPrimary, HorizontalAlignment.Left));
-		_pitcherCard.AddChild(MakeText($"{pitcher.Throws.ToAbbrev()}HP  ·  {TodayPitching(arm)}", _medium, 13, TextMuted, HorizontalAlignment.Left));
+		_pitcherCard.AddChild(MakeText(pitcher.FullName.ToUpperInvariant(), _bold, 24, TextPrimary, HorizontalAlignment.Left));
+		_pitcherCard.AddChild(MakeText($"{pitcher.Throws.ToAbbrev()}HP  ·  {TodayPitching(arm)}", _medium, 13, new Color(1, 1, 1, 0.78f), HorizontalAlignment.Left));
 		_pitcherCard.AddChild(RatingRow("STF", pitcher.Ratings.Stuff, "CTL", pitcher.Ratings.Control));
 		_pitcherCard.AddChild(RatingRow("MOV", pitcher.Ratings.Movement, "STA", pitcher.Ratings.Stamina));
 		_pitcherCard.AddChild(PitchCountBar(pitches, limit, live.Fatigue(homePitching)));
