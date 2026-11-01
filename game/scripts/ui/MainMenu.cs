@@ -4,8 +4,8 @@ using System.Globalization;
 using Godot;
 
 /// <summary>
-/// Title screen shown before the clubhouse. Continue/new/load all enter the
-/// current prototype career until save slots are wired to CareerService.
+/// Title screen shown before the clubhouse: continue the last career, start a
+/// new one, or load a saved career.
 /// </summary>
 public partial class MainMenu : Control
 {
@@ -702,62 +702,6 @@ public partial class MainMenu : Control
 		}
 
 		_dialogBody.AddChild(body);
-	}
-
-	private Control BuildLoadBody()
-	{
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 12);
-
-		var slot = new Button
-		{
-			Flat = false,
-			Text = string.Empty,
-			CustomMinimumSize = new Vector2(0, 92),
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			MouseDefaultCursorShape = CursorShape.PointingHand,
-			FocusMode = FocusModeEnum.All,
-		};
-		slot.AddThemeStyleboxOverride("normal", MakeMenuStyle(ButtonIdle, CardBorder, 0));
-		slot.AddThemeStyleboxOverride("hover", MakeMenuStyle(ButtonHover, AccentBlue, 0));
-		slot.AddThemeStyleboxOverride("pressed", MakeMenuStyle(AccentBlue, AccentBlueHot, 0));
-		slot.AddThemeStyleboxOverride("focus", MakeMenuStyle(ButtonHover, AccentBlue, 0));
-		UiSounds.SetClick(slot, UiClickSound.Confirm);
-		slot.Pressed += EnterCareer;
-
-		var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
-		margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		margin.AddThemeConstantOverride("margin_left", 14);
-		margin.AddThemeConstantOverride("margin_right", 14);
-		margin.AddThemeConstantOverride("margin_top", 10);
-		margin.AddThemeConstantOverride("margin_bottom", 10);
-		slot.AddChild(margin);
-
-		var col = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-		col.AddThemeConstantOverride("separation", -1);
-		GameSession session = GameSession.Current;
-		col.AddChild(MakeText(session.Organization.Name.ToUpperInvariant(), _bold, 18, TextPrimary, HorizontalAlignment.Left));
-		col.AddChild(MakeText(
-			$"{CareerDesk.CoachName.ToUpperInvariant()}  ·  HEAD COACH",
-			_medium,
-			12,
-			TextMuted,
-			HorizontalAlignment.Left));
-		col.AddChild(MakeText(
-			$"{session.CurrentDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture).ToUpperInvariant()}  ·  {CareerDesk.ThisYearRecord}  ·  YEAR {session.ContractYear} OF {session.ContractLength}",
-			_semibold,
-			12,
-			AccentBlueHot,
-			HorizontalAlignment.Left));
-		margin.AddChild(col);
-		layout.AddChild(slot);
-		layout.AddChild(MakeText(
-			"One prototype career is available until multiple save slots are wired.",
-			_medium,
-			12,
-			TextDim,
-			HorizontalAlignment.Left));
-		return layout;
 	}
 
 	private Control BuildCreditsBody()

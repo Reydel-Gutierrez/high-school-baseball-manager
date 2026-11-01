@@ -180,13 +180,13 @@ public static class SchoolProfiles
 
 		int pitching = pitchCount == 0
 			? GradeFromEra(team.TeamEra)
-			: Math.Clamp(pitchSum / pitchCount, 48, 94);
+			: Math.Clamp(pitchSum / pitchCount, 20, 99);
 		int hitting = hitCount == 0
 			? GradeFromAvg(team.TeamAvg)
-			: Math.Clamp(hitSum / hitCount, 48, 94);
+			: Math.Clamp(hitSum / hitCount, 20, 99);
 		int fielding = fieldCount == 0
-			? Math.Clamp(72 + (team.RunsFor - team.RunsAgainst) / 8, 48, 92)
-			: Math.Clamp(fieldSum / fieldCount, 48, 94);
+			? Math.Clamp(72 + (team.RunsFor - team.RunsAgainst) / 8, 20, 99)
+			: Math.Clamp(fieldSum / fieldCount, 20, 99);
 		return (pitching, hitting, fielding);
 	}
 
@@ -195,10 +195,10 @@ public static class SchoolProfiles
 		|| position is "P" or "SP" or "RP";
 
 	private static int GradeFromEra(float era) =>
-		Math.Clamp((int)Math.Round(92 - ((era - 2.1f) * 12f), MidpointRounding.AwayFromZero), 48, 94);
+		Math.Clamp((int)Math.Round(92 - ((era - 2.1f) * 12f), MidpointRounding.AwayFromZero), 20, 99);
 
 	private static int GradeFromAvg(float avg) =>
-		Math.Clamp((int)Math.Round((avg * 210f) + 18f, MidpointRounding.AwayFromZero), 48, 94);
+		Math.Clamp((int)Math.Round((avg * 210f) + 18f, MidpointRounding.AwayFromZero), 20, 99);
 
 	private static string BoardLabel(int place, int wins, int losses)
 	{

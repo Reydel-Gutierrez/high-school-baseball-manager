@@ -48,8 +48,7 @@ public partial class CareerPage : Control
 	private Texture2D _iconHome = null!;
 
 	private readonly List<CareerMail> _mail = [];
-	private readonly HashSet<string> _applied = new();
-	private readonly HashSet<string> _acceptedInterviews = new();
+	private bool _acknowledging;
 
 	private readonly Dictionary<DeskMode, Button> _modeButtons = new();
 	private Label _windowTitle = null!;
@@ -63,7 +62,6 @@ public partial class CareerPage : Control
 	private Control? _licenseModal;
 	private VBoxContainer _inboxHost = null!;
 	private VBoxContainer _letterHost = null!;
-	private GridContainer _openingsHost = null!;
 
 	private DeskMode _mode = DeskMode.Email;
 	private int _selectedMail;
@@ -93,7 +91,15 @@ public partial class CareerPage : Control
 		}
 	}
 
-	private void OnContractStateChanged() => MountContent();
+	private void OnContractStateChanged()
+	{
+		// Reading a letter marks it read in the session, which raises CareerChanged;
+		// the row is already updated, so don't rebuild the page under the reader.
+		if (!_acknowledging)
+		{
+			MountContent();
+		}
+	}
 
 	public override void _UnhandledInput(InputEvent ev)
 	{
@@ -277,7 +283,7 @@ public partial class CareerPage : Control
 		_mail.Clear();
 		if (_session.HasSignedContract)
 		{
-			_mail.AddRange(CareerDesk.Inbox);
+			_mail.AddRange(CareerDesk.MailFor(_session));
 		}
 
 		BuildPage();
@@ -994,6 +1000,9 @@ public partial class CareerPage : Control
 		if (mail.Unread)
 		{
 			_mail[index] = mail with { Unread = false };
+			_acknowledging = true;
+			_session.AcknowledgeMessage(mail.Source.Id);
+			_acknowledging = false;
 		}
 
 		RebuildInbox();
@@ -1044,9 +1053,9 @@ public partial class CareerPage : Control
 		var headerLayout = new VBoxContainer();
 		headerLayout.AddThemeConstantOverride("separation", 2);
 		header.AddChild(headerLayout);
-		headerLayout.AddChild(MakeText(KindLabel(mail.Kind), _semibold, 10, Gold, HorizontalAlignment.Left));
+		headerLayout.AddChild(MakeText(mail.Role, _semibold, 10, Gold, HorizontalAlignment.Left));
 		headerLayout.AddChild(MakeText(mail.Subject.ToUpperInvariant(), _bold, 20, TextPrimary, HorizontalAlignment.Left));
-		headerLayout.AddChild(MakeText($"{mail.From.ToUpperInvariant()}  ·  {mail.Role.ToUpperInvariant()}", _medium, 12, new Color(0.82f, 0.78f, 0.70f), HorizontalAlignment.Left));
+		headerLayout.AddChild(MakeText($"{mail.From.ToUpperInvariant()}  ·  {mail.DateLabel.ToUpperInvariant()}", _medium, 12, new Color(0.82f, 0.78f, 0.70f), HorizontalAlignment.Left));
 		_letterHost.AddChild(header);
 		_letterHost.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Gold });
 
@@ -1097,39 +1106,19 @@ public partial class CareerPage : Control
 		pad.AddThemeConstantOverride("margin_bottom", 10);
 		pad.AddChild(row);
 
-		switch (mail.Kind)
+		if (string.IsNullOrWhiteSpace(mail.Source.ActionLabel))
 		{
-			case CareerMailKind.Contract:
-				row.AddChild(MakeAction("VIEW BOARD GOALS", true, () =>
-				{
-					if (GetTree().CurrentScene is AppNavigator navigator)
-					{
-						navigator.ShowGoals();
-					}
-				}));
-				return pad;
-			case CareerMailKind.JobOffer when mail.JobId != null:
-				row.AddChild(MakeAction("VIEW JOB MARKET", false, () => ShowJobMarket()));
-				row.AddChild(MakeAction(
-					_applied.Contains(mail.JobId) ? "APPLICATION SENT" : "APPLY FOR THE SEAT",
-					true,
-					() => ApplyToJob(mail.JobId),
-					_applied.Contains(mail.JobId)));
-				return pad;
-			case CareerMailKind.Award:
-				row.AddChild(MakeAction("OPEN AWARDS", true, () => ShowMode(DeskMode.Awards)));
-				return pad;
-			case CareerMailKind.Media:
-				bool accepted = _acceptedInterviews.Contains(mail.Id);
-				row.AddChild(MakeAction(
-					accepted ? "INTERVIEW ACCEPTED" : "ACCEPT THE SIT-DOWN",
-					true,
-					() => AcceptInterview(mail.Id),
-					accepted));
-				return pad;
-			default:
-				return null;
+			return null;
 		}
+
+		row.AddChild(MakeAction(mail.Source.ActionLabel.ToUpperInvariant(), true, () =>
+		{
+			if (GetTree().CurrentScene is AppNavigator navigator)
+			{
+				navigator.OpenInboxItem(mail.Source);
+			}
+		}));
+		return pad;
 	}
 
 	private Control BuildCabinet()
@@ -1200,7 +1189,7 @@ public partial class CareerPage : Control
 		grid.AddThemeConstantOverride("v_separation", 10);
 		shelf.AddChild(grid);
 
-		foreach (CareerTrophy trophy in CareerDesk.Trophies)
+		foreach (CareerTrophy trophy in CareerDesk.TrophiesFor(_session))
 		{
 			grid.AddChild(BuildTrophyCell(trophy));
 		}
@@ -1518,201 +1507,6 @@ public partial class CareerPage : Control
 		return strip;
 	}
 
-	private Control BuildOpenings()
-	{
-		var card = new PanelContainer();
-		card.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		card.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		card.SizeFlagsVertical = SizeFlags.ExpandFill;
-		card.AddThemeStyleboxOverride("panel", MakeCardStyle(0));
-
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 0);
-		card.AddChild(layout);
-
-		var heading = new PanelContainer();
-		heading.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(0.047f, 0.04f, 0.035f, 0.96f),
-			ContentMarginLeft = 14,
-			ContentMarginTop = 10,
-			ContentMarginRight = 14,
-			ContentMarginBottom = 10,
-		});
-		var titles = new VBoxContainer();
-		titles.AddThemeConstantOverride("separation", -2);
-		titles.AddChild(MakeText("JOB BOARD", _bold, 18, TextPrimary, HorizontalAlignment.Left));
-		titles.AddChild(MakeText("Programs looking for a manager. Applying stays confidential until you take the job.", _medium, 12, TextMuted, HorizontalAlignment.Left));
-		heading.AddChild(titles);
-		layout.AddChild(heading);
-		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 2), Color = Gold });
-
-		var scroll = new ScrollContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-			VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-		};
-		layout.AddChild(scroll);
-
-		var pad = new MarginContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		pad.AddThemeConstantOverride("margin_left", 12);
-		pad.AddThemeConstantOverride("margin_top", 12);
-		pad.AddThemeConstantOverride("margin_right", 12);
-		pad.AddThemeConstantOverride("margin_bottom", 12);
-		scroll.AddChild(pad);
-
-		_openingsHost = new GridContainer
-		{
-			Columns = 2,
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-		};
-		_openingsHost.AddThemeConstantOverride("h_separation", 10);
-		_openingsHost.AddThemeConstantOverride("v_separation", 10);
-		pad.AddChild(_openingsHost);
-		return card;
-	}
-
-	private void RebuildOpenings()
-	{
-		foreach (Node child in _openingsHost.GetChildren())
-		{
-			_openingsHost.RemoveChild(child);
-			child.QueueFree();
-		}
-
-		foreach (CareerJob job in CareerDesk.Openings)
-		{
-			_openingsHost.AddChild(BuildJobCard(job));
-		}
-	}
-
-	private Control BuildJobCard(CareerJob job)
-	{
-		bool applied = _applied.Contains(job.Id);
-		var card = new PanelContainer
-		{
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			SizeFlagsVertical = SizeFlags.ExpandFill,
-		};
-		card.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = CardInner,
-			BorderColor = applied ? Green : CardBorder,
-			BorderWidthLeft = applied ? 2 : 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 12,
-			ContentMarginTop = 12,
-			ContentMarginRight = 12,
-			ContentMarginBottom = 12,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-		});
-
-		var layout = new VBoxContainer();
-		layout.AddThemeConstantOverride("separation", 6);
-		card.AddChild(layout);
-
-		var top = new HBoxContainer();
-		top.AddThemeConstantOverride("separation", 8);
-		layout.AddChild(top);
-		var school = MakeText(job.School.ToUpperInvariant(), _bold, 20, TextPrimary, HorizontalAlignment.Left);
-		school.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-		top.AddChild(school);
-		top.AddChild(BuildFitPill(job.Fit));
-
-		layout.AddChild(MakeText(
-			$"{job.District.ToUpperInvariant()}  ·  {job.Record}  ·  {job.Contract.ToUpperInvariant()}",
-			_medium,
-			12,
-			new Color(0.82f, 0.78f, 0.70f),
-			HorizontalAlignment.Left));
-		layout.AddChild(new ColorRect { CustomMinimumSize = new Vector2(0, 1), Color = Hairline });
-		layout.AddChild(MakeText(job.Opening.ToUpperInvariant(), _semibold, 12, Gold, HorizontalAlignment.Left));
-
-		var pitch = MakeText(job.Pitch, _medium, 13, TextMuted, HorizontalAlignment.Left);
-		pitch.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-		pitch.SizeFlagsVertical = SizeFlags.ExpandFill;
-		layout.AddChild(pitch);
-
-		layout.AddChild(MakeAction(
-			applied ? "APPLICATION SENT" : "APPLY",
-			true,
-			() => ApplyToJob(job.Id),
-			applied));
-		return card;
-	}
-
-	private Control BuildFitPill(string fit)
-	{
-		Color color = fit == "FIT" ? Green : Accent;
-		var pill = new PanelContainer();
-		pill.AddThemeStyleboxOverride("panel", new StyleBoxFlat
-		{
-			BgColor = new Color(color.R, color.G, color.B, 0.16f),
-			BorderColor = color,
-			BorderWidthLeft = 1,
-			BorderWidthTop = 1,
-			BorderWidthRight = 1,
-			BorderWidthBottom = 1,
-			ContentMarginLeft = 8,
-			ContentMarginTop = 2,
-			ContentMarginRight = 8,
-			ContentMarginBottom = 2,
-			CornerRadiusTopLeft = 8,
-			CornerRadiusTopRight = 8,
-			CornerRadiusBottomRight = 8,
-			CornerRadiusBottomLeft = 8,
-		});
-		pill.AddChild(MakeText(fit, _bold, 10, color, HorizontalAlignment.Center));
-		return pill;
-	}
-
-	private void ApplyToJob(string jobId, string? schoolName = null, string? note = null)
-	{
-		if (string.IsNullOrEmpty(jobId) || _applied.Contains(jobId))
-		{
-			return;
-		}
-
-		_applied.Add(jobId);
-		CareerJob? job = CareerDesk.FindJob(jobId);
-		_mail.Insert(0, job != null
-			? CareerDesk.ConfirmationFor(job)
-			: CareerDesk.ConfirmationFor(schoolName ?? "that program", note ?? "Application received."));
-		ShowMode(DeskMode.Email);
-		SelectMail(0);
-	}
-
-	private void AcceptInterview(string mailId)
-	{
-		if (!_acceptedInterviews.Add(mailId))
-		{
-			return;
-		}
-
-		_mail.Insert(0, new CareerMail(
-			"mail-interview-ok",
-			"Priya Shah",
-			"Capital City Times",
-			"Friday after the Great Lakes set — confirmed",
-			"She will find you by the home dugout. Ten minutes, notebook only.",
-			"Coach,\n\nConfirmed. I will find you by the home dugout after Friday's last out. Ten minutes, notebook only — no live hit, and I will not put the Pinecrest rumor on the record unless you bring it up.\n\nSee you then.\n\nPriya Shah\nCapital City Times",
-			"APR 24",
-			true,
-			CareerMailKind.Confirmation,
-			null));
-		SelectMail(0);
-	}
-
 	private Button MakeAction(string text, bool primary, Action onPressed, bool disabled = false)
 	{
 		var button = new Button
@@ -1779,17 +1573,6 @@ public partial class CareerPage : Control
 
 		return 0;
 	}
-
-	private static string KindLabel(CareerMailKind kind) => kind switch
-	{
-		CareerMailKind.Contract => "ATHLETIC OFFICE",
-		CareerMailKind.JobOffer => "JOB INQUIRY",
-		CareerMailKind.Award => "AWARDS DESK",
-		CareerMailKind.Media => "MEDIA",
-		CareerMailKind.Rival => "RIVAL BENCH",
-		CareerMailKind.Booster => "BOOSTER CLUB",
-		_ => "CONFIRMATION",
-	};
 
 	private static Color SatisfactionColor(BoardSatisfaction satisfaction) => satisfaction switch
 	{
