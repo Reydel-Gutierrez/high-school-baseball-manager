@@ -466,6 +466,74 @@ public class GameSimulationTests
 	}
 
 	[Fact]
+	public void Rotation_skips_a_starter_who_still_owes_rest()
+	{
+		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 9, 2026);
+		string teamId = world.Teams[0].Id;
+		List<Player> roster = world.Players.Where(p => p.TeamId == teamId).ToList();
+		List<Player> arms = roster.Where(p => p.IsPitcher).ToList();
+		Assert.True(arms.Count >= 4);
+		var rotation = new TeamRotation
+		{
+			TeamId = teamId,
+			Starters = [arms[0].Id, arms[1].Id, arms[2].Id, null, null],
+			Closer = arms[3].Id,
+		};
+
+		TeamGamePlan plan = CareerGamePlanProvider.Create(roster, new GamePlanContext
+		{
+			TeamId = teamId,
+			Rotation = rotation,
+			CompletedStarts = 0,
+			Resting = new HashSet<Guid> { arms[0].Id, arms[3].Id },
+		});
+
+		Assert.Equal(arms[1].Id, plan.StartingPitcher.Id);
+		Assert.NotEqual(arms[3].Id, plan.Closer?.Id);
+		Assert.DoesNotContain(plan.Bullpen, p => p.Id == arms[0].Id || p.Id == arms[3].Id);
+	}
+
+	[Fact]
+	public void Ai_staff_without_a_rotation_starts_its_best_rested_arm()
+	{
+		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 9, 2026);
+		string teamId = world.Teams[0].Id;
+		List<Player> roster = world.Players.Where(p => p.TeamId == teamId).ToList();
+		Player ace = new AutomaticLineupProvider().Create(roster).StartingPitcher;
+
+		TeamGamePlan plan = CareerGamePlanProvider.Create(roster, new GamePlanContext
+		{
+			TeamId = teamId,
+			Resting = new HashSet<Guid> { ace.Id },
+		});
+
+		Assert.NotEqual(ace.Id, plan.StartingPitcher.Id);
+		Assert.True(plan.StartingPitcher.IsPitcher);
+	}
+
+	[Fact]
+	public void No_pitcher_throws_past_the_daily_limit_and_box_scores_keep_pitch_counts()
+	{
+		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 31, 2026);
+		var simulator = new BaseballGameSimulator();
+		var lineups = new AutomaticLineupProvider();
+		List<ScheduledGame> games = world.Games.Where(g => g.TeamLevel == TeamLevel.Varsity).Take(150).ToList();
+		foreach (ScheduledGame game in games)
+		{
+			List<Player> home = world.Players.Where(p => p.TeamId == game.HomeTeamId).ToList();
+			List<Player> away = world.Players.Where(p => p.TeamId == game.AwayTeamId).ToList();
+			GameSimulationResult result = simulator.Simulate(game, lineups.Create(home), lineups.Create(away), new SeededRandom(game.Id.GetHashCode()));
+
+			// The limit can only be passed while finishing the batter at the plate (at most 5 pitches).
+			Assert.All(result.Pitching, line => Assert.True(line.Pitches <= PitchCountRules.DailyMax + 5, $"{line.Pitches} pitches"));
+			Assert.Contains(result.BoxScore.HomePitching, line => line.Pitches > 0);
+			Assert.Equal(
+				result.Pitching.Where(p => p.Pitches > 0).Sum(p => p.Pitches),
+				result.BoxScore.HomePitching.Sum(l => l.Pitches) + result.BoxScore.AwayPitching.Sum(l => l.Pitches));
+		}
+	}
+
+	[Fact]
 	public void Apply_result_accumulates_counting_stats_and_box_score()
 	{
 		GeneratedWorld generated = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 11, 2026);

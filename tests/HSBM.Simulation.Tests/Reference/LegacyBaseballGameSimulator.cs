@@ -5,6 +5,8 @@ namespace HSBM.Simulation.Tests.Reference;
 
 // Frozen copy of the single-pass simulator from before LiveGame existed.
 // LiveGameParityTests use it to prove the stepwise engine reproduces it.
+// One rule change since the freeze is mirrored here: pitch limits are capped
+// at PitchCountRules.DailyMax (high school 105-pitch rule).
 #pragma warning disable CA1822, CA1859
 internal sealed class LegacyBaseballGameSimulator
 {
@@ -874,9 +876,10 @@ internal sealed class LegacyBaseballGameSimulator
 		private static int LimitFor(Player pitcher, bool started, BaseballSimulationConfig config)
 		{
 			double stamina = pitcher.Ratings.Stamina;
-			return started
+			int limit = started
 				? (int)Math.Round(config.StarterPitchBase + config.StarterPitchPerStamina * stamina)
 				: (int)Math.Round(config.RelieverPitchBase + config.RelieverPitchPerStamina * stamina);
+			return Math.Min(limit, PitchCountRules.DailyMax);
 		}
 	}
 }

@@ -30,6 +30,7 @@ public sealed class PlayerGamePitching
 	public int Walks { get; set; }
 	public int Strikeouts { get; set; }
 	public int HomeRunsAllowed { get; set; }
+	public int Pitches { get; set; }
 	public bool Win { get; set; }
 	public bool Loss { get; set; }
 	public bool Save { get; set; }

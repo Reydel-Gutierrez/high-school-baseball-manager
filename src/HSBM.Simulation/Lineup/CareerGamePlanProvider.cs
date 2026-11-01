@@ -9,11 +9,16 @@ public sealed class GamePlanContext
 	public TeamLineup? Lineup { get; init; }
 	public TeamRotation? Rotation { get; init; }
 	public int CompletedStarts { get; init; }
+
+	/// <summary>Pitchers who still owe rest under <see cref="PitchCountRules"/> and may not pitch today.</summary>
+	public IReadOnlySet<Guid>? Resting { get; init; }
 }
 
 /// <summary>
 /// Builds a game-day batting order and pitching staff from saved
 /// Clubhouse cards when they are filled, otherwise from ratings.
+/// Pitchers who still owe rest are skipped: the rotation moves to the
+/// next rested starter and they stay out of the bullpen.
 /// </summary>
 public static class CareerGamePlanProvider
 {
@@ -21,15 +26,17 @@ public static class CareerGamePlanProvider
 
 	public static TeamGamePlan Create(IReadOnlyList<Player> roster, GamePlanContext? context)
 	{
-		TeamGamePlan automatic = Automatic.Create(roster);
 		if (context == null)
 		{
-			return automatic;
+			return Automatic.Create(roster);
 		}
 
+		IReadOnlySet<Guid> resting = context.Resting ?? new HashSet<Guid>();
+		TeamGamePlan automatic = Automatic.Create(WithoutResting(roster, resting));
+
 		IReadOnlyList<LineupBatter> order = TrySavedOrder(roster, context.Lineup) ?? automatic.BattingOrder;
-		Player starter = PickStarter(roster, context, automatic.StartingPitcher);
-		Player? closer = PickNamed(roster, context.Rotation?.Closer) ?? automatic.Closer;
+		Player starter = PickStarter(roster, context, resting, automatic.StartingPitcher);
+		Player? closer = Rested(PickNamed(roster, context.Rotation?.Closer), resting) ?? automatic.Closer;
 		if (closer != null && closer.Id == starter.Id)
 		{
 			closer = automatic.Closer != null && automatic.Closer.Id != starter.Id
@@ -37,7 +44,7 @@ public static class CareerGamePlanProvider
 				: null;
 		}
 
-		List<Player> bullpen = BuildBullpen(roster, context.Rotation, starter, closer, automatic.Bullpen);
+		List<Player> bullpen = BuildBullpen(roster, context.Rotation, starter, closer, automatic.Bullpen, resting);
 		return new TeamGamePlan
 		{
 			BattingOrder = order,
@@ -90,7 +97,41 @@ public static class CareerGamePlanProvider
 		return order.Count >= 8 ? order : null;
 	}
 
-	private static Player PickStarter(IReadOnlyList<Player> roster, GamePlanContext context, Player fallback)
+	/// <summary>The starter <see cref="Create"/> would send out, without building the whole plan.</summary>
+	public static Player ProbableStarter(IReadOnlyList<Player> roster, GamePlanContext context) =>
+		Create(roster, context).StartingPitcher;
+
+	/// <summary>
+	/// Roster without resting pitchers, unless that would leave no pitcher at all
+	/// (then everyone stays and the rested-first order below still applies).
+	/// </summary>
+	private static IReadOnlyList<Player> WithoutResting(IReadOnlyList<Player> roster, IReadOnlySet<Guid> resting)
+	{
+		if (resting.Count == 0)
+		{
+			return roster;
+		}
+
+		var available = new List<Player>(roster.Count);
+		bool anyArm = false;
+		foreach (Player player in roster)
+		{
+			if (player.IsPitcher && resting.Contains(player.Id))
+			{
+				continue;
+			}
+
+			anyArm |= player.IsPitcher;
+			available.Add(player);
+		}
+
+		return anyArm ? available : roster;
+	}
+
+	private static Player? Rested(Player? arm, IReadOnlySet<Guid> resting) =>
+		arm != null && !resting.Contains(arm.Id) ? arm : null;
+
+	private static Player PickStarter(IReadOnlyList<Player> roster, GamePlanContext context, IReadOnlySet<Guid> resting, Player fallback)
 	{
 		if (context.Rotation == null)
 		{
@@ -112,7 +153,17 @@ public static class CareerGamePlanProvider
 			return fallback;
 		}
 
-		return arms[context.CompletedStarts % arms.Count];
+		// Turn order first; if this turn's arm still owes rest, the next rested one goes.
+		for (int i = 0; i < arms.Count; i++)
+		{
+			Player arm = arms[(context.CompletedStarts + i) % arms.Count];
+			if (!resting.Contains(arm.Id))
+			{
+				return arm;
+			}
+		}
+
+		return fallback;
 	}
 
 	private static List<Player> BuildBullpen(
@@ -120,9 +171,10 @@ public static class CareerGamePlanProvider
 		TeamRotation? rotation,
 		Player starter,
 		Player? closer,
-		IReadOnlyList<Player> automatic)
+		IReadOnlyList<Player> automatic,
+		IReadOnlySet<Guid> resting)
 	{
-		var used = new HashSet<Guid> { starter.Id };
+		var used = new HashSet<Guid>(resting) { starter.Id };
 		var bullpen = new List<Player>();
 		if (rotation != null)
 		{

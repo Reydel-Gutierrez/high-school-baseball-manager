@@ -106,16 +106,28 @@ public class LiveGameTests
 	}
 
 	[Fact]
-	public void Without_auto_management_the_starter_is_never_pulled()
+	public void Without_auto_management_the_starter_stays_in_until_the_pitch_limit()
 	{
-		var (game, home, away, _, _) = Matchup(8);
-		LiveGame live = new BaseballGameSimulator().StartLive(game, home, away, new SeededRandom(8));
-		live.AutoManageHome = false;
-		GameSimulationResult result = live.Finish();
-		int homePitchers = result.Pitching.Count(line => home.StartingPitcher.Id == line.PlayerId
-			|| home.Bullpen.Any(p => p.Id == line.PlayerId)
-			|| home.Closer?.Id == line.PlayerId);
-		Assert.Equal(1, homePitchers);
+		for (int i = 0; i < 20; i++)
+		{
+			var (game, home, away, _, _) = Matchup(8 + i);
+			LiveGame live = new BaseballGameSimulator().StartLive(game, home, away, new SeededRandom(8 + i));
+			live.AutoManageHome = false;
+			GameSimulationResult result = live.Finish();
+			List<PlayerGamePitching> homeLines = result.Pitching.Where(line => home.StartingPitcher.Id == line.PlayerId
+				|| home.Bullpen.Any(p => p.Id == line.PlayerId)
+				|| home.Closer?.Id == line.PlayerId).ToList();
+			PlayerGamePitching starter = homeLines.Single(line => line.PlayerId == home.StartingPitcher.Id);
+			if (homeLines.Count > 1)
+			{
+				// The only forced change for a manager-run staff is the 105-pitch rule.
+				Assert.True(starter.Pitches >= PitchCountRules.DailyMax, $"pulled at {starter.Pitches}");
+			}
+			else
+			{
+				Assert.True(starter.Pitches <= PitchCountRules.DailyMax + 5, $"left in for {starter.Pitches}");
+			}
+		}
 	}
 
 	[Fact]

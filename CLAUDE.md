@@ -9,7 +9,7 @@ first, then `docs/ui-concepts/README.md`.
 - `src/HSBM.Domain` (pure model), `src/HSBM.Simulation` (world gen, game engine, day processor),
   `src/HSBM.Application` (CareerService), `src/HSBM.Persistence` (SQLite), `game/` (Godot UI), `tests/` (xUnit).
 - Build: Alt+B in the Godot editor, or `dotnet build "game/High School Baseball Manager.csproj"`.
-  Tests: `dotnet test HSBM.sln` (or VS Test Explorer → Run All). All 239 pass (3 projects) as of Oct 19 2026.
+  Tests: `dotnet test HSBM.sln` (or VS Test Explorer → Run All). All 253 pass (3 projects) as of Oct 31 2026.
 - Viewport is 1152×648 with `canvas_items` + `expand`: on the owner's 3428×1368 ultrawide the logical
   canvas is about **1620×648**. Vertical space is the scarce resource; check every page fits without scrolling.
 

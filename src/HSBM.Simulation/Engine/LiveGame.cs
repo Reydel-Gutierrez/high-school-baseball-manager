@@ -488,7 +488,7 @@ public sealed class LiveGame
 			fatigue);
 
 		int pitches = PitchesFor(outcome);
-		defense.Pitches += pitches;
+		defense.AddPitches(pitches);
 		ApplyPaToStats(batterLine, defense.Line, outcome);
 
 		if (outcome is PlateAppearanceOutcome.Strikeout or PlateAppearanceOutcome.Out)
@@ -705,7 +705,7 @@ public sealed class LiveGame
 		List<LivePlay> emitted)
 	{
 		batterLine.PlateAppearances++;
-		defense.Pitches += 2;
+		defense.AddPitches(2);
 		double contact = batter.Ratings.Contact / 100.0;
 		double speed = batter.Ratings.Speed / 100.0;
 		double roll = _rng.NextDouble();
@@ -806,7 +806,8 @@ public sealed class LiveGame
 	private void MaybeChangePitcher(PitchingStaff staff, List<LivePlay> emitted, bool startOfInning)
 	{
 		bool defenseAuto = ReferenceEquals(staff, _homeStaff) ? AutoManageHome : AutoManageAway;
-		if (!defenseAuto)
+		bool atLimit = staff.Pitches >= PitchCountRules.DailyMax;
+		if (!defenseAuto && !atLimit)
 		{
 			return;
 		}
@@ -823,7 +824,7 @@ public sealed class LiveGame
 			&& staff.Closer != null
 			&& staff.Current.Id != staff.Closer.Id
 			&& staff.CloserUnused;
-		bool tired = staff.Pitches >= staff.PitchLimit;
+		bool tired = atLimit || staff.Pitches >= staff.PitchLimit;
 		bool blown = _inningRuns >= 4 && staff.Pitches >= 40;
 		bool deep = _inning >= 7 && tired;
 		if (!saveSpot && !tired && !blown && !deep)
@@ -853,7 +854,8 @@ public sealed class LiveGame
 
 		string outgoing = staff.Current.LastName;
 		staff.ChangeTo(next, lead, _config);
-		emitted.Add(Emit(LivePlayKind.PitchingChange, $"Pitching change: {next.LastName} replaces {outgoing}."));
+		string reason = atLimit ? $" ({PitchCountRules.DailyMax}-pitch limit)" : "";
+		emitted.Add(Emit(LivePlayKind.PitchingChange, $"Pitching change: {next.LastName} replaces {outgoing}{reason}."));
 	}
 
 	private void Seal(List<LivePlay> emitted)
@@ -1366,7 +1368,7 @@ public sealed class LiveGame
 		var lines = new List<BoxScorePitchingLine>(pitching.Count);
 		foreach (PlayerGamePitching line in pitching)
 		{
-			if (line.OutsRecorded <= 0 && line.HitsAllowed <= 0 && line.Walks <= 0)
+			if (line.OutsRecorded <= 0 && line.HitsAllowed <= 0 && line.Walks <= 0 && line.Pitches <= 0)
 			{
 				continue;
 			}
@@ -1381,6 +1383,7 @@ public sealed class LiveGame
 				Hits = line.HitsAllowed,
 				Walks = line.Walks,
 				Strikeouts = line.Strikeouts,
+				Pitches = line.Pitches,
 			});
 		}
 
@@ -1395,7 +1398,7 @@ public sealed class LiveGame
 		public Player Current { get; private set; }
 		public PlayerGamePitching Line { get; private set; }
 		public List<PlayerGamePitching> Lines { get; } = [];
-		public int Pitches { get; set; }
+		public int Pitches { get; private set; }
 		public int PitchLimit { get; private set; }
 		public Player? Closer { get; }
 		public List<Player> Bullpen { get; }
@@ -1423,6 +1426,12 @@ public sealed class LiveGame
 			}
 		}
 
+		public void AddPitches(int count)
+		{
+			Pitches += count;
+			Line.Pitches += count;
+		}
+
 		public void ChangeTo(Player next, int lead, BaseballSimulationConfig config)
 		{
 			Current = next;
@@ -1438,7 +1447,7 @@ public sealed class LiveGame
 			for (int i = Lines.Count - 1; i >= 0; i--)
 			{
 				PlayerGamePitching line = Lines[i];
-				if (line.OutsRecorded == 0 && line.HitsAllowed == 0 && line.Walks == 0 && line.GamesStarted == 0)
+				if (line.OutsRecorded == 0 && line.HitsAllowed == 0 && line.Walks == 0 && line.GamesStarted == 0 && line.Pitches == 0)
 				{
 					Lines.RemoveAt(i);
 				}
@@ -1555,9 +1564,10 @@ public sealed class LiveGame
 		private static int LimitFor(Player pitcher, bool started, BaseballSimulationConfig config)
 		{
 			double stamina = pitcher.Ratings.Stamina;
-			return started
+			int limit = started
 				? (int)Math.Round(config.StarterPitchBase + config.StarterPitchPerStamina * stamina)
 				: (int)Math.Round(config.RelieverPitchBase + config.RelieverPitchPerStamina * stamina);
+			return Math.Min(limit, PitchCountRules.DailyMax);
 		}
 	}
 }

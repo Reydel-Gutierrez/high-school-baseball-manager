@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Godot;
@@ -41,6 +42,8 @@ public partial class RotationPage : Control
 	private VBoxContainer _availableRows = null!;
 	private VBoxContainer _detailHost = null!;
 
+	private Dictionary<Guid, PitcherWorkload> _workloads = [];
+	private DateOnly _gameDay;
 	private string _selectedSeat = string.Empty;
 	private int _selectedArm = 0;
 
@@ -148,7 +151,16 @@ public partial class RotationPage : Control
 
 		_kArms.Text = FormatInt(arms);
 		_kArms.AddThemeColorOverride("font_color", arms >= 7 ? UiKit.Green : arms >= 5 ? UiKit.Gold : UiKit.Red);
-		_kArmsCap.Text = "A full week of games needs about 7";
+		int ready = 0;
+		foreach (ClubhousePlayer player in ClubhouseSquad.ForTeam(level))
+		{
+			if (player.IsPitcher && RestOwed(player) == 0)
+			{
+				ready++;
+			}
+		}
+
+		_kArmsCap.Text = $"{FormatInt(ready)} rested for {_gameDay.ToString("MMM d", CultureInfo.InvariantCulture)}";
 		_kRot.Text = $"{FormatInt(starters)}/5";
 		_kRot.AddThemeColorOverride("font_color", starters >= 3 ? UiKit.Text : UiKit.Gold);
 		_kRotCap.Text = starters >= 3 ? "Starters set" : "Fill at least three starter seats";
@@ -243,6 +255,7 @@ public partial class RotationPage : Control
 		row.AddChild(MakeCell("ERA", 40, _semibold, 10, TextMuted, HorizontalAlignment.Center));
 		row.AddChild(MakeCell("W-L", 36, _semibold, 10, TextMuted, HorizontalAlignment.Center));
 		row.AddChild(MakeCell("K", 28, _semibold, 10, TextMuted, HorizontalAlignment.Center));
+		row.AddChild(MakeCell("REST", 56, _semibold, 10, TextMuted, HorizontalAlignment.Center));
 		return row;
 	}
 
@@ -265,6 +278,7 @@ public partial class RotationPage : Control
 
 	private void RefreshAll()
 	{
+		RefreshWorkloads();
 		RotationCard rotation = ClubhouseBoard.GetRotation(_session.ActiveTeam);
 		int starters = 0;
 		foreach (int jersey in rotation.Starters)
@@ -358,6 +372,7 @@ public partial class RotationPage : Control
 			columns.AddChild(MakeCell("—", 40, _medium, 12, TextMuted, HorizontalAlignment.Center));
 			columns.AddChild(MakeCell("—", 36, _medium, 12, TextMuted, HorizontalAlignment.Center));
 			columns.AddChild(MakeCell("—", 28, _medium, 12, TextMuted, HorizontalAlignment.Center));
+			columns.AddChild(MakeCell("—", 56, _medium, 12, TextMuted, HorizontalAlignment.Center));
 		}
 		else
 		{
@@ -368,6 +383,7 @@ public partial class RotationPage : Control
 			columns.AddChild(MakeCell(pit == null ? "—" : FormatEra(pit.Era), 40, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 			columns.AddChild(MakeCell(pit == null ? "—" : $"{FormatInt(pit.Wins)}-{FormatInt(pit.Losses)}", 36, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 			columns.AddChild(MakeCell(pit == null ? "—" : FormatInt(pit.Strikeouts), 28, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
+			columns.AddChild(BuildRestCell(player, row));
 		}
 
 		return row;
@@ -435,6 +451,7 @@ public partial class RotationPage : Control
 		columns.AddChild(MakeCell(pit == null ? "—" : FormatEra(pit.Era), 40, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 		columns.AddChild(MakeCell(pit == null ? "—" : $"{FormatInt(pit.Wins)}-{FormatInt(pit.Losses)}", 36, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
 		columns.AddChild(MakeCell(pit == null ? "—" : FormatInt(pit.Strikeouts), 28, _semibold, 12, TextPrimary, HorizontalAlignment.Center));
+		columns.AddChild(BuildRestCell(player, row));
 		return row;
 	}
 
@@ -780,6 +797,36 @@ public partial class RotationPage : Control
 			host.RemoveChild(child);
 			child.QueueFree();
 		}
+	}
+
+	/// <summary>Workloads as of the next game day, so REST answers "can he pitch next game?"</summary>
+	private void RefreshWorkloads()
+	{
+		TeamLevel level = _session.ActiveTeam.Level;
+		_gameDay = _session.NextContest(level)?.Date ?? _session.CurrentDate;
+		_workloads = _session.World == null
+			? []
+			: PitcherWorkloads.For(_session.World, _session.ActiveTeam.Id, _gameDay);
+	}
+
+	private int RestOwed(ClubhousePlayer player) =>
+		_workloads.TryGetValue(player.PlayerId, out PitcherWorkload? load) ? load.DaysUntilRested(_gameDay) : 0;
+
+	private Label BuildRestCell(ClubhousePlayer player, Control row)
+	{
+		if (!_workloads.TryGetValue(player.PlayerId, out PitcherWorkload? load))
+		{
+			return MakeCell("READY", 56, _semibold, 11, Green, HorizontalAlignment.Center);
+		}
+
+		int owed = load.DaysUntilRested(_gameDay);
+		string outing = $"Threw {FormatInt(load.Pitches)} pitches on {load.LastOuting.ToString("MMM d", CultureInfo.InvariantCulture)}";
+		row.TooltipText = owed == 0
+			? $"{outing}. Rested for {_gameDay.ToString("MMM d", CultureInfo.InvariantCulture)}."
+			: $"{outing}. Needs {FormatInt(load.RestDays)} days of rest: eligible {load.EligibleOn.ToString("MMM d", CultureInfo.InvariantCulture)}.";
+		return owed == 0
+			? MakeCell("READY", 56, _semibold, 11, Green, HorizontalAlignment.Center)
+			: MakeCell(owed == 1 ? "1 DAY" : $"{FormatInt(owed)} DAYS", 56, _bold, 11, UiKit.Red, HorizontalAlignment.Center);
 	}
 
 	private static Label MakeCell(string text, float width, FontFile font, int size, Color color, HorizontalAlignment align)

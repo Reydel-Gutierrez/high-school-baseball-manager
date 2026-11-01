@@ -40,6 +40,7 @@ public sealed class BoxScorePitchingLine
 	public int Hits { get; set; }
 	public int Walks { get; set; }
 	public int Strikeouts { get; set; }
+	public int Pitches { get; set; }
 
 	public string InningsDisplay => $"{OutsRecorded / 3}.{OutsRecorded % 3}";
 }

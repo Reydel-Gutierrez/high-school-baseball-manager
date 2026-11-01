@@ -174,6 +174,7 @@ public static class WorldDayProcessor
 			Lineup = state.LineupFor(teamId),
 			Rotation = state.RotationFor(teamId),
 			CompletedStarts = state.CompletedStarts(teamId),
+			Resting = PitcherWorkloads.Resting(state.World, teamId, today),
 		});
 	}
 

@@ -66,12 +66,21 @@ public static class ClubhouseBoard
 	public static ClubhousePlayer? GetLikelyStarter(TeamIdentity team)
 	{
 		RotationCard rotation = GetRotation(team);
-		var arms = new List<int>();
+		GameSession? session = GameSession.Current;
+		DateOnly gameDay = session == null
+			? default
+			: session.NextContest(team.Level)?.Date ?? session.CurrentDate;
+
+		// Mirrors CareerGamePlanProvider: injured arms drop out of the turn order,
+		// then the turn goes to the next arm who doesn't owe rest.
+		var arms = new List<ClubhousePlayer>();
 		foreach (int jersey in rotation.Starters)
 		{
-			if (jersey != 0)
+			ClubhousePlayer? arm = jersey == 0 ? null : ClubhouseSquad.Find(jersey, team.Level);
+			Player? domain = arm == null || session == null ? null : session.FindWorldPlayer(arm.PlayerId);
+			if (arm != null && (domain == null || domain.CanPlay(gameDay)))
 			{
-				arms.Add(jersey);
+				arms.Add(arm);
 			}
 		}
 
@@ -81,7 +90,7 @@ public static class ClubhouseBoard
 		}
 
 		int starts = 0;
-		GameSession? session = GameSession.Current;
+		HashSet<Guid> resting = [];
 		if (session?.World != null)
 		{
 			foreach (ScheduledGame game in session.World.Games)
@@ -94,9 +103,20 @@ public static class ClubhouseBoard
 					starts++;
 				}
 			}
+
+			resting = PitcherWorkloads.Resting(session.World, team.Id, gameDay);
 		}
 
-		return ClubhouseSquad.Find(arms[starts % arms.Count], team.Level);
+		for (int i = 0; i < arms.Count; i++)
+		{
+			ClubhousePlayer arm = arms[(starts + i) % arms.Count];
+			if (!resting.Contains(arm.PlayerId))
+			{
+				return arm;
+			}
+		}
+
+		return arms[starts % arms.Count];
 	}
 
 	private static LineupCard LoadOrCreateLineup(TeamIdentity team)
