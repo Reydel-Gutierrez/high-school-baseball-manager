@@ -30,11 +30,16 @@ public static class GameSettings
 	public const int DefaultWindowHeight = 1080;
 
 	/// <summary>
-	/// Narrowest logical canvas the clubhouse layouts are built for. Wide
-	/// screens keep the design scale; on 16:9 and narrower windows the UI is
-	/// scaled down just enough that pages never clip horizontally.
+	/// Smallest logical canvas the clubhouse layouts are built for (1440 × 810).
+	/// The UI is scaled down just enough to give every window at least this much
+	/// room in both directions: 16:9 screens are held by the width, ultrawides by
+	/// the height, so cards are the same size relative to screen height everywhere
+	/// and ultrawides simply get extra width.
 	/// </summary>
 	public const int MinimumLogicalWidth = 1440;
+
+	/// <inheritdoc cref="MinimumLogicalWidth"/>
+	public const int MinimumLogicalHeight = 810;
 
 	private static bool _fitHooked;
 
@@ -250,7 +255,7 @@ public static class GameSettings
 
 	/// <summary>
 	/// Content scale = user UI scale × a fit factor that guarantees at least
-	/// <see cref="MinimumLogicalWidth"/> logical pixels across.
+	/// <see cref="MinimumLogicalWidth"/> × <see cref="MinimumLogicalHeight"/> logical pixels.
 	/// </summary>
 	private static void ApplyFitScale(Window window)
 	{
@@ -263,7 +268,8 @@ public static class GameSettings
 
 		float baseScale = Mathf.Min(size.X / (float)DesignWidth, size.Y / (float)DesignHeight);
 		float logicalWidth = size.X / (baseScale * _uiScale);
-		float fit = logicalWidth < MinimumLogicalWidth ? logicalWidth / MinimumLogicalWidth : 1f;
+		float logicalHeight = size.Y / (baseScale * _uiScale);
+		float fit = Mathf.Min(1f, Mathf.Min(logicalWidth / MinimumLogicalWidth, logicalHeight / MinimumLogicalHeight));
 		window.ContentScaleFactor = _uiScale * fit;
 	}
 
