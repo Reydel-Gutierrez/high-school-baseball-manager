@@ -494,6 +494,30 @@ public class GameSimulationTests
 	}
 
 	[Fact]
+	public void An_arm_listed_in_two_rotation_seats_still_gets_one_turn()
+	{
+		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 9, 2026);
+		string teamId = world.Teams[0].Id;
+		List<Player> arms = world.Players.Where(p => p.TeamId == teamId && p.IsPitcher).ToList();
+		var rotation = new TeamRotation
+		{
+			TeamId = teamId,
+			Starters = [arms[0].Id, arms[1].Id, arms[1].Id, arms[2].Id, null],
+		};
+
+		List<Guid> turns = Enumerable.Range(0, 3)
+			.Select(starts => CareerGamePlanProvider.Create(arms, new GamePlanContext
+			{
+				TeamId = teamId,
+				Rotation = rotation,
+				CompletedStarts = starts,
+			}).StartingPitcher.Id)
+			.ToList();
+
+		Assert.Equal([arms[0].Id, arms[1].Id, arms[2].Id], turns);
+	}
+
+	[Fact]
 	public void Ai_staff_without_a_rotation_starts_its_best_rested_arm()
 	{
 		GeneratedWorld world = new CareerWorldGenerator().Generate(LeagueCatalog.Standard, 9, 2026);

@@ -43,6 +43,11 @@ public static class ClubhouseBoard
 		{
 			card = LoadOrCreateRotation(team);
 			Rotations[team.Id] = card;
+			if (card.RemoveDuplicates())
+			{
+				// Older saves could hold the same arm in two seats; save the repaired card.
+				Commit(team);
+			}
 		}
 
 		return card;
@@ -128,7 +133,7 @@ public static class ClubhouseBoard
 			{
 				if (saved.TeamId == team.Id && saved.FilledCount > 0)
 				{
-					return FromSavedLineup(saved);
+					return FromSavedLineup(saved, team);
 				}
 			}
 
@@ -147,7 +152,7 @@ public static class ClubhouseBoard
 			{
 				if (saved.TeamId == team.Id && HasPitcher(saved))
 				{
-					return FromSavedRotation(saved);
+					return FromSavedRotation(saved, team);
 				}
 			}
 
@@ -171,33 +176,33 @@ public static class ClubhouseBoard
 		return roster;
 	}
 
-	private static LineupCard FromSavedLineup(TeamLineup saved)
+	private static LineupCard FromSavedLineup(TeamLineup saved, TeamIdentity team)
 	{
 		var card = new LineupCard();
 		int count = Math.Min(saved.Slots.Count, LineupSize);
 		for (int i = 0; i < count; i++)
 		{
 			TeamLineupSlot slot = saved.Slots[i];
-			int jersey = JerseyFor(slot.PlayerId);
+			int jersey = JerseyFor(slot.PlayerId, team);
 			card.Set(i, jersey, string.IsNullOrWhiteSpace(slot.Position) ? FieldPositions[i] : slot.Position);
 		}
 
 		return card;
 	}
 
-	private static RotationCard FromSavedRotation(TeamRotation saved)
+	private static RotationCard FromSavedRotation(TeamRotation saved, TeamIdentity team)
 	{
 		var card = new RotationCard();
 		int count = Math.Min(saved.Starters.Count, RotationSize);
 		for (int i = 0; i < count; i++)
 		{
-			card.Starters[i] = JerseyFor(saved.Starters[i]);
+			card.Starters[i] = JerseyFor(saved.Starters[i], team);
 		}
 
-		card.Closer = JerseyFor(saved.Closer);
-		card.Setup = JerseyFor(saved.Setup);
-		card.Middle = JerseyFor(saved.Middle);
-		card.LongRelief = JerseyFor(saved.LongRelief);
+		card.Closer = JerseyFor(saved.Closer, team);
+		card.Setup = JerseyFor(saved.Setup, team);
+		card.Middle = JerseyFor(saved.Middle, team);
+		card.LongRelief = JerseyFor(saved.LongRelief, team);
 		return card;
 	}
 
@@ -280,21 +285,18 @@ public static class ClubhouseBoard
 		}
 
 		card.Closer = plan.Closer?.JerseyNumber ?? 0;
-		if (plan.Bullpen.Count > 0)
+		var relief = new List<int>();
+		foreach (Player arm in plan.Bullpen)
 		{
-			card.Setup = plan.Bullpen[0].JerseyNumber;
+			if (!card.Contains(arm.JerseyNumber))
+			{
+				relief.Add(arm.JerseyNumber);
+			}
 		}
 
-		if (plan.Bullpen.Count > 1)
-		{
-			card.Middle = plan.Bullpen[1].JerseyNumber;
-		}
-
-		if (plan.Bullpen.Count > 2)
-		{
-			card.LongRelief = plan.Bullpen[2].JerseyNumber;
-		}
-
+		card.Setup = relief.Count > 0 ? relief[0] : 0;
+		card.Middle = relief.Count > 1 ? relief[1] : 0;
+		card.LongRelief = relief.Count > 2 ? relief[2] : 0;
 		return card;
 	}
 
@@ -305,7 +307,7 @@ public static class ClubhouseBoard
 		{
 			saved.Slots.Add(new TeamLineupSlot
 			{
-				PlayerId = PlayerIdFor(slot.Jersey),
+				PlayerId = PlayerIdFor(slot.Jersey, team),
 				Position = slot.Position,
 			});
 		}
@@ -322,13 +324,13 @@ public static class ClubhouseBoard
 		};
 		for (int i = 0; i < card.Starters.Length && i < saved.Starters.Count; i++)
 		{
-			saved.Starters[i] = PlayerIdFor(card.Starters[i]);
+			saved.Starters[i] = PlayerIdFor(card.Starters[i], team);
 		}
 
-		saved.Closer = PlayerIdFor(card.Closer);
-		saved.Setup = PlayerIdFor(card.Setup);
-		saved.Middle = PlayerIdFor(card.Middle);
-		saved.LongRelief = PlayerIdFor(card.LongRelief);
+		saved.Closer = PlayerIdFor(card.Closer, team);
+		saved.Setup = PlayerIdFor(card.Setup, team);
+		saved.Middle = PlayerIdFor(card.Middle, team);
+		saved.LongRelief = PlayerIdFor(card.LongRelief, team);
 		return saved;
 	}
 
@@ -342,7 +344,12 @@ public static class ClubhouseBoard
 		return false;
 	}
 
-	private static int JerseyFor(Guid? playerId)
+	/// <summary>
+	/// Jersey of a saved player, only while he is still on <paramref name="team"/>. A player who
+	/// moved levels, was released, or graduated leaves the seat open instead of handing it to
+	/// whoever wears his number now.
+	/// </summary>
+	private static int JerseyFor(Guid? playerId, TeamIdentity team)
 	{
 		if (!playerId.HasValue)
 		{
@@ -359,21 +366,21 @@ public static class ClubhouseBoard
 		{
 			if (player.Id == playerId.Value)
 			{
-				return player.JerseyNumber;
+				return player.TeamId == team.Id && !player.Alumni ? player.JerseyNumber : 0;
 			}
 		}
 
 		return 0;
 	}
 
-	private static Guid? PlayerIdFor(int jersey)
+	private static Guid? PlayerIdFor(int jersey, TeamIdentity team)
 	{
 		if (jersey == 0)
 		{
 			return null;
 		}
 
-		ClubhousePlayer? player = ClubhouseSquad.Find(jersey);
+		ClubhousePlayer? player = ClubhouseSquad.Find(jersey, team.Level);
 		return player == null || player.PlayerId == Guid.Empty ? null : player.PlayerId;
 	}
 
@@ -561,6 +568,34 @@ public sealed class RotationCard
 		return Closer == jersey || Setup == jersey || Middle == jersey || LongRelief == jersey;
 	}
 
+	/// <summary>Clears any seat holding an arm already seated above it. Returns true when a seat changed.</summary>
+	public bool RemoveDuplicates()
+	{
+		var seen = new HashSet<int>();
+		bool changed = false;
+		for (int i = 0; i < Starters.Length; i++)
+		{
+			Starters[i] = Keep(Starters[i]);
+		}
+
+		Closer = Keep(Closer);
+		Setup = Keep(Setup);
+		Middle = Keep(Middle);
+		LongRelief = Keep(LongRelief);
+		return changed;
+
+		int Keep(int jersey)
+		{
+			if (jersey == 0 || seen.Add(jersey))
+			{
+				return jersey;
+			}
+
+			changed = true;
+			return 0;
+		}
+	}
+
 	public int AssignedCount
 	{
 		get
@@ -577,7 +612,6 @@ public sealed class RotationCard
 			if (Closer != 0) count++;
 			if (Setup != 0) count++;
 			if (Middle != 0) count++;
-			if (LongRelief != 0) count++;
 			if (LongRelief != 0) count++;
 			return count;
 		}

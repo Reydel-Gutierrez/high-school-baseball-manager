@@ -154,7 +154,7 @@ public partial class RotationPage : Control
 		int ready = 0;
 		foreach (ClubhousePlayer player in ClubhouseSquad.ForTeam(level))
 		{
-			if (player.IsPitcher && RestOwed(player) == 0)
+			if (player.IsPitcher && !IsOut(player) && RestOwed(player) == 0)
 			{
 				ready++;
 			}
@@ -812,8 +812,18 @@ public partial class RotationPage : Control
 	private int RestOwed(ClubhousePlayer player) =>
 		_workloads.TryGetValue(player.PlayerId, out PitcherWorkload? load) ? load.DaysUntilRested(_gameDay) : 0;
 
+	/// <summary>Injured and unable to play on the next game day (day-to-day arms can still go).</summary>
+	private bool IsOut(ClubhousePlayer player) =>
+		_session.FindWorldPlayer(player.PlayerId)?.CanPlay(_gameDay) == false;
+
 	private Label BuildRestCell(ClubhousePlayer player, Control row)
 	{
+		if (IsOut(player))
+		{
+			row.TooltipText = $"{player.InjuryLabel}: {player.TimelineLabel}. The rotation skips him until he is cleared.";
+			return MakeCell("INJ", 56, _bold, 11, UiKit.Red, HorizontalAlignment.Center);
+		}
+
 		if (!_workloads.TryGetValue(player.PlayerId, out PitcherWorkload? load))
 		{
 			return MakeCell("READY", 56, _semibold, 11, Green, HorizontalAlignment.Center);

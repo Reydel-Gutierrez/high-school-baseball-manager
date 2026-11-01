@@ -141,8 +141,9 @@ public static class CareerGamePlanProvider
 		var arms = new List<Player>();
 		foreach (Guid? id in context.Rotation.Starters)
 		{
+			// A saved card listing one arm in two seats still gives him one turn.
 			Player? match = Find(roster, id);
-			if (match != null)
+			if (match != null && !arms.Contains(match))
 			{
 				arms.Add(match);
 			}
