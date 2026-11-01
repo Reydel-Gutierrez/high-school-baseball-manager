@@ -10,8 +10,10 @@ first, then `docs/ui-concepts/README.md`.
   `src/HSBM.Application` (CareerService), `src/HSBM.Persistence` (SQLite), `game/` (Godot UI), `tests/` (xUnit).
 - Build: Alt+B in the Godot editor, or `dotnet build "game/High School Baseball Manager.csproj"`.
   Tests: `dotnet test HSBM.sln` (or VS Test Explorer → Run All). All 253 pass (3 projects) as of Oct 31 2026.
-- Viewport is 1152×648 with `canvas_items` + `expand`: on the owner's 3428×1368 ultrawide the logical
-  canvas is about **1620×648**. Vertical space is the scarce resource; check every page fits without scrolling.
+- Viewport is 1152×648 with `canvas_items` + `expand`, and `GameSettings.ApplyFitScale` shrinks the UI so every
+  window gets at least **1440×810** logical pixels (16:9 is held by the width, ultrawides by the height). On the
+  owner's 3428×1368 ultrawide the canvas is about **2030×810**; on 1920×1080 about 1470×810. Lay pages out for
+  810 tall and let extra width stretch; check every page fits without scrolling.
 
 ## Rules
 - **Never play or modify the owner's own career saves** (Marcus Johnson / Delaware Valley).
